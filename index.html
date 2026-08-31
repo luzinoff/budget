@@ -86,7 +86,10 @@ header{
   letter-spacing:-.01em;
   white-space:nowrap;cursor:pointer;border-bottom:3px solid transparent;
 }
-@media (max-width:359px){ .tab{font-size:11.5px} }
+/* «Расходы ₫» и «Наличные ₫» — самые длинные подписи; на узких экранах
+   уменьшаем кегль, иначе текст обрежется многоточием. */
+@media (max-width:399px){ .tab{font-size:11.5px} }
+@media (max-width:339px){ .tab{font-size:10.5px} }
 .tab[aria-selected="true"]{color:#fff;border-bottom-color:#fff}
 
 /* ---------- layout ---------- */
@@ -276,10 +279,10 @@ input.lit{animation:lit 1.8s ease-out}
     </div>
   </div>
   <div class="tabs" role="tablist">
+    <button class="tab" role="tab" data-t="vnd">Расходы ₫</button>
+    <button class="tab" role="tab" data-t="cash">Наличные ₫</button>
     <button class="tab" role="tab" data-t="inc">Доходы ₽</button>
     <button class="tab" role="tab" data-t="rub">Расходы ₽</button>
-    <button class="tab" role="tab" data-t="vnd">Расходы ₫</button>
-    <button class="tab" role="tab" data-t="cash">Наличные</button>
     <button class="tab" role="tab" data-t="sum">Итоги</button>
   </div>
 </header>
