@@ -73,13 +73,20 @@ header{
 .syncdot.on{background:#7BC49A}
 .syncdot.busy{background:#E2C069}
 .syncdot.err{background:#E08573}
-.tabs{display:flex;gap:2px;margin-top:10px;overflow-x:auto;scrollbar-width:none}
+/* Пять вкладок должны помещаться в ширину телефона без горизонтальной
+   прокрутки, поэтому они делят строку поровну (flex:1 + min-width:0). */
+/* Отрицательные поля забирают у хедера его боковые отступы (14px) —
+   лишние 28px ширины решают, влезут ли пять подписей в узкий экран. */
+.tabs{display:flex;gap:0;margin:10px -14px 0;padding:0 2px;scrollbar-width:none}
 .tabs::-webkit-scrollbar{display:none}
 .tab{
+  flex:1 1 0;min-width:0;overflow:hidden;text-overflow:ellipsis;
   background:none;border:0;color:rgba(255,255,255,.62);
-  padding:9px 12px 11px;font:inherit;font-size:13.5px;font-weight:600;
+  padding:9px 2px 11px;font:inherit;font-size:12.5px;font-weight:600;
+  letter-spacing:-.01em;
   white-space:nowrap;cursor:pointer;border-bottom:3px solid transparent;
 }
+@media (max-width:359px){ .tab{font-size:11.5px} }
 .tab[aria-selected="true"]{color:#fff;border-bottom-color:#fff}
 
 /* ---------- layout ---------- */
@@ -213,6 +220,28 @@ input:focus,select:focus,textarea:focus,button:focus-visible,.chip:focus-visible
 .split .big:first-child{border-left:0}
 
 /* ---------- misc ---------- */
+/* ---------- диктовка ---------- */
+.mic{
+  flex:0 0 auto;width:44px;height:44px;border-radius:50%;
+  border:1px solid var(--line);background:#fff;color:var(--ink-2);
+  cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;
+}
+.mic svg{width:20px;height:20px;fill:currentColor;pointer-events:none}
+.mic:hover{border-color:var(--ink-3)}
+.mic[disabled]{opacity:.4;cursor:default}
+.mic.rec{background:var(--danger);border-color:var(--danger);color:#fff;animation:pulse 1.3s ease-in-out infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(163,58,42,.45)}50%{box-shadow:0 0 0 7px rgba(163,58,42,0)}}
+.heard{
+  margin-top:9px;font-size:13px;color:var(--ink-3);min-height:0;
+  padding:0;line-height:1.4;
+}
+.heard:not(:empty){padding:8px 10px;background:var(--paper);border-radius:7px;border:1px solid var(--line)}
+.heard b{color:var(--ink-2);font-weight:600}
+/* подсветка полей, заполненных голосом */
+@keyframes lit{from{background:#FFF3C4}to{background:transparent}}
+.chip.lit{animation:lit 1.8s ease-out}
+input.lit{animation:lit 1.8s ease-out}
+
 .note{font-size:12.5px;color:var(--ink-3);padding:11px 13px;line-height:1.5}
 .note b{color:var(--ink-2)}
 .tools{display:flex;gap:8px;flex-wrap:wrap;padding:12px 13px}
@@ -250,7 +279,7 @@ input:focus,select:focus,textarea:focus,button:focus-visible,.chip:focus-visible
     <button class="tab" role="tab" data-t="inc">Доходы ₽</button>
     <button class="tab" role="tab" data-t="rub">Расходы ₽</button>
     <button class="tab" role="tab" data-t="vnd">Расходы ₫</button>
-    <button class="tab" role="tab" data-t="cash">Наличные ₫</button>
+    <button class="tab" role="tab" data-t="cash">Наличные</button>
     <button class="tab" role="tab" data-t="sum">Итоги</button>
   </div>
 </header>
@@ -267,10 +296,12 @@ input:focus,select:focus,textarea:focus,button:focus-visible,.chip:focus-visible
       <p class="f-lab">Тип дохода</p>
       <div class="chips" data-cats></div>
       <div class="row">
+        <button class="mic" data-mic title="Надиктовать" aria-label="Надиктовать"><svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V22h2v-3.08A7 7 0 0 0 19 12h-2z"/></svg></button>
         <div class="fld" style="flex:0 0 150px"><input class="num" type="text" inputmode="decimal" placeholder="Сумма ₽" data-amt></div>
         <div class="fld"><input type="text" placeholder="Комментарий" data-note></div>
         <button class="btn" data-add>Добавить</button>
       </div>
+      <div class="heard" data-heard></div>
     </div>
   </div>
   <div class="card">
@@ -291,10 +322,12 @@ input:focus,select:focus,textarea:focus,button:focus-visible,.chip:focus-visible
       <p class="f-lab">Категория</p>
       <div class="chips" data-cats></div>
       <div class="row">
+        <button class="mic" data-mic title="Надиктовать" aria-label="Надиктовать"><svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V22h2v-3.08A7 7 0 0 0 19 12h-2z"/></svg></button>
         <div class="fld" style="flex:0 0 150px"><input class="num" type="text" inputmode="decimal" placeholder="Сумма ₽" data-amt></div>
         <div class="fld"><input type="text" placeholder="Комментарий" data-note></div>
         <button class="btn rub" data-add>Добавить</button>
       </div>
+      <div class="heard" data-heard></div>
     </div>
   </div>
   <div class="card">
@@ -317,10 +350,12 @@ input:focus,select:focus,textarea:focus,button:focus-visible,.chip:focus-visible
       <p class="f-lab">Способ оплаты</p>
       <div class="chips" data-pays></div>
       <div class="row">
+        <button class="mic" data-mic title="Надиктовать" aria-label="Надиктовать"><svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V22h2v-3.08A7 7 0 0 0 19 12h-2z"/></svg></button>
         <div class="fld" style="flex:0 0 160px"><input class="num" type="text" inputmode="decimal" placeholder="Сумма ₫" data-amt></div>
         <div class="fld"><input type="text" placeholder="Комментарий" data-note></div>
         <button class="btn vnd" data-add>Добавить</button>
       </div>
+      <div class="heard" data-heard></div>
     </div>
   </div>
   <div class="card">
@@ -354,10 +389,12 @@ input:focus,select:focus,textarea:focus,button:focus-visible,.chip:focus-visible
       <p class="f-lab">День</p>
       <div class="chips days" data-days></div>
       <div class="row">
+        <button class="mic" data-mic title="Надиктовать" aria-label="Надиктовать"><svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V22h2v-3.08A7 7 0 0 0 19 12h-2z"/></svg></button>
         <div class="fld" style="flex:0 0 160px"><input class="num" type="text" inputmode="decimal" placeholder="Сумма ₫" data-amt></div>
         <div class="fld"><input type="text" placeholder="Комментарий" data-note></div>
         <button class="btn cash" data-add>Добавить</button>
       </div>
+      <div class="heard" data-heard></div>
     </div>
   </div>
   <div class="card">
@@ -636,7 +673,9 @@ function wireAdd(key){
     const rec = {id:uid(), day:p.day, amount:v, note:(note.value||"").trim(), cat:"", pay:"", ts:nowTs(), del:0};
     if(key==="cash"){ m.topup.push(rec); }
     else { rec.cat = p.cat; if(key==="vnd") rec.pay = p.pay; m[key].push(rec); }
-    save(); amt.value=""; note.value=""; render();
+    save(); amt.value=""; note.value="";
+    const h = root.querySelector("[data-heard]"); if(h) h.textContent = "";
+    render();
     toast(key==="inc" ? "Доход добавлен" : key==="cash" ? "Наличные добавлены" : "Расход добавлен");
     amt.focus();
   };
@@ -644,11 +683,105 @@ function wireAdd(key){
   [amt,note].forEach(i=> i.addEventListener("keydown", e=>{ if(e.key==="Enter") go(); }));
 }
 
+/* ---------- диктовка ---------- */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recActive = null;   // сейчас пишущая форма, чтобы не запускать две сразу
+
+function lit(el){ if(!el) return; el.classList.remove("lit"); void el.offsetWidth; el.classList.add("lit"); }
+
+function applyVoice(key, text){
+  const cfg = FORMS[key], root = document.getElementById(cfg.el);
+  const heard = root.querySelector("[data-heard]");
+  const p = vParse(text, key);
+  const got = [];
+
+  // день: если названа дата из другого месяца — переключаем месяц целиком
+  if(p.day){
+    if(p.day.y !== Y || p.day.m !== M){ Y = p.day.y; M = p.day.m; render(); }
+    pick[key].day = p.day.day;
+    got.push("день");
+  }
+  if(p.cat){ pick[key].cat = p.cat; got.push(p.cat.toLowerCase()); }
+  if(p.pay){ pick[key].pay = p.pay; got.push(p.pay.toLowerCase()); }
+  buildForm(key, true);
+  if(p.cat || p.pay || p.day){
+    root.querySelectorAll('.chip[aria-pressed="true"]').forEach(lit);
+  }
+
+  const amt = root.querySelector("[data-amt]"), note = root.querySelector("[data-note]");
+  if(p.amount !== null){
+    amt.value = String(p.amount).replace(".", ",");
+    lit(amt); got.push("сумма");
+  }
+  if(p.note){ note.value = p.note; lit(note); }
+
+  // показываем услышанное — чтобы ошибку распознавания было видно сразу
+  heard.innerHTML = "";
+  const b = document.createElement("b"); b.textContent = "Услышано: ";
+  heard.append(b, document.createTextNode(text));
+  if(p.amount === null){
+    heard.append(document.createElement("br"));
+    const w = document.createElement("span");
+    w.textContent = "Сумму разобрать не удалось — введите её вручную.";
+    heard.appendChild(w);
+    amt.focus();
+  }
+  toast(p.amount === null ? "Сумма не распознана" : "Заполнено: "+got.join(", ")+". Проверьте и нажмите «Добавить»");
+}
+
+function wireMic(key){
+  const cfg = FORMS[key], root = document.getElementById(cfg.el);
+  const btn = root.querySelector("[data-mic]");
+  const heard = root.querySelector("[data-heard]");
+  if(!btn) return;
+
+  if(!SR){
+    btn.disabled = true;
+    btn.title = "Браузер не умеет распознавать речь — попробуйте Chrome";
+    return;
+  }
+  btn.onclick = ()=>{
+    if(recActive){ try{ recActive.stop(); }catch(e){} return; }   // повторное нажатие — остановить
+    if(!navigator.onLine){ toast("Распознавание речи работает только с интернетом"); return; }
+
+    const r = new SR();
+    r.lang = "ru-RU"; r.interimResults = true; r.maxAlternatives = 1; r.continuous = false;
+    let final = "";
+
+    r.onstart = ()=>{ recActive = r; btn.classList.add("rec"); heard.textContent = "Говорите…"; };
+    r.onresult = e=>{
+      let interim = "";
+      for(let i=e.resultIndex; i<e.results.length; i++){
+        const tr = e.results[i][0].transcript;
+        if(e.results[i].isFinal) final += tr; else interim += tr;
+      }
+      if(!final) heard.textContent = interim || "Говорите…";
+    };
+    r.onerror = ev=>{
+      btn.classList.remove("rec"); recActive = null;
+      const m = ev && ev.error;
+      heard.textContent = "";
+      if(m === "not-allowed" || m === "service-not-allowed") toast("Нет доступа к микрофону — разрешите его в настройках браузера");
+      else if(m === "no-speech") toast("Ничего не услышал — попробуйте ещё раз");
+      else if(m === "network") toast("Распознавание не отвечает — нужен интернет");
+      else if(m !== "aborted") toast("Не удалось распознать речь");
+    };
+    r.onend = ()=>{
+      btn.classList.remove("rec"); recActive = null;
+      const t = final.trim();
+      if(t) applyVoice(key, t);
+      else if(heard.textContent === "Говорите…") heard.textContent = "";
+    };
+    try{ r.start(); }catch(e){ toast("Не удалось включить микрофон"); }
+  };
+}
+
 /* ---------- render ---------- */
 function groupDays(arr){
   const g = {};
   arr.forEach(x=>{ (g[x.day] = g[x.day] || []).push(x); });
-  return Object.keys(g).map(Number).sort((a,b)=>a-b).map(d=>({day:d, items:g[d]}));
+  /* Сверху последние дни: сегодняшние записи видны сразу, без прокрутки вниз. */
+  return Object.keys(g).map(Number).sort((a,b)=>b-a).map(d=>({day:d, items:g[d]}));
 }
 function dowOf(d){ return DOW[new Date(Y,M,d).getDay()]; }
 
@@ -779,11 +912,13 @@ function render(){
     : "на конец месяца";
   const lc = document.getElementById("l-cash");
   lc.innerHTML = "";
+  /* Считаем по порядку (баланс накопительный), а показываем задом наперёд —
+     свежие дни сверху. Массив rows не трогаем: по нему берут остаток на сегодня. */
   const shown = rows.filter(r=>r.move);
   if(!shown.length){
     lc.innerHTML = '<div class="empty">Движения наличных пока нет.</div>';
   } else {
-    shown.forEach(r=>{
+    shown.slice().reverse().forEach(r=>{
       const el = document.createElement("div");
       el.className = "cashrow" + (r.bal<0 ? " neg" : "");
       const d = document.createElement("span"); d.className="d"; d.textContent = r.day;
@@ -862,6 +997,153 @@ function exportCsv(){
   cashRows().filter(r=>r.move).forEach(r=> push([String(r.day),r.top,r.spend,r.bal]));
   dl("Бюджет-"+mk()+".csv", "﻿"+L.join("\n"), "text/csv;charset=utf-8");
   toast("Файл выгружен — откройте его в Excel");
+}
+
+/* ================= разбор надиктованной фразы =================
+   Числа НЕ домножаются: сказано «40» — записывается 40. Пользователь
+   держит донги в тысячах в уме, приложение в это не вмешивается. */
+
+/* Слова-синонимы. Порядок важен: ищем самое длинное совпадение,
+   поэтому «карта юнион пэй» проверяется раньше, чем «карта». */
+const V_CAT = {
+  inc: [
+    ["Зарплата",  ["зарплат","получк","зп ","зп,","зп."]],
+    ["Аванс",     ["аванс"]],
+    ["Отпускные", ["отпускн","отпуск"]],
+    ["Другое",    ["друг","прочее","подарок","возврат","кэшбек","кешбек","кэшбэк"]]
+  ],
+  rub: [
+    ["Ребёнок",   ["ребен","ребён","сын","дочь","дочк","школ","садик","детск","алимент"]],
+    ["Квартира",  ["квартир","ипотек","жкх","коммунал","аренд","квартплат"]],
+    ["Покупка иностранной валюты", ["валют","обмен","донг куп","куплю донг","купил донг","доллар","юан"]],
+    ["Прочее",    ["прочее","друг"]]
+  ],
+  vnd: [
+    ["Кафе/рестораны", ["кафе","ресторан","завтрак","обед","ужин","кофе","смузи","еда","поесть","покушать","перекус","бар","пиво","чай","фо ","банми","стрит"]],
+    ["Такси/транспорт",["такси","грэб","граб","grab","байк","бензин","автобус","поезд","самолет","самолёт","билет","транспорт","аренда байк","мото"]],
+    ["Медицина",       ["медицин","аптек","врач","больниц","лекарств","стоматолог","зуб","анализ","массаж"]],
+    ["Жильё",          ["жиль","жилье","квартир","отель","хостел","аренд","депозит","электрич","вода за","интернет"]],
+    ["Развлечения",    ["развлеч","кино","экскурс","бассейн","клуб","парк","аттракцион","караоке","пляж"]],
+    ["Развитие",       ["развит","курс","книг","обучен","английск","школа язык","репетитор","подписк"]],
+    ["Одежда",         ["одежд","футболк","штаны","шорты","платье","обув","кроссовк","шлеп","рубашк","куртк","носки","бель"]],
+    ["Хозтовары",      ["хозтовар","хоз ","шампун","мыло","порошок","бытов","посуд","уборк","салфет","паста зуб","туалетн"]],
+    ["Прочее",         ["прочее","друг","разное"]]
+  ]
+};
+const V_PAY = [
+  ["Наличные",       ["налич","налом","нал ","нал,","нал.","наликом","налик","кэш","кеш","cash"]],
+  ["Карта UnionPay", ["юнион","юнэон","union","рсхб","россельхоз","китайск карт"]],
+  ["Карта BIDV",     ["бидв","bidv","местн карт","вьетнамск карт","местной картой","вьетнамской картой"]],
+  ["Русский QR",     ["куар","ку ар","qr","кьюар","кью ар","русск qr","русским","по куару","куаром"]],
+  ["Карта BIDV",     ["карт"]]   // «картой» без уточнения — самая частая карта
+];
+const V_DAY = [
+  ["сегодня",0],["седня",0],["вчера",-1],["позавчера",-2]
+];
+const NUM_WORD = {
+  "ноль":0,"один":1,"одна":1,"два":2,"две":2,"три":3,"четыре":4,"пять":5,"шесть":6,
+  "семь":7,"восемь":8,"девять":9,"десять":10,"одиннадцать":11,"двенадцать":12,
+  "тринадцать":13,"четырнадцать":14,"пятнадцать":15,"шестнадцать":16,"семнадцать":17,
+  "восемнадцать":18,"девятнадцать":19,"двадцать":20,"тридцать":30,"сорок":40,
+  "пятьдесят":50,"шестьдесят":60,"семьдесят":70,"восемьдесят":80,"девяносто":90,
+  "сто":100,"двести":200,"триста":300,"четыреста":400,"пятьсот":500,"шестьсот":600,
+  "семьсот":700,"восемьсот":800,"девятьсот":900,"полтора":1.5,"полторы":1.5
+};
+const NUM_MULT = {"тысяч":1000,"тыщ":1000,"тыс":1000,"миллион":1000000,"млн":1000000,"лям":1000000};
+
+/* нормализация: нижний регистр, ё→е, мусорные знаки прочь */
+function vNorm(s){
+  return " " + String(s||"").toLowerCase().replace(/ё/g,"е")
+    .replace(/[^a-zа-я0-9\s.,]/g," ").replace(/\s+/g," ").trim() + " ";
+}
+/* «45 тысяч 365» -> 45365; «сто пятьдесят» -> 150; «полтора миллиона» -> 1500000 */
+function vAmount(t){
+  const w = t.split(/[\s,]+/).filter(Boolean);
+  let total = 0, cur = 0, seen = false;
+  for(let i=0;i<w.length;i++){
+    const x = w[i].replace(/\.$/,"");   // «500.» — точка от диктовки, не дробь
+    if(/^\d+([.,]\d+)?$/.test(x)){
+      const n = parseFloat(x.replace(",","."));
+      cur += n; seen = true; continue;
+    }
+    const stem = Object.keys(NUM_MULT).find(k=> x.indexOf(k)===0);
+    if(stem){ if(!seen && !cur) cur = 1; total += (cur||0)*NUM_MULT[stem]; cur = 0; seen = true; continue; }
+    if(NUM_WORD[x] !== undefined){ cur += NUM_WORD[x]; seen = true; continue; }
+  }
+  const v = total + cur;
+  return seen && v > 0 ? v : null;
+}
+/* ищем самое длинное совпадение из словаря */
+function vMatch(t, table){
+  let best = null, len = -1;
+  table.forEach(row=>{
+    row[1].forEach(k=>{
+      if(t.indexOf(k) > -1 && k.length > len){ best = row[0]; len = k.length; }
+    });
+  });
+  return best;
+}
+function vDay(t){
+  for(const [w,off] of V_DAY){
+    if(t.indexOf(w) > -1){
+      const d = new Date(today.getFullYear(), today.getMonth(), today.getDate()+off);
+      return {day:d.getDate(), y:d.getFullYear(), m:d.getMonth()};
+    }
+  }
+  const m = t.match(/\s(\d{1,2})\s?(?:го|числа|число)\s/);
+  if(m){ const d = +m[1]; if(d>=1 && d<=31) return {day:d, y:Y, m:M}; }
+  return null;
+}
+/* Служебные слова, которые в комментарии не нужны. Проверяются по слову
+   целиком, а не подстрокой: иначе «за» вырезалось бы из «завтрак». */
+const V_STOP = /^(донг[а-я]*|руб|рубл[а-я]*|тысяч[а-я]*|тыщ[а-я]*|тыс|миллион[а-я]*|млн|лям[а-я]*|за|на|и|в|с|со|по|оплат[а-я]*|заплатил[а-я]*|расплатил[а-я]*|оплатил[а-я]*|купил[а-я]*|потратил[а-я]*|отдал[а-я]*|пришел|пришла|пришло|получил[а-я]*|коммент[а-я]*|примечани[а-я]*|это|мне|я|числа|число|го)$/;
+/* убираем из фразы всё распознанное — остаток идёт в комментарий.
+   ВНИМАНИЕ: \b в JavaScript не знает кириллицы (\w — это только латиница),
+   поэтому границы слов здесь ищутся руками, разбиением на токены. */
+function vRest(t, used){
+  let s = t;
+  /* Ключи словарей — основы («налич», «карт»). Вырезаем слово целиком
+     вместе с окончанием, иначе от «наличка» остаётся «ка». */
+  used.forEach(k=>{
+    const kk = String(k||"").trim();
+    if(!kk) return;
+    const pat = kk.replace(/[.*+?^${}()|[\]\\]/g,"\\$&").replace(/\s+/g,"\\s+");
+    s = s.replace(new RegExp("[а-яa-z0-9]*"+pat+"[а-яa-z0-9]*","g")," ");
+  });
+  return s.split(/[\s,.]+/).filter(Boolean).filter(w=>{
+    if(/^\d+([.,]\d+)?$/.test(w)) return false;
+    if(NUM_WORD[w] !== undefined) return false;
+    if(Object.keys(NUM_MULT).some(k=> w.indexOf(k)===0)) return false;
+    return !V_STOP.test(w);
+  }).join(" ");
+}
+/* Главная функция: фраза -> что подставить в форму */
+function vParse(text, key){
+  const t = vNorm(text);
+  const used = [];
+  const out = {amount:null, cat:null, pay:null, day:null, note:""};
+
+  /* День считаем первым и вырезаем из фразы: иначе «12 числа 300 донгов»
+     сложилось бы в сумму 312. */
+  const d = vDay(t);
+  const tAmt = d ? t.replace(/\s\d{1,2}\s?(?:го|числа|число)\s/," ") : t;
+  out.amount = vAmount(tAmt);
+  if(key !== "cash"){
+    const table = V_CAT[key];
+    out.cat = vMatch(t, table);
+    if(out.cat) table.forEach(r=> r[0]===out.cat && r[1].forEach(k=>{ if(t.indexOf(k)>-1) used.push(k); }));
+  }
+  if(key === "vnd"){
+    out.pay = vMatch(t, V_PAY);
+    if(out.pay) V_PAY.forEach(r=> r[0]===out.pay && r[1].forEach(k=>{ if(t.indexOf(k)>-1) used.push(k); }));
+  }
+  if(d){ out.day = d; V_DAY.forEach(([w])=>{ if(t.indexOf(w)>-1) used.push(w); }); }
+
+  /* кавычки — явный комментарий, всё остальное игнорируем */
+  const q = String(text||"").match(/[«"']([^«»"']{1,80})[»"']/);
+  out.note = q ? q[1].trim() : vRest(t, used);
+  if(out.note.length > 60) out.note = out.note.slice(0,60).trim();
+  return out;
 }
 
 /* ================= синхронизация с Google Диском ================= */
@@ -1130,7 +1412,7 @@ function autoSync(){
     if(!document.hidden && SYNC.token) syncNow(false);
   });
 
-  Object.keys(FORMS).forEach(k=>{ buildForm(k); wireAdd(k); });
+  Object.keys(FORMS).forEach(k=>{ buildForm(k); wireAdd(k); wireMic(k); });
   render();
   setTab(tab);   // после render(), иначе он пересоберёт ленту дней и сбросит прокрутку
   syncUI();
