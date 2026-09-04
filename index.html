@@ -483,6 +483,10 @@ const DOW = ["вс","пн","вт","ср","чт","пт","сб"];
 const KEY = "budget.v1";
 const CID_KEY = "budget.cid";
 const SEEN_KEY = "budget.synced";
+/* «вход когда-то делался» переживает перезагрузку, в отличие от токена:
+   он живёт только в памяти вкладки. Без этого флага приложение после каждого
+   запуска молча копило бы правки локально до ручного нажатия кнопки. */
+const AUTH_KEY = "budget.auth";
 const LISTS = ["inc","rub","vnd","topup"];
 const TOMB_TTL = 90*24*60*60*1000;   // тайм-метки удаления живут 90 дней, потом чистятся
 const DRIVE_FILE = "budget.v1.json";
@@ -1157,8 +1161,27 @@ const SYNC = {
   busy: false,
   timer: null,
   pending: false,
-  err: ""
+  err: "",
+  ever: localStorage.getItem(AUTH_KEY) === "1",  // вход делался раньше — можно продлевать молча
+  relogin: false,                                // тихое продление не прошло, нужен человек
+  gen: 0,                                        // растёт при отключении, см. authOff()
+  editCid: false,                                // пользователь сам открыл поле Client ID
+  fails: 0,                                      // подряд идущие сбои — пауза перед повтором
+  retry: null                                    // таймер повтора; отдельно от timer, их нельзя путать
 };
+function authOn(){ SYNC.ever = true; try{ localStorage.setItem(AUTH_KEY,"1"); }catch(e){} }
+/* Отключение во время летящего запроса: коллбэк Google придёт позже и вернёт
+   токен. Поколение отсекает такой ответ — иначе «Отключить» тихо отменялось бы. */
+function authOff(){
+  SYNC.ever = false; SYNC.relogin = false; SYNC.gen++;
+  SYNC.fails = 0; SYNC.pending = false;
+  clearTimeout(SYNC.timer); SYNC.timer = null;
+  clearTimeout(SYNC.retry); SYNC.retry = null;
+  /* Летящий обмен отсечётся по поколению, но ждать его незачем: отпускаем
+     интерфейс сразу, иначе кнопка останется серой на все 120 секунд таймаута. */
+  SYNC.busy = false;
+  try{ localStorage.removeItem(AUTH_KEY); }catch(e){}
+}
 const httpsOk = location.protocol === "https:";
 
 function syncUI(){
@@ -1169,11 +1192,12 @@ function syncUI(){
   const btnOff = document.getElementById("sync-off");
   const btnEdit = document.getElementById("cid-edit");
 
-  setup.hidden = !!SYNC.cid;
+  // фоновый обмен не закрывает поле, открытое кнопкой «Изменить Client ID»
+  setup.hidden = !!SYNC.cid && !SYNC.editCid;
   btnEdit.hidden = !SYNC.cid;
-  btnOff.hidden = !SYNC.token;
+  btnOff.hidden = !(SYNC.token || SYNC.ever);   // отключить можно и до продления токена
   btnNow.disabled = SYNC.busy || !SYNC.cid || !httpsOk;
-  btnNow.textContent = SYNC.token ? "Синхронизировать" : "Войти и синхронизировать";
+  btnNow.textContent = (SYNC.token || (SYNC.ever && !SYNC.relogin)) ? "Синхронизировать" : "Войти и синхронизировать";
 
   let cls = "", txt;
   if(!httpsOk){
@@ -1185,14 +1209,20 @@ function syncUI(){
   } else if(SYNC.err){
     cls = "err"; txt = SYNC.err;
   } else {
-    const t = Number(localStorage.getItem(SEEN_KEY)||0);
-    txt = t ? "Последняя синхронизация: "+new Date(t).toLocaleString("ru-RU") : "Готово к первому входу.";
+    const t = Number(localStorage.getItem(SEEN_KEY)) || 0;   // испорченный ключ дал бы «Invalid Date»
+    txt = t ? "Последняя синхронизация: "+new Date(t).toLocaleString("ru-RU")
+            : SYNC.ever ? "Вход выполнен, обмен начнётся сам." : "Готово к первому входу.";
   }
   stat.className = "syncstat "+cls;
   stat.textContent = txt;
   if(!SYNC.busy){
-    dot.className = "syncdot" + (SYNC.err ? " err" : SYNC.token ? " on" : "");
-    dot.title = SYNC.err ? SYNC.err : SYNC.token ? "Диск подключён" : "Синхронизация выключена";
+    /* Зелёная — обмен идёт сам: либо токен на руках, либо вход разрешён и
+       продлится молча. Красная — сбой или нужен повторный вход. */
+    const auto = SYNC.ever && !SYNC.relogin;
+    dot.className = "syncdot" + (SYNC.err ? " err" : (SYNC.token || auto) ? " on" : "");
+    dot.title = SYNC.err ? SYNC.err
+      : (SYNC.token || auto) ? "Диск подключён, синхронизация автоматическая"
+      : "Синхронизация выключена";
   }
 }
 
@@ -1213,6 +1243,7 @@ function gisLoad(){
 function getToken(interactive){
   if(SYNC.token && nowTs() < SYNC.exp - 60000) return Promise.resolve(SYNC.token);
   if(!SYNC.cid) return Promise.reject(new Error("Не указан Client ID"));
+  const gen = SYNC.gen;
   return gisLoad().then(()=> new Promise((res, rej)=>{
     let done = false;
     const tc = google.accounts.oauth2.initTokenClient({
@@ -1221,9 +1252,13 @@ function getToken(interactive){
       prompt: interactive ? "" : "none",
       callback: r=>{
         done = true;
+        // за время ожидания нажали «Отключить» — ответ уже не наш
+        if(gen !== SYNC.gen){ rej(new Error(OFF_MSG)); return; }
         if(r && r.access_token){
           SYNC.token = r.access_token;
           SYNC.exp = nowTs() + (Number(r.expires_in)||3600)*1000;
+          SYNC.relogin = false;
+          authOn();          // с этого момента токен можно продлевать без окна
           res(SYNC.token);
         } else rej(new Error("Google не выдал доступ"));
       },
@@ -1272,15 +1307,35 @@ function drvPut(t, id, data){
     .then(r=>{ if(!r.ok) throw drvErr(r); return r.json(); });
 }
 
+/* Фоновая ошибка входа не должна открывать окно Google: пользователь мог
+   вообще не смотреть на экран. Помечаем состояние и ждём его нажатия.
+   Список закрытый: сюда попадают только сообщения getToken() про сам вход.
+   Ошибки Диска («ответил ошибкой 500») проблемой входа считать нельзя, равно
+   как и «Google не ответил» — это чаще медленная сеть, там уместен повтор. */
+const AUTH_MSGS = ["Нужен вход","Вход отменён","Google не выдал доступ","Не указан Client ID"];
+const isAuthErr = m => AUTH_MSGS.indexOf(String(m||"")) > -1;
+const OFF_MSG = "Синхронизация отключена";   // не ошибка, а решение пользователя
+
 function syncNow(interactive){
-  if(SYNC.busy) return Promise.resolve();
-  if(!httpsOk){ toast("Вход в Google работает только на https-адресе"); return Promise.resolve(); }
-  if(!SYNC.cid){ toast("Сначала укажите Client ID"); return Promise.resolve(); }
-  SYNC.busy = true; SYNC.err = ""; syncUI();
+  // обмен уже идёт — не теряем повод, догоним следующим заходом
+  if(SYNC.busy){ if(!interactive) SYNC.pending = true; return Promise.resolve(); }
+  if(!httpsOk){ if(interactive) toast("Вход в Google работает только на https-адресе"); return Promise.resolve(); }
+  if(!SYNC.cid){ if(interactive) toast("Сначала укажите Client ID"); return Promise.resolve(); }
+  // молча продлеваем только то, что уже разрешали: иначе Google покажет окно
+  if(!interactive && (!SYNC.ever || SYNC.relogin)) return Promise.resolve();
+  SYNC.busy = true; SYNC.err = ""; if(interactive) SYNC.relogin = false;
+  clearTimeout(SYNC.retry); SYNC.retry = null;   // свой обмен отменяет отложенный повтор
+  syncUI();
   let tok;
+  const before = JSON.stringify(DB);   // с чем сравнивать: менять ли картинку на экране
+  /* Поколение всей операции, а не только входа: «Отключить», нажатое посреди
+     обмена, должно остановить и запись на Диск, и обновление состояния. */
+  const gen = SYNC.gen;
+  const stale = ()=> gen !== SYNC.gen;
   return getToken(interactive)
-    .then(t=>{ tok = t; return drvFind(t); })
+    .then(t=>{ if(stale()) throw new Error(OFF_MSG); tok = t; return drvFind(t); })
     .then(ids=>{
+      if(stale()) throw new Error(OFF_MSG);   // на Диск после отключения не пишем
       const keep = ids[0] || null, bad = new Set();
       return Promise.all(ids.map((id,i)=> drvGet(tok, id).catch(e=>{
         if(i === 0) throw e;        // основную копию прочитать обязаны
@@ -1290,31 +1345,79 @@ function syncNow(interactive){
         prune();
         remotes.forEach(r=>{ if(isObj(r)) DB = mergeDB(DB, r); });
         prune();
-        localStorage.setItem(KEY, JSON.stringify(DB));
+        // не через save(): тот дёрнет autoSync() и обмен пойдёт по кругу
+        try{ localStorage.setItem(KEY, JSON.stringify(DB)); }
+        catch(e){ throw new Error("Не удалось сохранить: нет места в хранилище"); }
         return drvPut(tok, keep, DB)
           .then(()=> Promise.all(extra.map(id=> drvDel(tok, id))));  // лишние копии убираем после успешной записи
       });
     })
     .then(()=>{
-      localStorage.setItem(SEEN_KEY, String(nowTs()));
-      SYNC.busy = false; render(); syncUI(); if(interactive) toast("Синхронизировано");
+      if(stale()){ SYNC.busy = false; SYNC.pending = false; syncUI(); return; }
+      try{ localStorage.setItem(SEEN_KEY, String(nowTs())); }catch(e){}
+      SYNC.busy = false; SYNC.fails = 0;
+      /* Перерисовываем только если данные и правда изменились: render()
+         пересобирает ленту дней и сбрасывает её прокрутку, а фоновый обмен
+         случается сам по себе — дёргать интерфейс под руками нельзя. */
+      const st = JSON.stringify(DB);
+      /* Сбой отрисовки — не сорванная синхронизация: данные уже и локально,
+         и на Диске. Но молчать нельзя, экран мог остаться недорисованным. */
+      if(st !== before){
+        try{ render(); }
+        catch(e){ toast("Данные получены, но список не обновился — перезагрузите страницу"); }
+      }
+      syncUI(); if(interactive) toast("Синхронизировано");
       if(SYNC.pending){ SYNC.pending = false; autoSync(); }  // правка во время выгрузки не теряется
     })
     .catch(e=>{
       SYNC.busy = false;
       const msg = (e && e.message) ? e.message : "Не удалось синхронизировать";
-      SYNC.err = msg;              // индикатор краснеет и при фоновом сбое — молчать нельзя
+      /* Пользователь нажал «Отключить», пока летел запрос: это не сбой,
+         ни ошибки на экране, ни повтора быть не должно. */
+      if(msg === OFF_MSG || stale()){ SYNC.pending = false; syncUI(); return; }
+      /* Тихое продление не прошло — Google разлогинен или почищены куки.
+         Окно входа не открываем: просто просим нажать кнопку. */
+      if(!interactive && isAuthErr(msg)){
+        SYNC.relogin = true;
+        SYNC.token = null; SYNC.exp = 0;
+        SYNC.err = "Нужен повторный вход в Google — нажмите «Войти и синхронизировать». Записи сохраняются на этом устройстве.";
+      } else {
+        SYNC.err = msg;            // индикатор краснеет и при фоновом сбое — молчать нельзя
+        /* Сорванный обмен — обычно пропавшая сеть. Правка уже в localStorage,
+           но из очереди отправки выпала бы: пробуем ещё раз, отступая всё
+           дальше, чтобы не долбиться в глухую стену. Отказ входа сюда не
+           попадает: если человек сам закрыл окно Google, лезть повторно незачем.
+           Повтор держим в своём таймере — flushSync не должен принять его за
+           отложенную правку и тем самым обнулить всю выдержку. */
+        if(!isAuthErr(msg) && SYNC.ever){
+          SYNC.fails = (SYNC.fails||0) + 1;
+          const wait = Math.min(60000, 5000 * Math.pow(2, SYNC.fails - 1));
+          clearTimeout(SYNC.retry);
+          SYNC.retry = setTimeout(()=>{ SYNC.retry = null; syncNow(false); }, wait);
+        }
+      }
       SYNC.pending = false;
       if(interactive) toast(msg);
       syncUI();
     });
 }
-/* тихая догонка после правок — только если вход уже сделан */
+/* Тихая догонка после правок. Живого токена не требуем — хватает того, что
+   вход когда-то был: токен продлится молча. А вот после неудачного продления
+   не долбимся на каждую правку, ждём нажатия кнопки. */
 function autoSync(){
-  if(!SYNC.cid || !SYNC.token || !httpsOk) return;
+  if(!SYNC.cid || !SYNC.ever || SYNC.relogin || !httpsOk) return;
   if(SYNC.busy){ SYNC.pending = true; return; }
   clearTimeout(SYNC.timer);
-  SYNC.timer = setTimeout(()=>syncNow(false), 4000);
+  SYNC.timer = setTimeout(()=>{ SYNC.timer = null; syncNow(false); }, 2000);
+}
+/* Страницу закрывают, а правка ещё ждёт своей очереди — отправляем немедленно.
+   Гарантий никаких (браузер вправе убить вкладку раньше), поэтому это лишь
+   подстраховка к короткой задержке выше. Таймер повтора (SYNC.retry) сюда не
+   входит намеренно: его выдержку сбрасывать нельзя, иначе при пропавшей сети
+   повторы пойдут пачкой на каждое сворачивание приложения. */
+function flushSync(){
+  if(SYNC.timer){ clearTimeout(SYNC.timer); SYNC.timer = null; syncNow(false); }
+  else if(SYNC.pending && !SYNC.busy){ SYNC.pending = false; syncNow(false); }
 }
 
 /* ---------- init ---------- */
@@ -1394,12 +1497,17 @@ function autoSync(){
   document.getElementById("cid-save").onclick = ()=>{
     const v = (cid.value||"").trim();
     if(v && !/\.apps\.googleusercontent\.com$/.test(v)){ toast("Client ID должен заканчиваться на .apps.googleusercontent.com"); return; }
+    /* Другой Client ID — другое приложение в глазах Google: старое разрешение
+       к нему не относится, молча продлевать нечего. */
+    if(v !== SYNC.cid){ SYNC.token = null; SYNC.exp = 0; authOff(); }
     SYNC.cid = v;
+    SYNC.editCid = false;
     if(v) localStorage.setItem(CID_KEY, v); else localStorage.removeItem(CID_KEY);
     SYNC.err = ""; syncUI();
     toast(v ? "Client ID сохранён" : "Client ID убран");
   };
   document.getElementById("cid-edit").onclick = ()=>{
+    SYNC.editCid = true;
     document.getElementById("sync-setup").hidden = false;
     cid.focus();
   };
@@ -1407,18 +1515,40 @@ function autoSync(){
   document.getElementById("sync-off").onclick = ()=>{
     const t = SYNC.token;
     SYNC.token = null; SYNC.exp = 0; SYNC.err = "";
+    authOff();   // снимает флаг и гасит таймеры: иначе автовход вернётся при запуске
     try{ if(t && window.google && google.accounts) google.accounts.oauth2.revoke(t, ()=>{}); }catch(e){}
     syncUI(); toast("Диск отключён на этом устройстве");
   };
-  // догоняем чужие правки при возврате к вкладке
+  // догоняем чужие правки при возврате к вкладке — токен продлевается молча
   document.addEventListener("visibilitychange", ()=>{
-    if(!document.hidden && SYNC.token) syncNow(false);
+    if(document.hidden){ flushSync(); return; }
+    if(!SYNC.ever || SYNC.relogin) return;
+    /* Переключение между приложениями на телефоне — обычное дело; полный цикл
+       на каждое возвращение не нужен. Раз в полминуты достаточно. */
+    // ||0 после Number: испорченный ключ дал бы NaN, и сравнение молча выключило бы догонку
+    const t = Number(localStorage.getItem(SEEN_KEY)) || 0;
+    if(nowTs() - t > 30000) syncNow(false);
+  });
+  /* pagehide, а не beforeunload: на мобильных вкладку часто выгружают без него */
+  window.addEventListener("pagehide", flushSync);
+  /* Отключение в одной вкладке должно дойти до остальных: иначе соседняя
+     вкладка при следующем входе вернёт флаг обратно в хранилище. */
+  window.addEventListener("storage", e=>{
+    if(e.key !== AUTH_KEY) return;
+    if(e.newValue === "1"){ SYNC.ever = true; }
+    else { SYNC.token = null; SYNC.exp = 0; authOff(); }
+    syncUI();
   });
 
   Object.keys(FORMS).forEach(k=>{ buildForm(k); wireAdd(k); wireMic(k); });
   render();
   setTab(tab);   // после render(), иначе он пересоберёт ленту дней и сбросит прокрутку
   syncUI();
+
+  /* Подхватываем чужие правки сразу при запуске. Токен в памяти вкладки не
+     переживает перезагрузку, поэтому здесь он продлевается заново — молча,
+     без окна Google, и только если вход когда-то уже разрешали. */
+  if(httpsOk && SYNC.cid && SYNC.ever) syncNow(false);
 
   if(httpsOk && "serviceWorker" in navigator){
     window.addEventListener("load", ()=>{ navigator.serviceWorker.register("sw.js").catch(()=>{}); });
