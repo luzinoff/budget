@@ -388,7 +388,9 @@ input.lit{animation:lit 1.8s ease-out}
       <p class="f-lab">Категория</p>
       <div class="chips" data-cats></div>
       <p class="f-lab">Способ оплаты</p>
-      <div class="chips" data-pays></div>
+      <div class="chips" data-pays>
+        <button class="chip" id="bidv-import" style="background:#2E5E8E;color:#fff;border-color:#2E5E8E">Импорт BIDV</button>
+      </div>
       <div class="row">
         <button class="mic" data-mic title="Надиктовать" aria-label="Надиктовать"><svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V22h2v-3.08A7 7 0 0 0 19 12h-2z"/></svg></button>
         <div class="fld" style="flex:0 0 160px"><input class="num" type="text" inputmode="decimal" placeholder="Сумма ₫" data-amt></div>
@@ -396,12 +398,6 @@ input.lit{animation:lit 1.8s ease-out}
         <button class="btn vnd" data-add>Добавить</button>
       </div>
       <div class="heard" data-heard></div>
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-h">Импорт из BIDV</div>
-    <div class="tools">
-      <button class="btn" id="bidv-import">Импорт BIDV</button>
     </div>
   </div>
   <div class="card">
