@@ -1659,24 +1659,24 @@ function bidvShowDialog(transactions){
 
 function bidvAddSelected(transactions, overlay){
   const checks = document.querySelectorAll(".bidv-row-check");
-  const cats = document.querySelectorAll(".bidv-cat");
-  const notes = document.querySelectorAll(".bidv-note");
 
   let added = 0;
   const imported = bidvLoadImported();
   const now = nowTs();
 
-  checks.forEach((cb,i)=>{
+  checks.forEach(cb=>{
     if(!cb.checked) return;
 
-    const cat = cats[i].value;
+    const idx = parseInt(cb.dataset.idx);
+    const cat = document.querySelector(`.bidv-cat[data-idx="${idx}"]`).value;
+    const note = document.querySelector(`.bidv-note[data-idx="${idx}"]`).value.trim();
+
     if(!cat){
       toast("Выберите категорию для всех отмеченных операций");
       return;
     }
 
-    const tr = transactions[i];
-    const note = notes[i].value.trim();
+    const tr = transactions[idx];
     const monthKey = tr.year + "-" + String(tr.month + 1).padStart(2, "0");
 
     if(!DB[monthKey]) DB[monthKey] = EMPTY();
