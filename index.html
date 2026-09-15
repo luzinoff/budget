@@ -554,6 +554,7 @@ function save(){
 }
 function mk(){ return Y+"-"+String(M+1).padStart(2,"0"); }
 const EMPTY = () => ({inc:[],rub:[],vnd:[],topup:[],cashStart:0,cashStartTs:1});
+const META_KEY = "_meta"; // ключ для метаданных в DB
 function num0(v){ const n = Number(v); return isFinite(n) && n>0 ? n : 0; }
 
 function fix(m){
@@ -1468,21 +1469,19 @@ function flushSync(){
 
 /* ========== BIDV Import ========== */
 function bidvLoadImported(){
-  try{
-    const raw = localStorage.getItem(BIDV_IMPORTED_KEY);
-    if(!raw) return [];
-    const list = JSON.parse(raw);
-    if(!Array.isArray(list)) return [];
-    // оставляем только записи за последние 90 дней
-    const cut = nowTs() - TOMB_TTL;
-    return list.filter(x=> x && x.ts >= cut);
-  }catch(e){ return []; }
+  // Читаем из DB._meta.bidvImported (синхронизируется через Drive)
+  if(!DB[META_KEY]) DB[META_KEY] = {};
+  const list = DB[META_KEY].bidvImported || [];
+  if(!Array.isArray(list)) return [];
+  // оставляем только записи за последние 90 дней
+  const cut = nowTs() - TOMB_TTL;
+  return list.filter(x=> x && x.ts >= cut);
 }
 
 function bidvSaveImported(list){
-  try{
-    localStorage.setItem(BIDV_IMPORTED_KEY, JSON.stringify(list));
-  }catch(e){}
+  if(!DB[META_KEY]) DB[META_KEY] = {};
+  DB[META_KEY].bidvImported = list;
+  save(); // сохраняем в DB и запускаем синхронизацию
 }
 
 function bidvImport(){
@@ -1709,9 +1708,7 @@ function bidvAddSelected(transactions, overlay){
   }
 
   bidvSaveImported(imported);
-  save();
   render();
-  autoSync();
 
   document.body.removeChild(overlay);
   toast(`Добавлено операций: ${added}`);
