@@ -1613,7 +1613,7 @@ function bidvShowDialog(transactions){
       <td>${dateStr}</td>
       <td class="num">${tr.amount.toLocaleString("ru-RU")}</td>
       <td>
-        <input type="text" class="bidv-note" data-idx="${i}" value="${tr.recipient}" style="width:100%;padding:4px 6px;border:1px solid var(--line);border-radius:5px;font-size:12px">
+        <input type="text" class="bidv-note" data-idx="${i}" style="width:100%;padding:4px 6px;border:1px solid var(--line);border-radius:5px;font-size:12px">
       </td>
       <td>
         <select class="bidv-cat" data-idx="${i}">
@@ -1622,6 +1622,8 @@ function bidvShowDialog(transactions){
         </select>
       </td>
     `;
+    // Устанавливаем значение через JavaScript, чтобы избежать проблем с экранированием
+    row.querySelector(".bidv-note").value = tr.recipient;
     tbody.appendChild(row);
   });
 
