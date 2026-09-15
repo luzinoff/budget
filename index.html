@@ -829,7 +829,12 @@ function groupDays(arr){
   const g = {};
   arr.forEach(x=>{ (g[x.day] = g[x.day] || []).push(x); });
   /* Сверху последние дни: сегодняшние записи видны сразу, без прокрутки вниз. */
-  return Object.keys(g).map(Number).sort((a,b)=>b-a).map(d=>({day:d, items:g[d]}));
+  const days = Object.keys(g).map(Number).sort((a,b)=>b-a);
+  return days.map(d=>{
+    // Сортируем записи внутри дня по времени: свежие сверху
+    const items = g[d].sort((a,b)=> (b.ts||0) - (a.ts||0));
+    return {day:d, items};
+  });
 }
 function dowOf(d){ return DOW[new Date(Y,M,d).getDay()]; }
 
@@ -1537,6 +1542,7 @@ function bidvImport(){
           year: dt.getFullYear(),
           month: dt.getMonth(),
           day: dt.getDate(),
+          time: Math.floor(dt.getTime() / 1000), // timestamp в секундах
           amount: Math.round(d.amount_vnd / 1000),
           recipient: d.recipient_name || "",
           type: d.transaction_type || ""
@@ -1689,7 +1695,7 @@ function bidvAddSelected(transactions, overlay){
       note: note,
       cat: cat,
       pay: "Карта BIDV",
-      ts: now,
+      ts: tr.time, // используем время из JSON
       del: 0
     });
 
