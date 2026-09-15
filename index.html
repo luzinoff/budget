@@ -1550,6 +1550,13 @@ function bidvImport(){
         return;
       }
 
+      // Сортируем от старой к новой
+      transactions.sort((a,b)=>{
+        if(a.year !== b.year) return a.year - b.year;
+        if(a.month !== b.month) return a.month - b.month;
+        return a.day - b.day;
+      });
+
       bidvShowDialog(transactions);
       btn.disabled = false;
       btn.textContent = "Импорт BIDV";
