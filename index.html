@@ -1595,7 +1595,7 @@ function bidvShowDialog(transactions){
         <th style="width:40px"><input type="checkbox" id="bidv-check-all" checked></th>
         <th style="width:90px">Дата</th>
         <th style="width:80px">Сумма</th>
-        <th>Получатель</th>
+        <th>Комментарий</th>
         <th style="width:160px">Категория</th>
       </tr>
     </thead>
@@ -1612,7 +1612,9 @@ function bidvShowDialog(transactions){
       <td><input type="checkbox" class="bidv-row-check" data-idx="${i}" checked></td>
       <td>${dateStr}</td>
       <td class="num">${tr.amount.toLocaleString("ru-RU")}</td>
-      <td style="font-size:12px">${tr.recipient}</td>
+      <td>
+        <input type="text" class="bidv-note" data-idx="${i}" value="${tr.recipient}" style="width:100%;padding:4px 6px;border:1px solid var(--line);border-radius:5px;font-size:12px">
+      </td>
       <td>
         <select class="bidv-cat" data-idx="${i}">
           <option value="">Выберите...</option>
@@ -1656,6 +1658,7 @@ function bidvShowDialog(transactions){
 function bidvAddSelected(transactions, overlay){
   const checks = document.querySelectorAll(".bidv-row-check");
   const cats = document.querySelectorAll(".bidv-cat");
+  const notes = document.querySelectorAll(".bidv-note");
 
   let added = 0;
   const imported = bidvLoadImported();
@@ -1671,6 +1674,7 @@ function bidvAddSelected(transactions, overlay){
     }
 
     const tr = transactions[i];
+    const note = notes[i].value.trim();
     const monthKey = tr.year + "-" + String(tr.month + 1).padStart(2, "0");
 
     if(!DB[monthKey]) DB[monthKey] = EMPTY();
@@ -1680,7 +1684,7 @@ function bidvAddSelected(transactions, overlay){
       id: uid(),
       day: tr.day,
       amount: tr.amount,
-      note: tr.recipient,
+      note: note,
       cat: cat,
       pay: "Карта BIDV",
       ts: now,
