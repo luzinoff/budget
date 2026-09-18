@@ -540,6 +540,33 @@ let DB = load();
 
 function isObj(v){ return !!v && typeof v==="object" && !Array.isArray(v); }
 function nowTs(){ return Date.now(); }
+/* BIDV присылает transaction_at без часового пояса, но это местное время
+   Вьетнама (UTC+7). Не отдаём такую строку напрямую в new Date(): на ПК и
+   телефоне она иначе трактуется в локальном часовом поясе устройства. */
+function parseBidvDateTime(value){
+  const s = String(value==null ? "" : value).trim();
+  const plain = s.match(/^(\\d{4})[-\\/](\\d{1,2})[-\\/](\\d{1,2})(?:[ T](\\d{1,2}):(\\d{2})(?::(\\d{2})(?:\\.(\\d{1,3}))?)?)?$/);
+  if(plain){
+    const year = Number(plain[1]), month = Number(plain[2])-1, day = Number(plain[3]);
+    const hour = Number(plain[4]||0), minute = Number(plain[5]||0);
+    const second = Number(plain[6]||0), ms = Number((plain[7]||"").padEnd(3,"0")||0);
+    const opTs = Date.UTC(year, month, day, hour, minute, second, ms) - 7*60*60*1000;
+    const check = new Date(opTs + 7*60*60*1000);
+    if(check.getUTCFullYear()===year && check.getUTCMonth()===month &&
+       check.getUTCDate()===day && check.getUTCHours()===hour &&
+       check.getUTCMinutes()===minute && check.getUTCSeconds()===second){
+      return {year, month, day, opTs};
+    }
+    return null;
+  }
+  const dt = new Date(s);
+  if(isNaN(dt.getTime())) return null;
+  const parts = new Intl.DateTimeFormat("en-CA",{
+    timeZone:"Asia/Ho_Chi_Minh",year:"numeric",month:"2-digit",day:"2-digit",
+    hour:"2-digit",minute:"2-digit",second:"2-digit",hourCycle:"h23"
+  }).formatToParts(dt).reduce((o,p)=>(o[p.type]=p.value,o),{});
+  return {year:Number(parts.year), month:Number(parts.month)-1, day:Number(parts.day), opTs:dt.getTime()};
+}
 function load(){
   try{
     const r = localStorage.getItem(KEY);
@@ -577,21 +604,35 @@ function fix(m){
   if(!isObj(m)) return EMPTY();
   LISTS.forEach(k=>{
     m[k] = Array.isArray(m[k])
-      ? m[k].filter(isObj).map(x=>({
-          id: x.id || uid(),
-          day: (Number(x.day)>=1 && Number(x.day)<=31) ? Number(x.day) : 1,
-          amount: isFinite(Number(x.amount)) ? Number(x.amount) : 0,
-          note: x.note==null ? "" : String(x.note),
-          cat: x.cat==null ? "" : String(x.cat),
-          pay: x.pay==null ? "" : String(x.pay),
-          ts: num0(x.ts) || 1,      // когда запись последний раз менялась
-          del: num0(x.del)          // 0 = живая, иначе момент удаления
-        }))
+      ? m[k].filter(isObj).map(x=>{
+          const rawTs = num0(x.ts) || 1;
+          /* В старой версии импорт BIDV записывался в ts в секундах,
+             тогда как ручные записи используют миллисекунды. Мигрируем
+             такие записи и одновременно сохраняем время самой операции. */
+          const oldBidvTs = x.pay === "Карта BIDV" && rawTs < 1e12;
+          return {
+            id: x.id || uid(),
+            day: (Number(x.day)>=1 && Number(x.day)<=31) ? Number(x.day) : 1,
+            amount: isFinite(Number(x.amount)) ? Number(x.amount) : 0,
+            note: x.note==null ? "" : String(x.note),
+            cat: x.cat==null ? "" : String(x.cat),
+            pay: x.pay==null ? "" : String(x.pay),
+            ts: oldBidvTs ? rawTs*1000 : rawTs, // время последнего изменения
+            opTs: num0(x.opTs) || (oldBidvTs ? rawTs*1000 : 0), // время операции
+            del: num0(x.del)          // 0 = живая, иначе момент удаления
+          };
+        })
       : [];
   });
   if(typeof m.cashStart!=="number" || !isFinite(m.cashStart)) m.cashStart=0;
   m.cashStartTs = num0(m.cashStartTs) || 1;
   return m;
+}
+function itemTime(x){
+  const op = num0(x && x.opTs);
+  if(op) return op;
+  const ts = num0(x && x.ts);
+  return ts && ts < 1e12 ? ts*1000 : ts;
 }
 const live = a => a.filter(x=>!x.del);
 
@@ -860,8 +901,9 @@ function groupDays(arr){
   /* Сверху последние дни: сегодняшние записи видны сразу, без прокрутки вниз. */
   const days = Object.keys(g).map(Number).sort((a,b)=>b-a);
   return days.map(d=>{
-    // Сортируем записи внутри дня по времени: свежие сверху
-    const items = g[d].sort((a,b)=> (b.ts||0) - (a.ts||0));
+    // Сортируем записи внутри дня по времени операции: свежие сверху.
+    // Для ручных записей itemTime() использует время добавления.
+    const items = g[d].sort((a,b)=> itemTime(b) - itemTime(a));
     return {day:d, items};
   });
 }
@@ -1565,19 +1607,19 @@ function bidvImport(){
         const d = x.data;
         if(!d || !d.reference_number || !d.transaction_at || !d.amount_vnd) return null;
 
-        const dt = new Date(d.transaction_at);
-        if(isNaN(dt.getTime())) return null;
+        const parsed = parseBidvDateTime(d.transaction_at);
+        if(!parsed) return null;
 
         return {
           ref: d.reference_number,
           file: x.file,
-          year: dt.getFullYear(),
-          month: dt.getMonth(),
-          day: dt.getDate(),
-          time: Math.floor(dt.getTime() / 1000), // timestamp в секундах
+          year: parsed.year,
+          month: parsed.month,
+          day: parsed.day,
           amount: Math.round(d.amount_vnd / 1000),
           recipient: d.recipient_name || "",
-          type: d.transaction_type || ""
+          type: d.transaction_type || "",
+          opTs: parsed.opTs
         };
       }).filter(x=>x);
 
@@ -1588,12 +1630,8 @@ function bidvImport(){
         return;
       }
 
-      // Сортируем от старой к новой
-      transactions.sort((a,b)=>{
-        if(a.year !== b.year) return a.year - b.year;
-        if(a.month !== b.month) return a.month - b.month;
-        return a.day - b.day;
-      });
+      // В окне импорта — от старой операции к новой, включая время.
+      transactions.sort((a,b)=> a.opTs - b.opTs || a.file.localeCompare(b.file));
 
       bidvShowDialog(transactions);
       btn.disabled = false;
@@ -1727,7 +1765,8 @@ function bidvAddSelected(transactions, overlay){
       note: note,
       cat: cat,
       pay: "Карта BIDV",
-      ts: tr.time, // используем время из JSON
+      ts: now, // время изменения записи для синхронизации
+      opTs: tr.opTs, // фактическое время операции из JSON
       del: 0
     });
 
