@@ -557,6 +557,22 @@ const EMPTY = () => ({inc:[],rub:[],vnd:[],topup:[],cashStart:0,cashStartTs:1});
 const META_KEY = "_meta"; // ключ для метаданных в DB
 function num0(v){ const n = Number(v); return isFinite(n) && n>0 ? n : 0; }
 
+/* Метки уже обработанных файлов BIDV — это не месяц с расходами, а
+   синхронизируемые служебные данные. Храним уникально по имени файла. */
+function bidvImportedList(v){
+  const cut = nowTs() - TOMB_TTL, byRef = new Map();
+  const list = isObj(v) && Array.isArray(v.bidvImported) ? v.bidvImported : [];
+  list.forEach(x=>{
+    const ref = x && typeof x.ref === "string" ? x.ref : "";
+    const ts = num0(x && x.ts);
+    if(ref && ts >= cut && (!byRef.has(ref) || ts > byRef.get(ref).ts)) byRef.set(ref, {ref, ts});
+  });
+  return Array.from(byRef.values());
+}
+function mergeBidvImported(a, b){
+  return bidvImportedList({bidvImported:[].concat(a||[], b||[])});
+}
+
 function fix(m){
   if(!isObj(m)) return EMPTY();
   LISTS.forEach(k=>{
@@ -601,6 +617,11 @@ function isEmptyMonth(m){
 function prune(){
   const cut = nowTs() - TOMB_TTL;
   Object.keys(DB).forEach(k=>{
+    // _meta — не месяц. Не пропускаем через fix() и не удаляем как пустой месяц.
+    if(k === META_KEY){
+      DB[k] = {bidvImported: bidvImportedList(DB[k])};
+      return;
+    }
     if(!isObj(DB[k])){ delete DB[k]; return; }
     const m = fix(DB[k]);
     LISTS.forEach(kk=>{ m[kk] = m[kk].filter(x=> !(x.del && x.del < cut)); });
@@ -626,6 +647,13 @@ function mergeDB(a, b){
   const out = {};
   const keys = new Set(Object.keys(isObj(a)?a:{}).concat(Object.keys(isObj(b)?b:{})));
   keys.forEach(k=>{
+    // Служебные метки импортированных файлов объединяем по имени файла.
+    if(k === META_KEY){
+      const ma = isObj(a) && isObj(a[k]) ? a[k] : {};
+      const mb = isObj(b) && isObj(b[k]) ? b[k] : {};
+      out[k] = {bidvImported: mergeBidvImported(ma.bidvImported, mb.bidvImported)};
+      return;
+    }
     const ma = isObj(a) && isObj(a[k]) ? fix(a[k]) : EMPTY();
     const mb = isObj(b) && isObj(b[k]) ? fix(b[k]) : EMPTY();
     const m = EMPTY();
@@ -1469,18 +1497,23 @@ function flushSync(){
 
 /* ========== BIDV Import ========== */
 function bidvLoadImported(){
-  // Читаем из DB._meta.bidvImported (синхронизируется через Drive)
-  if(!DB[META_KEY]) DB[META_KEY] = {};
-  const list = DB[META_KEY].bidvImported || [];
-  if(!Array.isArray(list)) return [];
-  // оставляем только записи за последние 90 дней
-  const cut = nowTs() - TOMB_TTL;
-  return list.filter(x=> x && x.ts >= cut);
+  // Читаем из DB._meta.bidvImported (синхронизируется через Drive).
+  // Подхватываем и старый локальный список — он был создан ранней версией
+  // импорта и нужен для плавного перехода после обновления приложения.
+  const meta = isObj(DB[META_KEY]) ? DB[META_KEY] : {};
+  let list = bidvImportedList(meta);
+  try{
+    const legacy = JSON.parse(localStorage.getItem(BIDV_IMPORTED_KEY) || "[]");
+    list = mergeBidvImported(list, Array.isArray(legacy) ? legacy : []);
+  }catch(e){}
+  return list;
 }
 
 function bidvSaveImported(list){
-  if(!DB[META_KEY]) DB[META_KEY] = {};
-  DB[META_KEY].bidvImported = list;
+  DB[META_KEY] = {bidvImported: bidvImportedList({bidvImported:list})};
+  // Миграция завершена: локальная копия больше не нужна и не должна давать
+  // расхождений между устройствами.
+  try{ localStorage.removeItem(BIDV_IMPORTED_KEY); }catch(e){}
   save(); // сохраняем в DB и запускаем синхронизацию
 }
 
