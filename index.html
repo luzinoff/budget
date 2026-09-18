@@ -528,6 +528,7 @@ const SEEN_KEY = "budget.synced";
    запуска молча копило бы правки локально до ручного нажатия кнопки. */
 const AUTH_KEY = "budget.auth";
 const BIDV_IMPORTED_KEY = "budget.bidv.imported";
+const BIDV_DELETE = "__bidv_delete__";
 const LISTS = ["inc","rub","vnd","topup"];
 const TOMB_TTL = 90*24*60*60*1000;   // тайм-метки удаления живут 90 дней, потом чистятся
 const DRIVE_FILE = "budget.v1.json";
@@ -1695,6 +1696,7 @@ function bidvShowDialog(transactions){
         <select class="bidv-cat" data-idx="${i}">
           <option value="">Выберите...</option>
           ${CATS.vnd.map(c=> `<option value="${c}">${c}</option>`).join("")}
+          <option value="${BIDV_DELETE}">⊘ Удалить</option>
         </select>
       </td>
     `;
@@ -1736,7 +1738,7 @@ function bidvShowDialog(transactions){
 function bidvAddSelected(transactions, overlay){
   const checks = document.querySelectorAll(".bidv-row-check");
 
-  let added = 0;
+  let added = 0, removed = 0, invalid = false;
   const imported = bidvLoadImported();
   const now = nowTs();
 
@@ -1746,15 +1748,22 @@ function bidvAddSelected(transactions, overlay){
     const idx = parseInt(cb.dataset.idx);
     const cat = document.querySelector(`.bidv-cat[data-idx="${idx}"]`).value;
     const note = document.querySelector(`.bidv-note[data-idx="${idx}"]`).value.trim();
+    const tr = transactions[idx];
 
     if(!cat){
-      toast("Выберите категорию для всех отмеченных операций");
+      invalid = true;
       return;
     }
 
-    const tr = transactions[idx];
-    const monthKey = tr.year + "-" + String(tr.month + 1).padStart(2, "0");
+    // «Удалить» означает не добавлять расход в бюджет, но считать файл
+    // обработанным, чтобы он больше не появлялся в окне импорта.
+    if(cat === BIDV_DELETE){
+      imported.push({ref: tr.file, ts: now});
+      removed++;
+      return;
+    }
 
+    const monthKey = tr.year + "-" + String(tr.month + 1).padStart(2, "0");
     if(!DB[monthKey]) DB[monthKey] = EMPTY();
     const m = fix(DB[monthKey]);
 
@@ -1774,7 +1783,11 @@ function bidvAddSelected(transactions, overlay){
     added++;
   });
 
-  if(added === 0){
+  if(invalid){
+    toast("Выберите категорию или «⊘ Удалить» для всех отмеченных операций");
+    return;
+  }
+  if(added === 0 && removed === 0){
     toast("Не выбрано ни одной операции");
     return;
   }
@@ -1783,7 +1796,10 @@ function bidvAddSelected(transactions, overlay){
   render();
 
   document.body.removeChild(overlay);
-  toast(`Добавлено операций: ${added}`);
+  const parts = [];
+  if(added) parts.push(`добавлено: ${added}`);
+  if(removed) parts.push(`удалено: ${removed}`);
+  toast(parts.join(", "));
 }
 
 /* ---------- init ---------- */
