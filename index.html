@@ -166,6 +166,11 @@ input:focus,select:focus,textarea:focus,button:focus-visible,.chip:focus-visible
   border-top:1px solid #F1EFE9;
 }
 .item .cat{font-size:14.5px;flex:1;min-width:0}
+.item .cat .item-cat-edit{
+  width:auto;max-width:100%;padding:0 18px 0 0;border:0;border-radius:0;
+  background:transparent;font:inherit;font-size:inherit;color:inherit;
+  cursor:pointer;appearance:auto;
+}
 .item .cat i{display:block;font-style:normal;font-size:12px;color:var(--ink-3);margin-top:1px}
 .item .pay{
   font-size:11px;color:var(--ink-2);background:var(--paper);
@@ -515,7 +520,7 @@ input.lit{animation:lit 1.8s ease-out}
 const CATS = {
   inc:  ["Зарплата","Аванс","Отпускные","Другое"],
   rub:  ["Ребёнок","Квартира","Покупка иностранной валюты","Прочее"],
-  vnd:  ["Кафе/рестораны","Такси/транспорт","Медицина","Жильё","Развлечения","Развитие","Одежда","Хозтовары","Прочее"],
+  vnd:  ["Еда/продукты","Кафе/напитки","Такси/транспорт","Медицина","Жильё","Развлечения","Развитие","Одежда","Хозтовары","Прочее"],
   pay:  ["Наличные","Карта BIDV","Карта UnionPay","Русский QR"]
 };
 const MONTHS = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
@@ -616,7 +621,7 @@ function fix(m){
             day: (Number(x.day)>=1 && Number(x.day)<=31) ? Number(x.day) : 1,
             amount: isFinite(Number(x.amount)) ? Number(x.amount) : 0,
             note: x.note==null ? "" : String(x.note),
-            cat: x.cat==null ? "" : String(x.cat),
+            cat: x.cat==="Кафе/рестораны" ? "Кафе/напитки" : (x.cat==null ? "" : String(x.cat)),
             pay: x.pay==null ? "" : String(x.pay),
             ts: oldBidvTs ? rawTs*1000 : rawTs, // время последнего изменения
             opTs: num0(x.opTs) || (oldBidvTs ? rawTs*1000 : 0), // время операции
@@ -928,7 +933,32 @@ function renderList(box, arr, cur, key){
     g.items.forEach(it=>{
       const r = document.createElement("div"); r.className="item";
       const c = document.createElement("div"); c.className="cat";
-      c.textContent = it.cat || "Пополнение";
+      if(key === "vnd"){
+        const sel = document.createElement("select");
+        sel.className = "item-cat-edit";
+        const options = CATS.vnd.slice();
+        if(it.cat && !options.includes(it.cat)) options.push(it.cat);
+        if(!it.cat) options.unshift("Не указано");
+        options.forEach(name=>{
+          const o = document.createElement("option");
+          o.value = name === "Не указано" ? "" : name;
+          o.textContent = name;
+          o.selected = o.value === (it.cat || "");
+          sel.appendChild(o);
+        });
+        sel.onchange = ()=>{
+          const m = monW(), rec = m.vnd.find(x=>x.id===it.id);
+          if(!rec) return;
+          rec.cat = sel.value;
+          rec.ts = nowTs();
+          save();
+          render();
+          toast("Категория изменена");
+        };
+        c.appendChild(sel);
+      } else {
+        c.textContent = it.cat || "Пополнение";
+      }
       if(it.note){ const i=document.createElement("i"); i.textContent=it.note; c.appendChild(i); }
       r.appendChild(c);
       if(it.pay){ const p=document.createElement("span"); p.className="pay"; p.textContent=it.pay; r.appendChild(p); }
@@ -1144,7 +1174,8 @@ const V_CAT = {
     ["Прочее",    ["прочее","друг"]]
   ],
   vnd: [
-    ["Кафе/рестораны", ["кафе","ресторан","завтрак","обед","ужин","кофе","смузи","еда","поесть","покушать","перекус","бар","пиво","чай","фо ","банми","стрит"]],
+    ["Еда/продукты", ["продукт","магазин","супермаркет","рынок","мясо","рыб","овощ","фрукт","молок","хлеб","яйц","рис","макарон","готовая еда","еда"]],
+    ["Кафе/напитки", ["кафе","ресторан","завтрак","обед","ужин","кофе","смузи","поесть","покушать","перекус","бар","пиво","чай","фо ","банми","стрит"]],
     ["Такси/транспорт",["такси","грэб","граб","grab","байк","бензин","автобус","поезд","самолет","самолёт","билет","транспорт","аренда байк","мото"]],
     ["Медицина",       ["медицин","аптек","врач","больниц","лекарств","стоматолог","зуб","анализ","массаж"]],
     ["Жильё",          ["жиль","жилье","квартир","отель","хостел","аренд","депозит","электрич","вода за","интернет"]],
