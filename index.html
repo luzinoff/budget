@@ -166,12 +166,19 @@ input:focus,select:focus,textarea:focus,button:focus-visible,.chip:focus-visible
   border-top:1px solid #F1EFE9;
 }
 .item .cat{font-size:14.5px;flex:1;min-width:0}
-.item .cat .item-cat-edit{
-  width:auto;max-width:100%;padding:0 18px 0 0;border:0;border-radius:0;
-  background:transparent;font:inherit;font-size:inherit;color:inherit;
-  cursor:pointer;appearance:auto;
-}
 .item .cat i{display:block;font-style:normal;font-size:12px;color:var(--ink-3);margin-top:1px}
+.item .cat-editor{
+  width:auto;max-width:100%;padding:2px 4px;border:1px solid var(--line);
+  border-radius:5px;background:#fff;font:inherit;font-size:13px;color:var(--ink);
+}
+.item .edit-cat,.item .del{
+  flex:0 0 auto;border:0;background:none;color:var(--ink-3);cursor:pointer;
+  line-height:1;padding:2px;font-size:14px;
+}
+.item .edit-cat:hover{color:var(--vnd)}
+.item .edit-cat:focus-visible,.item .del:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
+.item .del{font-size:17px;padding-left:2px}
+.item .del:hover{color:var(--danger)}
 .item .pay{
   font-size:11px;color:var(--ink-2);background:var(--paper);
   border:1px solid var(--line);border-radius:5px;padding:2px 6px;white-space:nowrap;
@@ -933,12 +940,18 @@ function renderList(box, arr, cur, key){
     g.items.forEach(it=>{
       const r = document.createElement("div"); r.className="item";
       const c = document.createElement("div"); c.className="cat";
+      let editBtn = null;
       if(key === "vnd"){
+        const label = document.createElement("span");
+        label.textContent = it.cat || "Не указано";
+        c.appendChild(label);
+
         const sel = document.createElement("select");
-        sel.className = "item-cat-edit";
+        sel.className = "cat-editor";
+        sel.hidden = true;
         const options = CATS.vnd.slice();
         if(it.cat && !options.includes(it.cat)) options.push(it.cat);
-        if(!it.cat) options.unshift("Не указано");
+        options.unshift("Не указано");
         options.forEach(name=>{
           const o = document.createElement("option");
           o.value = name === "Не указано" ? "" : name;
@@ -956,6 +969,18 @@ function renderList(box, arr, cur, key){
           toast("Категория изменена");
         };
         c.appendChild(sel);
+
+        editBtn = document.createElement("button");
+        editBtn.className = "edit-cat";
+        editBtn.textContent = "✎";
+        editBtn.title = "Изменить категорию";
+        editBtn.setAttribute("aria-label", "Изменить категорию");
+        editBtn.onclick = ()=>{
+          sel.hidden = false;
+          label.hidden = true;
+          editBtn.hidden = true;
+          sel.focus();
+        };
       } else {
         c.textContent = it.cat || "Пополнение";
       }
@@ -963,6 +988,7 @@ function renderList(box, arr, cur, key){
       r.appendChild(c);
       if(it.pay){ const p=document.createElement("span"); p.className="pay"; p.textContent=it.pay; r.appendChild(p); }
       const a = document.createElement("span"); a.className="amt num"; a.textContent=f(it.amount); r.appendChild(a);
+      if(editBtn) r.appendChild(editBtn);
       const d = document.createElement("button"); d.className="del"; d.textContent="×";
       d.title="Удалить"; d.setAttribute("aria-label","Удалить запись");
       d.onclick = ()=>{
