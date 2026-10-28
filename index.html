@@ -306,6 +306,26 @@ input.lit{animation:lit 1.8s ease-out}
 .bidv-note{
   font-size:12px;color:var(--ink-3);margin-bottom:12px;line-height:1.4;
 }
+.bidv-in{
+  width:100%;padding:4px 6px;border:1px solid var(--line);border-radius:5px;
+  font-size:13px;background:var(--paper);color:var(--ink);
+}
+/* На телефоне таблица превращается в карточки: чекбокс, дата и сумма в строку,
+   комментарий и категория — под ними во всю ширину. */
+@media (max-width:600px){
+  .bidv-overlay{padding:8px}
+  .bidv-header,.bidv-body,.bidv-footer{padding-left:12px;padding-right:12px}
+  .bidv-table thead tr{display:flex;align-items:center;gap:8px}
+  .bidv-table thead th{border:0;padding:0 0 8px}
+  .bidv-table thead th:not(:first-child){display:none}
+  .bidv-table thead th:first-child::after{content:"Выбрать все";margin-left:8px;font-weight:600}
+  .bidv-table thead th:first-child{display:flex;align-items:center;width:auto!important}
+  .bidv-table tbody tr{display:grid;grid-template-columns:28px 1fr auto;gap:6px 8px;
+    align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+  .bidv-table tbody td{padding:0;border:0}
+  .bidv-table tbody td:nth-child(4),.bidv-table tbody td:nth-child(5){grid-column:1 / -1}
+  .bidv-in,.bidv-table select{font-size:15px;padding:7px 8px}
+}
 
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 @media (max-width:420px){
@@ -546,7 +566,7 @@ const TOMB_TTL = 90*24*60*60*1000;   // тайм-метки удаления ж�
 const DRIVE_FILE = "budget.v1.json";
 
 /* ---------- state ---------- */
-const today = new Date();
+let today = new Date();   // не const: PWA живёт в памяти сутками, см. refreshToday()
 let Y = today.getFullYear(), M = today.getMonth();
 let tab = "vnd";
 let DB = load();
@@ -558,7 +578,7 @@ function nowTs(){ return Date.now(); }
    телефоне она иначе трактуется в локальном часовом поясе устройства. */
 function parseBidvDateTime(value){
   const s = String(value==null ? "" : value).trim();
-  const plain = s.match(/^(\\d{4})[-\\/](\\d{1,2})[-\\/](\\d{1,2})(?:[ T](\\d{1,2}):(\\d{2})(?::(\\d{2})(?:\\.(\\d{1,3}))?)?)?$/);
+  const plain = s.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2})(?:\.(\d{1,3}))?)?)?$/);
   if(plain){
     const year = Number(plain[1]), month = Number(plain[2])-1, day = Number(plain[3]);
     const hour = Number(plain[4]||0), minute = Number(plain[5]||0);
@@ -599,13 +619,15 @@ function num0(v){ const n = Number(v); return isFinite(n) && n>0 ? n : 0; }
 
 /* Метки уже обработанных файлов BIDV — это не месяц с расходами, а
    синхронизируемые служебные данные. Храним уникально по имени файла. */
+/* Срока жизни у меток нет: файлы остаются в репозитории навсегда, и
+   протухшая метка вернула бы давно учтённую операцию в окно импорта. */
 function bidvImportedList(v){
-  const cut = nowTs() - TOMB_TTL, byRef = new Map();
+  const byRef = new Map();
   const list = isObj(v) && Array.isArray(v.bidvImported) ? v.bidvImported : [];
   list.forEach(x=>{
     const ref = x && typeof x.ref === "string" ? x.ref : "";
     const ts = num0(x && x.ts);
-    if(ref && ts >= cut && (!byRef.has(ref) || ts > byRef.get(ref).ts)) byRef.set(ref, {ref, ts});
+    if(ref && ts && (!byRef.has(ref) || ts > byRef.get(ref).ts)) byRef.set(ref, {ref, ts});
   });
   return Array.from(byRef.values());
 }
@@ -619,10 +641,14 @@ function fix(m){
     m[k] = Array.isArray(m[k])
       ? m[k].filter(isObj).map(x=>{
           const rawTs = num0(x.ts) || 1;
+          const rawOp = num0(x.opTs);
           /* В старой версии импорт BIDV записывался в ts в секундах,
              тогда как ручные записи используют миллисекунды. Мигрируем
              такие записи и одновременно сохраняем время самой операции. */
-          const oldBidvTs = x.pay === "Карта BIDV" && rawTs < 1e12;
+          /* Только правдоподобные секунды (2001…2286 гг.). Раньше условие было
+             «< 1e12», и ручные записи с ts:1 при каждом fix() умножались на 1000,
+             пока не доползали до 1e12, получая заодно opTs = 1000. */
+          const oldBidvTs = x.pay === "Карта BIDV" && rawTs >= 1e9 && rawTs < 1e12;
           return {
             id: x.id || uid(),
             day: (Number(x.day)>=1 && Number(x.day)<=31) ? Number(x.day) : 1,
@@ -631,7 +657,8 @@ function fix(m){
             cat: x.cat==="Кафе/рестораны" ? "Кафе/напитки" : (x.cat==null ? "" : String(x.cat)),
             pay: x.pay==null ? "" : String(x.pay),
             ts: oldBidvTs ? rawTs*1000 : rawTs, // время последнего изменения
-            opTs: num0(x.opTs) || (oldBidvTs ? rawTs*1000 : 0), // время операции
+            // время операции; мусор < 1e11 (наследие той ошибки) обнуляем
+            opTs: (rawOp >= 1e11 ? rawOp : 0) || (oldBidvTs ? rawTs*1000 : 0),
             del: num0(x.del)          // 0 = живая, иначе момент удаления
           };
         })
@@ -1126,6 +1153,20 @@ function render(){
   renderCats(document.getElementById("s-cats"), m.vnd, CATS.vnd, "V", "cat");
 
   Object.keys(FORMS).forEach(k=>{ buildForm(k); });
+}
+
+/* Приложение на телефоне сутками висит в памяти. Если за это время сменилась
+   дата, обновляем «сегодня»: иначе по умолчанию выбран вчерашний день, и
+   остаток наличных считается «на сегодня» по вчерашней дате. */
+function refreshToday(){
+  const n = new Date();
+  if(n.toDateString() === today.toDateString()) return;
+  const wasNow = (Y===today.getFullYear() && M===today.getMonth());
+  today = n;
+  Object.keys(pick).forEach(k=>{ pick[k].day = null; });   // заново встанет на сегодня
+  if(wasNow){ Y = today.getFullYear(); M = today.getMonth(); }
+  render();
+  if(FORMS[tab]) buildForm(tab, true);
 }
 
 /* ---------- tabs & month ---------- */
@@ -1725,7 +1766,7 @@ function bidvShowDialog(transactions){
   table.innerHTML = `
     <thead>
       <tr>
-        <th style="width:40px"><input type="checkbox" id="bidv-check-all" checked></th>
+        <th style="width:40px"><input type="checkbox" class="bidv-check-all" checked aria-label="Выбрать все"></th>
         <th style="width:90px">Дата</th>
         <th style="width:80px">Сумма</th>
         <th>Комментарий</th>
@@ -1746,7 +1787,7 @@ function bidvShowDialog(transactions){
       <td>${dateStr}</td>
       <td class="num">${tr.amount.toLocaleString("ru-RU")}</td>
       <td>
-        <input type="text" class="bidv-note" data-idx="${i}" style="width:100%;padding:4px 6px;border:1px solid var(--line);border-radius:5px;font-size:12px">
+        <input type="text" class="bidv-in" data-idx="${i}" placeholder="Комментарий">
       </td>
       <td>
         <select class="bidv-cat" data-idx="${i}">
@@ -1757,7 +1798,7 @@ function bidvShowDialog(transactions){
       </td>
     `;
     // Устанавливаем значение через JavaScript, чтобы избежать проблем с экранированием
-    row.querySelector(".bidv-note").value = tr.recipient;
+    row.querySelector(".bidv-in").value = tr.recipient;
     tbody.appendChild(row);
   });
 
@@ -1769,7 +1810,7 @@ function bidvShowDialog(transactions){
   const cancelBtn = document.createElement("button");
   cancelBtn.className = "btn";
   cancelBtn.textContent = "Отмена";
-  cancelBtn.onclick = ()=> document.body.removeChild(overlay);
+  cancelBtn.onclick = ()=> overlay.remove();
 
   const addBtn = document.createElement("button");
   addBtn.className = "btn vnd";
@@ -1786,30 +1827,38 @@ function bidvShowDialog(transactions){
   document.body.appendChild(overlay);
 
   // Обработчик "выбрать все"
-  document.getElementById("bidv-check-all").onchange = e=>{
-    document.querySelectorAll(".bidv-row-check").forEach(cb=> cb.checked = e.target.checked);
+  overlay.querySelector(".bidv-check-all").onchange = e=>{
+    overlay.querySelectorAll(".bidv-row-check").forEach(cb=> cb.checked = e.target.checked);
   };
 }
 
 function bidvAddSelected(transactions, overlay){
-  const checks = document.querySelectorAll(".bidv-row-check");
+  // Ищем только внутри своего окна, а не по всему документу
+  const picked = Array.from(overlay.querySelectorAll(".bidv-row-check")).filter(cb=> cb.checked).map(cb=>{
+    const idx = parseInt(cb.dataset.idx, 10);
+    return {
+      tr: transactions[idx],
+      cat: overlay.querySelector(`.bidv-cat[data-idx="${idx}"]`).value,
+      note: overlay.querySelector(`.bidv-in[data-idx="${idx}"]`).value.trim()
+    };
+  });
+  /* Сначала проверяем всё, потом пишем. Раньше операции добавлялись в базу
+     по ходу проверки, и после «выберите категорию» и повторного нажатия
+     первые строки попадали в расходы дважды. */
+  if(picked.some(x=> !x.cat)){
+    toast("Выберите категорию или «⊘ Удалить» для всех отмеченных операций");
+    return;
+  }
+  if(!picked.length){
+    toast("Не выбрано ни одной операции");
+    return;
+  }
 
-  let added = 0, removed = 0, invalid = false;
+  let added = 0, removed = 0;
   const imported = bidvLoadImported();
   const now = nowTs();
 
-  checks.forEach(cb=>{
-    if(!cb.checked) return;
-
-    const idx = parseInt(cb.dataset.idx);
-    const cat = document.querySelector(`.bidv-cat[data-idx="${idx}"]`).value;
-    const note = document.querySelector(`.bidv-note[data-idx="${idx}"]`).value.trim();
-    const tr = transactions[idx];
-
-    if(!cat){
-      invalid = true;
-      return;
-    }
+  picked.forEach(({tr, cat, note})=>{
 
     // «Удалить» означает не добавлять расход в бюджет, но считать файл
     // обработанным, чтобы он больше не появлялся в окне импорта.
@@ -1820,7 +1869,7 @@ function bidvAddSelected(transactions, overlay){
     }
 
     const monthKey = tr.year + "-" + String(tr.month + 1).padStart(2, "0");
-    if(!DB[monthKey]) DB[monthKey] = EMPTY();
+    if(!isObj(DB[monthKey])) DB[monthKey] = EMPTY();
     const m = fix(DB[monthKey]);
 
     m.vnd.push({
@@ -1839,19 +1888,10 @@ function bidvAddSelected(transactions, overlay){
     added++;
   });
 
-  if(invalid){
-    toast("Выберите категорию или «⊘ Удалить» для всех отмеченных операций");
-    return;
-  }
-  if(added === 0 && removed === 0){
-    toast("Не выбрано ни одной операции");
-    return;
-  }
-
   bidvSaveImported(imported);
   render();
 
-  document.body.removeChild(overlay);
+  overlay.remove();
   const parts = [];
   if(added) parts.push(`добавлено: ${added}`);
   if(removed) parts.push(`удалено: ${removed}`);
@@ -1903,8 +1943,12 @@ function bidvAddSelected(transactions, overlay){
       try{
         const d = JSON.parse(r.result);
         if(!isObj(d)) throw 0;
-        Object.keys(d).forEach(k=>{ if(isObj(d[k])) fix(d[k]); else delete d[k]; });
-        Object.keys(d).forEach(k=>{ if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(k)) delete d[k]; });
+        /* _meta — не месяц: его не чиним через fix(), но и не выбрасываем,
+           иначе после восстановления все файлы BIDV снова покажутся новыми. */
+        Object.keys(d).forEach(k=>{
+          if(k === META_KEY){ if(isObj(d[k])) d[k] = {bidvImported: bidvImportedList(d[k])}; else delete d[k]; return; }
+          if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(k) || !isObj(d[k])) delete d[k]; else fix(d[k]);
+        });
         if(impMode==="replace"){
           if(!confirm("Заменить все текущие данные данными из файла? Записи, которых нет в файле, будут удалены — в том числе на Диске.")) return;
           /* Не выбрасываем записи молча: помечаем удалёнными, иначе синхронизация
@@ -1912,8 +1956,9 @@ function bidvAddSelected(transactions, overlay){
           const t = nowTs(), keep = new Set();
           Object.keys(d).forEach(k=> LISTS.forEach(kk=>
             (Array.isArray(d[k][kk])?d[k][kk]:[]).forEach(r=>{ if(isObj(r) && r.id) keep.add(r.id); })));
-          Object.keys(d).forEach(k=>{ d[k].cashStartTs = t; });   // остаток из файла должен победить
+          Object.keys(d).forEach(k=>{ if(k !== META_KEY) d[k].cashStartTs = t; });   // остаток из файла должен победить
           Object.keys(DB).forEach(k=>{
+            if(k === META_KEY || !isObj(DB[k])) return;   // метки импорта не стираем: они лишь «уже видели»
             const m = fix(DB[k]);
             LISTS.forEach(kk=> m[kk].forEach(r=>{ if(!keep.has(r.id) && !r.del){ r.del = t; r.ts = t; } }));
             if(!isObj(d[k])){ m.cashStart = 0; m.cashStartTs = t; }  // месяца нет в файле — обнуляем и его остаток
@@ -1960,6 +2005,7 @@ function bidvAddSelected(transactions, overlay){
   // догоняем чужие правки при возврате к вкладке — токен продлевается молча
   document.addEventListener("visibilitychange", ()=>{
     if(document.hidden){ flushSync(); return; }
+    refreshToday();
     if(!SYNC.ever || SYNC.relogin) return;
     /* Переключение между приложениями на телефоне — обычное дело; полный цикл
        на каждое возвращение не нужен. Раз в полминуты достаточно. */
