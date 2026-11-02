@@ -36,7 +36,7 @@
 }
 body[data-tab="inc"],body[data-tab="rub"]{--acc:var(--rub);--acc-soft:var(--rub-soft)}
 body[data-tab="cash"]{--acc:var(--cash);--acc-soft:var(--cash-soft)}
-body[data-tab="sum"]{--acc:var(--ink);--acc-soft:var(--line-2)}
+body[data-tab="sum"],body[data-tab="dyn"]{--acc:var(--ink);--acc-soft:var(--line-2)}
 
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0}
@@ -89,7 +89,7 @@ header::before{   /* тонкая полоса цвета раздела */
   padding:4px 4px env(safe-area-inset-bottom);
 }
 .tab{
-  flex:1 1 0;max-width:120px;min-width:0;height:var(--nav-h);
+  flex:1 1 0;max-width:120px;min-width:0;height:var(--nav-h);padding:0 1px;
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
   background:none;border:0;color:var(--ink-3);cursor:pointer;
   font:inherit;font-size:11px;font-weight:600;letter-spacing:-.01em;white-space:nowrap;
@@ -102,7 +102,8 @@ header::before{   /* тонкая полоса цвета раздела */
   content:"";position:absolute;top:5px;width:46px;height:30px;border-radius:15px;
   background:var(--acc-soft);z-index:-1;
 }
-@media (max-width:359px){ .tab{font-size:10px} }
+@media (max-width:400px){ .tab{font-size:10.5px;letter-spacing:-.02em} }
+@media (max-width:359px){ .tab{font-size:9.5px} }
 
 /* ---------- раскладка ---------- */
 main{max-width:760px;margin:0 auto;padding:12px 10px 0}
@@ -217,6 +218,58 @@ input:focus,select:focus,textarea:focus,button:focus-visible,.chip:focus-visible
 .ask-bar{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px}
 @media (min-width:640px){ .ask-overlay{align-items:center} }
 @keyframes askFade{from{opacity:0}}
+
+/* ---------- динамика ---------- */
+.dyn-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 14px}
+.dyn-range{font-size:13px;color:var(--ink-3);margin-left:auto}
+.dyn-legend{display:flex;gap:14px;padding:2px 14px 0;font-size:13px;color:var(--ink-2)}
+.dyn-legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.dyn-plot{position:relative;padding:4px 8px 0;touch-action:pan-y}
+.dyn-svg{display:block;overflow:visible}
+.dyn-grid{stroke:var(--line-2);stroke-width:1}
+.dyn-base{stroke:var(--line);stroke-width:1}
+.dyn-ax{font-size:11px;fill:var(--ink-3);font-variant-numeric:tabular-nums}
+.dyn-ax.cur{fill:var(--ink);font-weight:700}
+.dyn-ax.yr{font-size:10px}
+.dyn-ghost{fill:none;stroke-width:1.5;stroke-dasharray:3 3}
+.dyn-hit{fill:transparent;cursor:pointer;outline:none}
+.dyn-hit.on,.dyn-hit:focus-visible{fill:rgba(26,37,48,.05)}
+.dyn-tip{
+  position:absolute;z-index:5;pointer-events:none;opacity:0;transition:opacity .12s;
+  background:var(--ink);color:#fff;border-radius:10px;padding:7px 10px;font-size:12.5px;line-height:1.45;
+  white-space:nowrap;box-shadow:0 6px 18px rgba(26,37,48,.22);font-variant-numeric:tabular-nums;
+}
+.dyn-tip.on{opacity:1}
+.dyn-tip .t{font-weight:700;margin-bottom:1px}
+.dyn-tip i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;box-shadow:0 0 0 1.5px #fff}
+.dyn-stat{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;padding:2px 14px 0}
+.dyn-stat .lab{font-size:13px;color:var(--ink-3)}
+.dyn-stat .v{font-size:17px;font-weight:700}
+.dyn-stat .sub{font-size:12px;color:var(--ink-3)}
+.dyn-tw{overflow-x:auto}
+.dyn-t{width:100%;border-collapse:collapse;font-size:13.5px;margin:6px 0 4px}
+.dyn-t th{font-size:12px;font-weight:600;color:var(--ink-3);text-align:right;padding:6px 14px 4px 4px}
+.dyn-t th:first-child,.dyn-t td:first-child{text-align:left;padding-left:14px}
+.dyn-t td{padding:6px 14px 6px 4px;border-top:1px solid var(--line-2);text-align:right;white-space:nowrap}
+.dyn-t td:first-child{white-space:normal}
+.dyn-t td.pos{color:var(--ok);font-weight:650} .dyn-t td.neg{color:var(--danger);font-weight:650} .dyn-t td.z{color:var(--ink-3)}
+.dyn-t tr.t-sum td{font-weight:700;background:var(--paper)}
+@media (max-width:420px){ .dyn-t{font-size:12.5px} .dyn-t td,.dyn-t th{padding-right:8px} }
+.heat-wrap{overflow-x:auto;padding:4px 0 14px;scrollbar-width:thin}
+.heat{border-collapse:separate;border-spacing:2px;font-size:12px;margin:0 12px}
+.heat th{font-weight:600;color:var(--ink-3);padding:3px 4px;white-space:nowrap;font-size:11.5px}
+.heat thead th.cur{color:var(--ink)}
+.heat tbody th{
+  text-align:left;color:var(--ink-2);font-weight:500;position:sticky;left:0;background:var(--card);
+  z-index:1;max-width:118px;overflow:hidden;text-overflow:ellipsis;padding-right:8px;
+}
+.heat td{
+  min-width:52px;padding:6px 6px;text-align:right;border-radius:6px;white-space:nowrap;
+  font-variant-numeric:tabular-nums;color:var(--ink);
+}
+.heat td.dk{color:#fff}
+.heat td.z{color:var(--line);text-align:center}
+.heat tr.t-sum td,.heat tr.t-sum th{font-weight:700;color:var(--ink);background:var(--paper)}
 .ask.wide{max-width:680px}
 .ask{max-height:calc(100vh - 40px);overflow-y:auto}
 .ask-fld{display:block;margin:0 0 10px}
@@ -512,7 +565,7 @@ input.lit{animation:lit 1.8s ease-out}
   <div class="card">
     <h2 class="card-h">Остаток по дням</h2>
     <div id="l-cash"></div>
-    <div class="note">Траты берутся с вкладки «Расходы ₫» с оплатой «Наличные». Дни без движения скрыты.</div>
+    <div class="note">Траты берутся с вкладки «Траты ₫» с оплатой «Наличные». Дни без движения скрыты.</div>
   </div>
 </section>
 
@@ -564,6 +617,40 @@ input.lit{animation:lit 1.8s ease-out}
     <div class="tot grand"><span class="lab">Всего за месяц</span><span class="val num" id="t-rub">—</span></div>
   </div>
   <div class="card"><h2 class="card-h">По категориям</h2><div id="c-rub"></div></div>
+</section>
+
+<!-- ============ ДИНАМИКА ============ -->
+<section id="s-dyn" hidden>
+  <div class="card">
+    <div class="dyn-head">
+      <div class="chips" id="dyn-per" role="group" aria-label="Период">
+        <button class="chip" data-n="6">6 мес</button><button class="chip" data-n="12">12 мес</button><button class="chip" data-n="all">Всё время</button>
+      </div>
+      <div class="dyn-range" id="dyn-range"></div>
+    </div>
+  </div>
+  <div class="card">
+    <h2 class="card-h">Рубли: доходы и расходы</h2>
+    <div class="dyn-legend"><span><i style="background:#22985E"></i>Доходы</span><span><i style="background:#2D62B8"></i>Расходы</span></div>
+    <div class="dyn-plot" id="dyn-rub"></div>
+    <div id="dyn-rub-t"></div>
+    <div class="note" style="padding-top:0">• — текущий месяц, он ещё не закончился.</div>
+  </div>
+  <div class="card">
+    <h2 class="card-h">Донги: расходы по месяцам</h2>
+    <div class="dyn-stat"><span class="lab">В среднем за месяц</span><span class="v num" id="dyn-vnd-avg">—</span><span class="sub" id="dyn-vnd-avg-n"></span></div>
+    <div class="dyn-plot" id="dyn-vnd"></div>
+    <div class="note" id="dyn-vnd-note" hidden>Пунктир — сколько выйдет к концу текущего месяца, если тратить в том же темпе.</div>
+  </div>
+  <div class="card">
+    <h2 class="card-h">Донги по категориям</h2>
+    <div class="note" style="padding-top:0">Темнее — больше, чем в другие месяцы в этой же категории.</div>
+    <div id="dyn-vcat"></div>
+  </div>
+  <div class="card">
+    <h2 class="card-h">Рублёвые расходы по категориям</h2>
+    <div id="dyn-rcat"></div>
+  </div>
 </section>
 
 <!-- ============ ИТОГИ ============ -->
@@ -627,10 +714,11 @@ input.lit{animation:lit 1.8s ease-out}
 </main>
 
 <nav class="tabs" role="tablist" aria-label="Разделы">
-  <button class="tab" role="tab" data-t="vnd"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9.5 8h5M9.5 12h5"/></svg><span>Расходы ₫</span></button>
-  <button class="tab" role="tab" data-t="cash"><svg viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2.5"/><circle cx="12" cy="12" r="2.6"/></svg><span>Наличные</span></button>
-  <button class="tab" role="tab" data-t="inc"><svg viewBox="0 0 24 24"><path d="M12 3.5v11M7.5 10.5l4.5 4.5 4.5-4.5"/><path d="M4 20h16"/></svg><span>Доходы ₽</span></button>
-  <button class="tab" role="tab" data-t="rub"><svg viewBox="0 0 24 24"><path d="M12 15.5v-11M7.5 9l4.5-4.5L16.5 9"/><path d="M4 20h16"/></svg><span>Расходы ₽</span></button>
+  <button class="tab" role="tab" data-t="vnd"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9.5 8h5M9.5 12h5"/></svg><span>Траты ₫</span></button>
+  <button class="tab" role="tab" data-t="cash"><svg viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2.5"/><circle cx="12" cy="12" r="2.6"/></svg><span>Наличка</span></button>
+  <button class="tab" role="tab" data-t="inc"><svg viewBox="0 0 24 24"><path d="M12 3.5v11M7.5 10.5l4.5 4.5 4.5-4.5"/><path d="M4 20h16"/></svg><span>Доходы</span></button>
+  <button class="tab" role="tab" data-t="rub"><svg viewBox="0 0 24 24"><path d="M12 15.5v-11M7.5 9l4.5-4.5L16.5 9"/><path d="M4 20h16"/></svg><span>Траты ₽</span></button>
+  <button class="tab" role="tab" data-t="dyn"><svg viewBox="0 0 24 24"><path d="M4 20V4"/><path d="M4 20h16"/><path d="M8 16v-4M12 16V8M16 16v-6M20 16V6"/></svg><span>Динамика</span></button>
   <button class="tab" role="tab" data-t="sum"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9h-9z"/><path d="M15 3.5a9 9 0 0 1 5.5 5.5H15z"/></svg><span>Итоги</span></button>
 </nav>
 
@@ -1311,6 +1399,7 @@ function render(){
   document.getElementById("s-c-lab").textContent = isNow ? "Наличных сейчас" : "Наличных на конец месяца";
   renderCats(document.getElementById("s-cats"), m.vnd, CATS.vnd, "V", "cat");
   aiRenderCard();
+  renderDyn();
 
   Object.keys(FORMS).forEach(k=>{ buildForm(k); });
 }
@@ -1334,9 +1423,10 @@ function setTab(t){
   tab = t;
   document.body.dataset.tab = t;   // цвет раздела в CSS: --acc
   document.querySelectorAll(".tab").forEach(b=> b.setAttribute("aria-selected", b.dataset.t===t));
-  ["inc","rub","vnd","cash","sum"].forEach(k=>
+  ["inc","rub","vnd","cash","dyn","sum"].forEach(k=>
     document.getElementById("s-"+k).hidden = (k!==t));
   window.scrollTo({top:0});
+  if(t==="dyn") renderDyn();   // графикам нужна ширина видимой вкладки
   // лента дней длинная — подводим её к выбранному числу (в конце месяца иначе мотать вручную)
   if(FORMS[t]) buildForm(t, true);
 }
@@ -2353,9 +2443,230 @@ function aiRenderCard(){
   box.appendChild(bar);
 }
 
+/* ================= Динамика: сравнение месяцев =================
+   Только чтение базы. Рубли и донги — отдельные графики, без пересчёта.
+   Графики — inline SVG, ширина берётся из карточки при каждой отрисовке,
+   поэтому рисуем, только когда вкладка видна (у скрытой ширина 0). */
+const DYN_LS = "budget.dyn.n";
+const MON_S = ["янв","фев","мар","апр","май","июн","июл","авг","сен","окт","ноя","дек"];
+const DYN_C = {inc:"#22985E", exp:"#2D62B8", vnd:"#5B7130"};   // доходы/расходы проверены на различимость (вкл. дальтонизм)
+function dynN(){ try{ const v = localStorage.getItem(DYN_LS); return v==="all" ? "all" : (+v===6 ? 6 : 12); }catch(e){ return 12; } }
+
+/* месяцы окна: от первого с данными (или N назад) до выбранного в шапке */
+function dynMonths(){
+  const n = dynN(), out = [];
+  let count = n;
+  if(n === "all"){
+    const keys = Object.keys(DB).filter(k=> /^\d{4}-\d{2}$/.test(k)).sort();
+    if(keys.length){ const [fy,fm] = keys[0].split("-").map(Number); count = (Y-fy)*12 + (M-(fm-1)) + 1; }
+    count = Math.max(1, Math.min(count, 120));
+  }
+  for(let i=count-1; i>=0; i--){ const t = new Date(Y, M-i, 1); out.push(aiMonth(t.getFullYear(), t.getMonth())); }
+  // пустое начало окна (до первых записей) — лишь пустые колонки; минимум 3 месяца
+  while(out.length > 3 && !aiHasData(out[0])) out.shift();
+  return out;
+}
+function dynIsNow(d){ return d.y===today.getFullYear() && d.m===today.getMonth(); }
+function dynFuture(d){ return d.y>today.getFullYear() || (d.y===today.getFullYear() && d.m>today.getMonth()); }
+
+/* «круглый» верх оси и шаг */
+function dynScale(max){
+  if(!(max>0)) return {top:1, step:1};
+  const raw = max/4, p = Math.pow(10, Math.floor(Math.log10(raw)));
+  const step = [1,2,2.5,5,10].map(k=>k*p).find(s=> s>=raw);
+  return {top: Math.ceil(max/step)*step, step};
+}
+const dynCompR = v => v>=1e6 ? (Math.round(v/1e5)/10).toLocaleString("ru-RU")+" млн" : v>=1000 ? Math.round(v/1000).toLocaleString("ru-RU")+" тыс" : String(Math.round(v));
+const dynCompV = v => Math.round(v).toLocaleString("ru-RU");   // донги уже в тысячах — как во всём приложении
+const fR0 = n => Math.round(n||0).toLocaleString("ru-RU")+" ₽";   // таблица в узком экране — без копеек
+const svgEl = (tag, attrs)=>{ const e = document.createElementNS("http://www.w3.org/2000/svg", tag); for(const k in attrs) e.setAttribute(k, attrs[k]); return e; };
+
+/* колонка с 4px скруглением только сверху (у базовой линии — прямо) */
+function dynBarPath(x, y, w, h){
+  if(h <= 0) return "";
+  const r = Math.min(4, w/2, h);
+  return `M${x},${y+h}V${y+r}Q${x},${y} ${x+r},${y}H${x+w-r}Q${x+w},${y} ${x+w},${y+r}V${y+h}Z`;
+}
+
+/* общий тултип вкладки: наведение на ПК, касание на телефоне */
+function dynTip(host, html, ev){
+  let tip = host.querySelector(".dyn-tip");
+  if(!tip){ tip = document.createElement("div"); tip.className = "dyn-tip"; tip.setAttribute("role","status"); host.appendChild(tip); }
+  if(!html){ tip.classList.remove("on"); return; }
+  tip.innerHTML = "";
+  html.forEach((row,i)=>{
+    const d = document.createElement("div"); if(i===0) d.className = "t";
+    if(row.c){ const s = document.createElement("i"); s.style.background = row.c; d.appendChild(s); }
+    d.appendChild(document.createTextNode(row.t)); tip.appendChild(d);
+  });
+  tip.classList.add("on");
+  const hb = host.getBoundingClientRect();
+  const x = ev.clientX - hb.left, w = tip.offsetWidth;
+  tip.style.left = Math.max(4, Math.min(hb.width - w - 4, x - w/2)) + "px";
+  tip.style.top = Math.max(4, ev.clientY - hb.top - tip.offsetHeight - 14) + "px";
+}
+
+/* столбчатая диаграмма: series = [{key, color, label}], rows = [{label, sub, values:{key:v}, ghost?:{key:v}, tip:[...]}] */
+function dynChart(host, rows, series, fmtAxis){
+  host.innerHTML = "";
+  const W = Math.max(280, host.clientWidth), H = 190;
+  const padL = 46, padR = 6, padT = 12, padB = 34;
+  const pw = W - padL - padR, ph = H - padT - padB;
+  const max = Math.max(0, ...rows.map(r=> Math.max(...series.map(s=> Math.max(r.values[s.key]||0, (r.ghost && r.ghost[s.key])||0)))));
+  const sc = dynScale(max);
+  const svg = svgEl("svg", {viewBox:`0 0 ${W} ${H}`, width:W, height:H, class:"dyn-svg", role:"img"});
+  for(let v=0; v<=sc.top+1e-9; v+=sc.step){
+    const y = padT + ph - v/sc.top*ph;
+    svg.appendChild(svgEl("line", {x1:padL, x2:W-padR, y1:y, y2:y, class: v===0 ? "dyn-base" : "dyn-grid"}));
+    const t = svgEl("text", {x:padL-6, y:y+4, class:"dyn-ax", "text-anchor":"end"}); t.textContent = fmtAxis(v); svg.appendChild(t);
+  }
+  const band = pw / rows.length, gap = 2;
+  const bw = Math.max(3, Math.min(series.length>1 ? 16 : 24, (band*0.72 - gap*(series.length-1)) / series.length));
+  const groupW = bw*series.length + gap*(series.length-1);
+  const every = Math.ceil(rows.length / Math.max(1, Math.floor(pw/34)));   // подписи месяцев не наезжают
+  rows.forEach((r,i)=>{
+    const x0 = padL + band*i + (band-groupW)/2;
+    series.forEach((s,j)=>{
+      const x = x0 + j*(bw+gap);
+      const g = r.ghost && r.ghost[s.key];
+      if(g){ const h = g/sc.top*ph; svg.appendChild(svgEl("path", {d:dynBarPath(x+.5, padT+ph-h+.5, bw-1, h-.5), class:"dyn-ghost", stroke:s.color})); }
+      const v = r.values[s.key]||0, h = v/sc.top*ph;
+      if(h>0) svg.appendChild(svgEl("path", {d:dynBarPath(x, padT+ph-h, bw, h), fill:s.color}));
+    });
+    if(i % every === 0 || i === rows.length-1){
+      const t = svgEl("text", {x:padL+band*i+band/2, y:H-padB+15, class:"dyn-ax"+(r.cur?" cur":""), "text-anchor":"middle"}); t.textContent = r.label; svg.appendChild(t);
+      if(r.sub){ const t2 = svgEl("text", {x:padL+band*i+band/2, y:H-padB+28, class:"dyn-ax yr", "text-anchor":"middle"}); t2.textContent = r.sub; svg.appendChild(t2); }
+    }
+    // зона касания — весь столбец месяца, больше самих колонок
+    const hit = svgEl("rect", {x:padL+band*i, y:padT, width:band, height:ph, class:"dyn-hit", tabindex:0, "aria-label":r.tip.map(x=>x.t).join(", ")});
+    const show = ev=>{ svg.querySelectorAll(".dyn-hit.on").forEach(e=>e.classList.remove("on")); hit.classList.add("on"); dynTip(host, r.tip, ev); };
+    hit.addEventListener("pointerenter", show); hit.addEventListener("pointermove", show);
+    hit.addEventListener("click", show);
+    hit.addEventListener("focus", ()=>{ const b = hit.getBoundingClientRect(); show({clientX:b.left+b.width/2, clientY:b.top+20}); });
+    hit.addEventListener("pointerleave", e=>{ if(e.pointerType==="mouse"){ hit.classList.remove("on"); dynTip(host, null); } });
+    hit.addEventListener("blur", ()=>{ hit.classList.remove("on"); dynTip(host, null); });
+    svg.appendChild(hit);
+  });
+  host.appendChild(svg);
+}
+
+/* тепловая таблица: строки — категории, столбцы — месяцы, оттенок — по строке */
+function dynHeat(host, months, list, cats, fmt, rgbHi, rgbLo){
+  host.innerHTML = "";
+  const sums = months.map(d=>{ const g = {}; d[list].forEach(x=>{ const c = x.cat || "Не указано"; g[c] = (g[c]||0) + x.amount; }); return g; });
+  const all = cats.slice();
+  sums.forEach(g=> Object.keys(g).forEach(c=>{ if(!all.includes(c)) all.push(c); }));
+  const rows = all.filter(c=> sums.some(g=> g[c]));
+  if(!rows.length){ host.innerHTML = '<div class="empty">За выбранный период трат нет.</div>'; return; }
+  // по сумме за период — главные статьи сверху
+  rows.sort((a,b)=> sums.reduce((s,g)=>s+(g[b]||0),0) - sums.reduce((s,g)=>s+(g[a]||0),0));
+  const mix = t => "rgb(" + rgbLo.map((lo,i)=> Math.round(lo + (rgbHi[i]-lo)*t)).join(",") + ")";
+  const wrap = document.createElement("div"); wrap.className = "heat-wrap";
+  const tb = document.createElement("table"); tb.className = "heat";
+  const hr = document.createElement("tr"); hr.appendChild(document.createElement("th"));
+  months.forEach(d=>{ const th = document.createElement("th"); th.textContent = MON_S[d.m] + (d.m===0 || d===months[0] ? " "+String(d.y).slice(2) : ""); if(dynIsNow(d)) th.className = "cur"; hr.appendChild(th); });
+  const thead = document.createElement("thead"); thead.appendChild(hr); tb.appendChild(thead);
+  const body = document.createElement("tbody");
+  rows.forEach(c=>{
+    const tr = document.createElement("tr");
+    const th = document.createElement("th"); th.textContent = c; th.scope = "row"; tr.appendChild(th);
+    const mx = Math.max(...sums.map(g=> g[c]||0));
+    sums.forEach((g,i)=>{
+      const td = document.createElement("td"), v = g[c]||0;
+      if(v){
+        const t = 0.12 + 0.88*(v/mx);
+        td.style.background = mix(t);
+        if(t > 0.55) td.className = "dk";
+        td.textContent = fmt(v);
+        td.title = c+", "+MONTHS[months[i].m].toLowerCase()+" "+months[i].y+": "+fmt(v);
+      } else { td.textContent = "—"; td.className = "z"; }
+      tr.appendChild(td);
+    });
+    body.appendChild(tr);
+  });
+  const tr = document.createElement("tr"); tr.className = "t-sum";
+  const th = document.createElement("th"); th.textContent = "Всего"; th.scope = "row"; tr.appendChild(th);
+  sums.forEach(g=>{ const td = document.createElement("td"); const v = Object.values(g).reduce((s,x)=>s+x,0); td.textContent = v ? fmt(v) : "—"; tr.appendChild(td); });
+  body.appendChild(tr);
+  tb.appendChild(body); wrap.appendChild(tb); host.appendChild(wrap);
+  wrap.scrollLeft = wrap.scrollWidth;   // свежие месяцы справа — показываем их сразу
+}
+
+function renderDyn(){
+  const sec = document.getElementById("s-dyn");
+  if(!sec || sec.hidden) return;
+  const months = dynMonths(), n = dynN();
+  document.querySelectorAll("#dyn-per .chip").forEach(b=> b.setAttribute("aria-pressed", String(b.dataset.n)===String(n)));
+  const f = months[0], l = months[months.length-1];
+  document.getElementById("dyn-range").textContent = months.length>1
+    ? `${MONTHS[f.m]} ${f.y} — ${MONTHS[l.m].toLowerCase()} ${l.y}` : `${MONTHS[l.m]} ${l.y}`;
+  const lab = (d,i)=> ({label:MON_S[d.m], sub:(i===0 || d.m===0) ? String(d.y) : "", cur:dynIsNow(d)});
+  const ttl = d=> MONTHS[d.m]+" "+d.y + (dynIsNow(d) ? " (идёт)" : "");
+
+  // ---- рубли
+  const rRows = months.map((d,i)=>{
+    const inc = sum(d.inc), exp = sum(d.rub);
+    return Object.assign(lab(d,i), {values:{inc, exp}, tip:[
+      {t:ttl(d)}, {t:"Доходы: "+fR(inc), c:DYN_C.inc}, {t:"Расходы: "+fR(exp), c:DYN_C.exp}, {t:"Разница: "+(inc-exp>0?"+":"")+fR(inc-exp)}]});
+  });
+  dynChart(document.getElementById("dyn-rub"), rRows,
+    [{key:"inc", color:DYN_C.inc}, {key:"exp", color:DYN_C.exp}], dynCompR);
+  const rt = document.getElementById("dyn-rub-t"); rt.innerHTML = "";
+  const tbl = document.createElement("table"); tbl.className = "dyn-t";
+  const h = document.createElement("tr"); ["Месяц","Доходы","Расходы","Разница"].forEach((x,i)=>{ const th = document.createElement("th"); th.textContent = x; h.appendChild(th); });
+  const thd = document.createElement("thead"); thd.appendChild(h); tbl.appendChild(thd);
+  const tbd = document.createElement("tbody");
+  let tInc = 0, tExp = 0;
+  months.slice().reverse().forEach(d=>{
+    if(dynFuture(d)) return;
+    const inc = sum(d.inc), exp = sum(d.rub), df = inc-exp; tInc += inc; tExp += exp;
+    if(!inc && !exp) return;
+    const tr = document.createElement("tr");
+    [MON_S[d.m]+" "+d.y+(dynIsNow(d)?" •":""), fR0(inc), fR0(exp), (df>0?"+":"")+fR0(df)].forEach((x,i)=>{ const td = document.createElement("td"); td.textContent = x; if(i) td.className = "num"; if(i===3) td.classList.add(df>0?"pos":df<0?"neg":"z"); tr.appendChild(td); });
+    tbd.appendChild(tr);
+  });
+  const tr = document.createElement("tr"); tr.className = "t-sum";
+  ["За период", fR0(tInc), fR0(tExp), (tInc-tExp>0?"+":"")+fR0(tInc-tExp)].forEach((x,i)=>{ const td = document.createElement("td"); td.textContent = x; if(i) td.className = "num"; if(i===3) td.classList.add(tInc-tExp>0?"pos":tInc-tExp<0?"neg":"z"); tr.appendChild(td); });
+  tbd.appendChild(tr); tbl.appendChild(tbd);
+  const tw = document.createElement("div"); tw.className = "dyn-tw"; tw.appendChild(tbl); rt.appendChild(tw);
+
+  // ---- донги
+  let full = 0, fullN = 0;
+  const vRows = months.map((d,i)=>{
+    const v = sum(d.vnd), r = Object.assign(lab(d,i), {values:{v}, tip:[{t:ttl(d)}, {t:"Расходы: "+fV(v), c:DYN_C.vnd}]});
+    if(dynIsNow(d)){
+      const n = new Date(d.y, d.m+1, 0).getDate(), passed = today.getDate();
+      const proj = passed ? v/passed*n : v;
+      if(passed < n && v){ r.ghost = {v:proj}; r.tip.push({t:"По темпу к концу месяца: ≈"+fV(proj)}); }
+    } else if(!dynFuture(d) && (v || d.vnd.length)){ full += v; fullN++; }
+    return r;
+  });
+  dynChart(document.getElementById("dyn-vnd"), vRows, [{key:"v", color:DYN_C.vnd}], dynCompV);
+  document.getElementById("dyn-vnd-avg").textContent = fullN ? fV(full/fullN) : "—";
+  document.getElementById("dyn-vnd-avg-n").textContent = fullN ? "по "+fullN+" "+(fullN%10===1&&fullN%100!==11?"месяцу":"месяцам")+" с тратами, без текущего" : "";
+  const hasGhost = vRows.some(r=> r.ghost);
+  document.getElementById("dyn-vnd-note").hidden = !hasGhost;
+
+  dynHeat(document.getElementById("dyn-vcat"), months, "vnd", CATS.vnd, dynCompV, [91,113,48], [241,245,232]);
+  dynHeat(document.getElementById("dyn-rcat"), months, "rub", CATS.rub, v=> dynCompR(v), [45,98,184], [235,241,250]);
+}
+
 /* ---------- init ---------- */
 (function init(){
   document.getElementById("ai-set").onclick = aiSettings;
+  document.getElementById("dyn-per").onclick = e=>{
+    const b = e.target.closest("[data-n]"); if(!b) return;
+    try{ localStorage.setItem(DYN_LS, b.dataset.n); }catch(err){}
+    renderDyn();
+  };
+  let dynRT = null;
+  window.addEventListener("resize", ()=>{ clearTimeout(dynRT); dynRT = setTimeout(renderDyn, 150); });
+  // касание мимо графика прячет подсказку
+  document.addEventListener("pointerdown", e=>{
+    if(e.target.closest && e.target.closest(".dyn-hit")) return;
+    document.querySelectorAll(".dyn-tip.on").forEach(t=> t.classList.remove("on"));
+    document.querySelectorAll(".dyn-hit.on").forEach(t=> t.classList.remove("on"));
+  });
   const ms = document.getElementById("mSel"), ys = document.getElementById("ySel");
   MONTHS.forEach((n,i)=>{ const o=document.createElement("option"); o.value=i; o.textContent=n; ms.appendChild(o); });
   for(let y=today.getFullYear()-2; y<=today.getFullYear()+3; y++){
