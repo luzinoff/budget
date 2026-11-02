@@ -178,11 +178,11 @@ section[hidden]{display:none}
 @media (min-width:640px){
   .entry{grid-template-columns:46px 190px minmax(0,1fr) auto;grid-template-areas:"mic amt note add"}
 }
-input[type="text"],input[type="number"],select,textarea{
+input[type="text"],input[type="password"],input[type="number"],select,textarea{
   width:100%;border:1px solid var(--line);border-radius:var(--r-field);background:var(--paper);
   padding:11px 12px;font:inherit;font-size:16px;color:var(--ink);
 }
-input[type="text"]:focus,select:focus{background:var(--card)}
+input[type="text"]:focus,input[type="password"]:focus,select:focus{background:var(--card)}
 input::placeholder{color:var(--ink-3)}
 input.num{font-variant-numeric:tabular-nums;font-weight:650}
 .entry [data-amt]{font-size:19px;padding:10px 12px}
@@ -217,6 +217,37 @@ input:focus,select:focus,textarea:focus,button:focus-visible,.chip:focus-visible
 .ask-bar{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px}
 @media (min-width:640px){ .ask-overlay{align-items:center} }
 @keyframes askFade{from{opacity:0}}
+.ask.wide{max-width:680px}
+.ask{max-height:calc(100vh - 40px);overflow-y:auto}
+.ask-fld{display:block;margin:0 0 10px}
+.ask-fld span{display:block;font-size:12.5px;font-weight:600;color:var(--ink-3);margin-bottom:5px}
+/* «Удалить ключ» — тихой ссылкой под основными кнопками */
+.ask-bar.three > :first-child{grid-column:1 / -1;order:3;background:none;border:0;color:var(--danger);padding:6px;font-size:13.5px}
+.ask-bar.three > :first-child[disabled]{display:none}
+.ask-bar.one{grid-template-columns:1fr}
+
+/* разбор от ИИ */
+.icon-btn{
+  margin-left:auto;width:32px;height:32px;border:0;border-radius:10px;background:none;
+  color:var(--ink-3);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;
+}
+.icon-btn svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.icon-btn:hover{background:var(--paper);color:var(--ink)}
+#ai-in{padding:4px 14px 0}
+.ai-hint{font-size:13px;color:var(--ink-3);line-height:1.5;margin:4px 0 2px}
+.ai-err{font-size:13.5px;color:var(--danger);line-height:1.5;margin:4px 0 6px}
+.ai-wait{animation:aiPulse 1.3s ease-in-out infinite}
+@keyframes aiPulse{50%{opacity:.45}}
+.ai-text{font-size:14.5px;line-height:1.55;overflow-wrap:break-word;margin-top:2px}
+.ai-text b{font-weight:700}
+.ai-text .ai-li{position:relative;padding-left:16px;margin:3px 0}
+.ai-text .ai-li::before{content:"";position:absolute;left:4px;top:.62em;width:5px;height:5px;border-radius:50%;background:var(--acc)}
+.ai-text .ai-gap{height:8px}
+.ai-bar{padding:12px 0 14px}
+.ai-pre{
+  white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.5 ui-monospace,Menlo,Consolas,monospace;
+  background:var(--paper);border-radius:10px;padding:10px 12px;margin:10px 0 0;max-height:55vh;overflow:auto;
+}
 @keyframes askUp{from{transform:translateY(16px);opacity:0}}
 .btn.sm{padding:8px 13px;font-size:13.5px;border-radius:10px}
 .btn[disabled]{opacity:.5;cursor:default}
@@ -557,6 +588,11 @@ input.lit{animation:lit 1.8s ease-out}
     <div id="s-cats"></div>
   </div>
 
+  <div class="card" id="ai-card">
+    <h2 class="card-h">Разбор месяца от ИИ<button class="icon-btn" id="ai-set" title="Настройки Gemini" aria-label="Настройки Gemini"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button></h2>
+    <div id="ai-in"></div>
+  </div>
+
   <div class="card">
     <h2 class="card-h">Google Диск</h2>
     <div class="syncstat" id="sync-stat">Выключена</div>
@@ -760,7 +796,7 @@ function prune(){
   Object.keys(DB).forEach(k=>{
     // _meta — не месяц. Не пропускаем через fix() и не удаляем как пустой месяц.
     if(k === META_KEY){
-      DB[k] = {bidvImported: bidvImportedList(DB[k])};
+      DB[k] = metaNorm(DB[k]);   // метки BIDV + разборы ИИ
       return;
     }
     if(!isObj(DB[k])){ delete DB[k]; return; }
@@ -792,7 +828,7 @@ function mergeDB(a, b){
     if(k === META_KEY){
       const ma = isObj(a) && isObj(a[k]) ? a[k] : {};
       const mb = isObj(b) && isObj(b[k]) ? b[k] : {};
-      out[k] = {bidvImported: mergeBidvImported(ma.bidvImported, mb.bidvImported)};
+      out[k] = {bidvImported: mergeBidvImported(ma.bidvImported, mb.bidvImported), ai: aiStoreMerge(ma.ai, mb.ai)};
       return;
     }
     const ma = isObj(a) && isObj(a[k]) ? fix(a[k]) : EMPTY();
@@ -1274,6 +1310,7 @@ function render(){
   document.getElementById("s-c").textContent = fV(nowRow ? nowRow.bal : 0);
   document.getElementById("s-c-lab").textContent = isNow ? "Наличных сейчас" : "Наличных на конец месяца";
   renderCats(document.getElementById("s-cats"), m.vnd, CATS.vnd, "V", "cat");
+  aiRenderCard();
 
   Object.keys(FORMS).forEach(k=>{ buildForm(k); });
 }
@@ -1774,7 +1811,8 @@ function bidvLoadImported(){
 }
 
 function bidvSaveImported(list){
-  DB[META_KEY] = {bidvImported: bidvImportedList({bidvImported:list})};
+  // остальное содержимое _meta (разборы ИИ) не теряем
+  DB[META_KEY] = Object.assign(metaNorm(DB[META_KEY]), {bidvImported: bidvImportedList({bidvImported:list})});
   // Миграция завершена: локальная копия больше не нужна и не должна давать
   // расхождений между устройствами.
   try{ localStorage.removeItem(BIDV_IMPORTED_KEY); }catch(e){}
@@ -2029,8 +2067,295 @@ function bidvAddSelected(transactions, overlay){
   toast(parts.join(", "));
 }
 
+/* ================= разбор месяца от ИИ (Gemini) =================
+   Устроено как советы в Дневнике. Ключ и модель — только в localStorage
+   этого браузера: в базу, на Диск и в выгрузки они не попадают. Ответы
+   хранятся в DB._meta.ai["ГГГГ-ММ"] и синхронизируются вместе с базой. */
+const AI_KEY_LS = "budget.ai.key", AI_MODEL_LS = "budget.ai.model";
+const AI_DEF_MODEL = "gemini-3.6-flash";
+const AI = { busy:{}, err:{} };   // состояние запросов — только в памяти
+function aiGetKey(){ try{ return (localStorage.getItem(AI_KEY_LS)||"").trim(); }catch(e){ return ""; } }
+function aiGetModel(){ try{ return (localStorage.getItem(AI_MODEL_LS)||"").trim() || AI_DEF_MODEL; }catch(e){ return AI_DEF_MODEL; } }
+
+/* Хранилище ответов: {"2026-09": {text, at, model, cut?}} или надгробие
+   {at, del:1} — иначе удалённый разбор вернулся бы с другого устройства. */
+function aiStoreNorm(v){
+  const out = {};
+  if(!isObj(v)) return out;
+  Object.keys(v).forEach(k=>{
+    const x = v[k];
+    if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(k) || !isObj(x)) return;
+    const at = num0(x.at); if(!at) return;
+    if(x.del){ if(at >= nowTs() - TOMB_TTL) out[k] = {at, del:1}; return; }
+    if(typeof x.text !== "string" || !x.text.trim()) return;
+    out[k] = {text:x.text.slice(0, 30000), at, model:String(x.model||"")};
+    if(x.cut) out[k].cut = true;
+  });
+  return out;
+}
+function aiStoreMerge(a, b){
+  const out = aiStoreNorm(a), bb = aiStoreNorm(b);
+  Object.keys(bb).forEach(k=>{ if(!out[k] || bb[k].at > out[k].at || (bb[k].at === out[k].at && bb[k].del)) out[k] = bb[k]; });
+  return out;
+}
+/* _meta целиком: метки импорта BIDV + разборы ИИ */
+function metaNorm(v){ return {bidvImported: bidvImportedList(v), ai: aiStoreNorm(isObj(v) ? v.ai : null)}; }
+function aiSaved(key){
+  const meta = isObj(DB[META_KEY]) ? DB[META_KEY] : null;
+  const x = meta && isObj(meta.ai) ? meta.ai[key] : null;
+  return x && !x.del && x.text ? x : null;
+}
+function aiPut(key, val){
+  const meta = metaNorm(DB[META_KEY]);
+  meta.ai[key] = val;
+  DB[META_KEY] = meta;
+  save();
+}
+
+/* данные любого месяца без создания пустых записей */
+function aiMonth(y, m){
+  const k = y+"-"+String(m+1).padStart(2,"0");
+  const r = isObj(DB[k]) ? fix(DB[k]) : EMPTY();
+  return {k, y, m, inc:live(r.inc), rub:live(r.rub), vnd:live(r.vnd), topup:live(r.topup), cashStart:r.cashStart||0};
+}
+const aiR = n => (Math.round((n||0)*100)/100).toLocaleString("ru-RU") + " ₽";
+const aiV = n => (Math.round((n||0)*10)/10).toLocaleString("ru-RU") + " тыс. ₫";
+function aiGroup(arr, field){
+  const g = {};
+  arr.forEach(x=>{ const c = x[field] || "Не указано"; g[c] = (g[c]||0) + x.amount; });
+  return Object.keys(g).map(c=>({c, v:g[c]})).sort((a,b)=> b.v - a.v);
+}
+function aiHasData(d){ return !!(d.inc.length || d.rub.length || d.vnd.length || d.topup.length || d.cashStart); }
+
+/* Текст для Gemini. Белый список: только то, что перечислено здесь. */
+function aiPrompt(y, m){
+  const d = aiMonth(y, m), L = [];
+  const n = new Date(y, m+1, 0).getDate();
+  const isNow = (y===today.getFullYear() && m===today.getMonth());
+  const passed = isNow ? today.getDate() : n;
+  L.push(`Месяц: ${MONTHS[m]} ${y}` + (isNow ? ` — ещё идёт, прошло ${passed} из ${n} дней.` : " — завершён."));
+  L.push("Донги везде в тысячах: «50 тыс. ₫» = 50 000 ₫. Рубли и донги — разные кошельки, курс не нужен.");
+
+  const list = (arr, withPay) => arr.slice().sort((a,b)=> a.day-b.day || itemTime(a)-itemTime(b))
+    .map(x=> `${x.day} — ${x.cat||"без категории"}${withPay && x.pay ? " — "+x.pay : ""} — ${withPay ? aiV(x.amount) : aiR(x.amount)}${x.note ? " — "+x.note : ""}`);
+  const shares = (arr, field, f) => { const t = sum(arr); return aiGroup(arr, field).map(r=> `${r.c}: ${f(r.v)} (${t ? Math.round(r.v/t*100) : 0}%)`); };
+
+  L.push("", "== РУБЛИ ==");
+  const inc = sum(d.inc), rub = sum(d.rub);
+  L.push(`Доходы: ${aiR(inc)}. Расходы: ${aiR(rub)}. Разница: ${aiR(inc-rub)}.`);
+  if(d.inc.length) L.push("Доходы по типам: " + shares(d.inc,"cat",aiR).join("; "));
+  if(d.rub.length) L.push("Расходы по категориям: " + shares(d.rub,"cat",aiR).join("; "));
+  if(d.inc.length) L.push("Записи доходов (день — тип — сумма — комментарий):", ...list(d.inc, false));
+  if(d.rub.length) L.push("Записи расходов в рублях (день — категория — сумма — комментарий):", ...list(d.rub, false));
+
+  L.push("", "== ДОНГИ ==");
+  const vTot = sum(d.vnd), act = new Set(d.vnd.map(x=>x.day)).size;
+  L.push(`Расходы: ${aiV(vTot)}. Дней с тратами: ${act} из ${passed}. В среднем за день с тратами: ${aiV(act ? vTot/act : 0)}.`);
+  if(d.vnd.length){
+    L.push("По категориям: " + shares(d.vnd,"cat",aiV).join("; "));
+    L.push("По способам оплаты: " + shares(d.vnd,"pay",aiV).join("; "));
+    const byDay = {}; d.vnd.forEach(x=> byDay[x.day] = (byDay[x.day]||0) + x.amount);
+    L.push("По дням: " + Object.keys(byDay).map(Number).sort((a,b)=>a-b).map(x=> `${x} (${DOW[new Date(y,m,x).getDay()]}): ${aiV(byDay[x])}`).join("; "));
+    L.push("Записи (день — категория — оплата — сумма — комментарий):", ...list(d.vnd, true));
+  }
+
+  L.push("", "== НАЛИЧНЫЕ ДОНГИ ==");
+  const cashSpent = sum(d.vnd.filter(x=>x.pay==="Наличные")), top = sum(d.topup);
+  L.push(`На начало месяца: ${aiV(d.cashStart)}. Пополнения: ${aiV(top)}. Потрачено наличными: ${aiV(cashSpent)}. Остаток ${isNow ? "сейчас" : "на конец месяца"}: ${aiV(d.cashStart + top - cashSpent)}.`);
+
+  const prev = [1,2].map(i=>{ const t = new Date(y, m-i, 1); return aiMonth(t.getFullYear(), t.getMonth()); }).filter(aiHasData);
+  if(prev.length){
+    L.push("", "== ДЛЯ СРАВНЕНИЯ: ПРЕДЫДУЩИЕ МЕСЯЦЫ (целиком) ==");
+    prev.forEach(p=>{
+      L.push(`${MONTHS[p.m]} ${p.y}: рубли — доходы ${aiR(sum(p.inc))}, расходы ${aiR(sum(p.rub))}; донги — расходы ${aiV(sum(p.vnd))}.`);
+      if(p.rub.length) L.push("  Рублёвые расходы по категориям: " + aiGroup(p.rub,"cat").map(r=> `${r.c}: ${aiR(r.v)}`).join("; "));
+      if(p.vnd.length) L.push("  Донговые расходы по категориям: " + aiGroup(p.vnd,"cat").map(r=> `${r.c}: ${aiV(r.v)}`).join("; "));
+      if(p.vnd.length) L.push("  Донговые расходы по оплате: " + aiGroup(p.vnd,"pay").map(r=> `${r.c}: ${aiV(r.v)}`).join("; "));
+    });
+  } else L.push("", "Предыдущих месяцев с данными нет — сравнивать не с чем.");
+  return L.join("\n");
+}
+
+const AI_SYSTEM = `Ты — внимательный помощник по личному бюджету. Человек живёт во Вьетнаме: повседневные траты — во вьетнамских донгах (часть наличными, часть картами), доходы и часть расходов — в рублях. Тебе присылают данные одного месяца и для сравнения итоги двух предыдущих.
+Правила:
+- Рубли и донги не смешивай и не пересчитывай по курсу: разбирай их отдельно.
+- Донги указаны в тысячах; пиши суммы так же: «4 116 тыс. ₫».
+- Если месяц ещё идёт, сравнивай с прошлыми по темпу (с учётом прошедших дней), а не по итогу — незаконченный месяц не повод говорить, что траты упали.
+- Опирайся только на присланные цифры и комментарии, ничего не выдумывай и не пересказывай таблицу целиком.
+Отвечай по-русски, коротко и по делу — так, чтобы прочитать за минуту-две.
+Формат:
+**Коротко** — 1–2 предложения про месяц.
+**Куда ушли деньги** — 2–4 пункта: главные статьи в донгах и в рублях, заметные крупные траты.
+**По сравнению с прошлыми месяцами** — 2–3 пункта с цифрами: что выросло, что снизилось. Если сравнивать не с чем — пропусти раздел.
+**На что обратить внимание** — 1–3 пункта: необычные или частые мелкие траты, минус в рублях, отрицательный остаток наличных, траты без категории.
+**Советы на следующий месяц** — 2–4 конкретных, выполнимых шага.
+Пункты начинай с «- ». Без инвестиционных советов и без рекомендаций конкретных банков и финансовых продуктов.`;
+
+/* Один запрос к Gemini — как aiCall() в Дневнике */
+async function aiCall(system, prompt){
+  const key = aiGetKey();
+  if(!key) throw new Error("NO_KEY");
+  const model = aiGetModel();
+  const body = {
+    systemInstruction:{parts:[{text:system}]},
+    contents:[{role:"user", parts:[{text:prompt}]}],
+    /* у Gemini 3 размышления входят в лимит: при 4096 ответ мог прийти пустым */
+    generationConfig:{temperature:0.6, maxOutputTokens:16384}
+  };
+  const ctl = new AbortController(), t = setTimeout(()=>ctl.abort(), 180000);
+  let r;
+  try{
+    r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+encodeURIComponent(model)+":generateContent",
+      {method:"POST", headers:{"Content-Type":"application/json", "x-goog-api-key":key}, body:JSON.stringify(body), signal:ctl.signal});
+  }catch(e){ throw new Error(e && e.name==="AbortError" ? "TIMEOUT" : "NETWORK"); }
+  finally{ clearTimeout(t); }
+  let j = null; try{ j = await r.json(); }catch(e){}
+  if(!r.ok){
+    const e = new Error((j && j.error && j.error.message) || ("HTTP "+r.status)); e.status = r.status; throw e;
+  }
+  const c = j && j.candidates && j.candidates[0];
+  const text = ((c && c.content && c.content.parts) || []).filter(p=> !p.thought).map(p=> p.text||"").join("").trim();
+  if(!text) throw new Error(c && c.finishReason ? "EMPTY:"+c.finishReason : "EMPTY");
+  return {text, model, cut: !!(c && c.finishReason==="MAX_TOKENS")};
+}
+function aiErrText(e){
+  const m = String(e && e.message || e), s = e && e.status;
+  if(m==="NO_KEY") return "Сначала вставьте ключ Gemini — кнопка ⚙.";
+  if(m==="TIMEOUT") return "Gemini не ответил за три минуты. Попробуйте ещё раз.";
+  if(m==="NETWORK") return "Нет связи с Gemini — проверьте интернет.";
+  if(/location is not supported/i.test(m)) return "Gemini API недоступен из вашей страны (так ответил Google).";
+  if(/API key not valid|API_KEY_INVALID/i.test(m) || s===401) return "Ключ Gemini не подошёл. Проверьте его — кнопка ⚙.";
+  if(s===429 || /quota|RESOURCE_EXHAUSTED/i.test(m)) return "Исчерпан лимит запросов Gemini. Подождите или проверьте тариф в Google AI Studio.";
+  if(s===404 || /not found/i.test(m)) return "Модель «"+aiGetModel()+"» не найдена. Проверьте название — кнопка ⚙.";
+  if(/^EMPTY/.test(m)) return "Gemini вернул пустой ответ"+(m.includes(":") ? " ("+m.split(":")[1]+")" : "")+". Попробуйте ещё раз.";
+  return "Ошибка Gemini: "+m;
+}
+
+/* **жирный**, заголовки и пункты «- » — всё через textContent, без чужого HTML */
+function aiRender(box, t){
+  const inline = (el, s)=>{
+    s.split(/\*\*(.+?)\*\*/).forEach((part,i)=>{
+      if(!part) return;
+      if(i % 2){ const b = document.createElement("b"); b.textContent = part; el.appendChild(b); }
+      else el.appendChild(document.createTextNode(part.replace(/\*\*/g,"")));
+    });
+  };
+  String(t).split("\n").forEach(line=>{
+    const el = document.createElement("div");
+    const h = /^\s*#{1,4}\s*(.+)$/.exec(line), li = /^\s*[-*•]\s+(.*)$/.exec(line);
+    if(h){ const b = document.createElement("b"); b.textContent = h[1].replace(/\*\*/g,""); el.appendChild(b); }
+    else if(li){ el.className = "ai-li"; inline(el, li[1]); }
+    else if(!line.trim()) el.className = "ai-gap";
+    else inline(el, line);
+    box.appendChild(el);
+  });
+}
+
+/* окно на основе .ask: settings и «что отправится» */
+function aiSheet(build, wide){
+  const prev = document.activeElement;
+  const ov = document.createElement("div"); ov.className = "ask-overlay";
+  const box = document.createElement("div"); box.className = "ask" + (wide ? " wide" : "");
+  box.setAttribute("role","dialog"); box.setAttribute("aria-modal","true");
+  ov.appendChild(box);
+  const close = ()=>{ document.removeEventListener("keydown", key, true); ov.remove(); if(prev && prev.focus) try{ prev.focus({preventScroll:true}); }catch(e){} };
+  const key = e=>{ if(e.key==="Escape"){ e.preventDefault(); close(); } };
+  ov.addEventListener("click", e=>{ if(e.target===ov) close(); });
+  document.addEventListener("keydown", key, true);
+  build(box, close);
+  document.body.appendChild(ov);
+  const f = box.querySelector("input,button"); if(f) f.focus();
+}
+function aiEl(tag, cls, text){ const e = document.createElement(tag); if(cls) e.className = cls; if(text!=null) e.textContent = text; return e; }
+
+function aiSettings(){
+  aiSheet((box, close)=>{
+    box.appendChild(aiEl("h3", "", "Разбор от ИИ — Gemini"));
+    const kl = aiEl("label", "ask-fld"); kl.appendChild(aiEl("span", "", "Ключ Gemini API"));
+    const ki = document.createElement("input"); ki.type = "password"; ki.autocomplete = "off"; ki.spellcheck = false;
+    ki.placeholder = "ключ из Google AI Studio"; ki.value = aiGetKey(); kl.appendChild(ki);
+    const ml = aiEl("label", "ask-fld"); ml.appendChild(aiEl("span", "", "Модель"));
+    const mi = document.createElement("input"); mi.type = "text"; mi.spellcheck = false; mi.value = aiGetModel(); ml.appendChild(mi);
+    box.append(kl, ml, aiEl("p", "ask-sub", "Ключ хранится только в этом браузере: на Google Диск и в резервные копии он не попадает. На каждом устройстве его вводят отдельно. Тот же ключ, что в Дневнике, подходит."));
+    const bar = aiEl("div", "ask-bar three");
+    const del = aiEl("button", "btn ghost", "Удалить ключ"); del.disabled = !aiGetKey();
+    const no = aiEl("button", "btn ghost", "Отмена");
+    const ok = aiEl("button", "btn", "Сохранить");
+    bar.append(del, no, ok); box.appendChild(bar);
+    no.onclick = close;
+    del.onclick = ()=>{ try{ localStorage.removeItem(AI_KEY_LS); }catch(e){} close(); aiRenderCard(); toast("Ключ удалён"); };
+    ok.onclick = ()=>{
+      try{
+        const k = ki.value.trim(), m = mi.value.trim();
+        if(k) localStorage.setItem(AI_KEY_LS, k); else localStorage.removeItem(AI_KEY_LS);
+        if(m && m !== AI_DEF_MODEL) localStorage.setItem(AI_MODEL_LS, m); else localStorage.removeItem(AI_MODEL_LS);
+      }catch(e){ toast("Не удалось сохранить настройки"); return; }
+      close(); aiRenderCard(); toast("Настройки Gemini сохранены");
+    };
+  });
+}
+function aiPreview(y, m){
+  aiSheet((box, close)=>{
+    box.appendChild(aiEl("h3", "", "Что отправится в Gemini"));
+    box.appendChild(aiEl("p", "ask-sub", "Ровно этот текст и инструкция, как отвечать. Ключ Gemini, Client ID, настройки и другие месяцы, кроме двух предыдущих для сравнения, не отправляются."));
+    box.appendChild(aiEl("pre", "ai-pre", aiPrompt(y, m)));
+    const bar = aiEl("div", "ask-bar one"); const ok = aiEl("button", "btn", "Понятно"); ok.onclick = close;
+    bar.appendChild(ok); box.appendChild(bar);
+  }, true);
+}
+
+async function aiRun(y, m){
+  const key = y+"-"+String(m+1).padStart(2,"0");
+  if(AI.busy[key]) return;
+  AI.busy[key] = true; delete AI.err[key]; aiRenderCard();
+  try{
+    const r = await aiCall(AI_SYSTEM, aiPrompt(y, m));
+    const val = {text:r.text, at:nowTs(), model:r.model}; if(r.cut) val.cut = true;
+    aiPut(key, val);
+    toast("Разбор готов");
+  }catch(e){
+    /* ошибка держится в карточке до следующей попытки — всплывашка исчезает */
+    AI.err[key] = aiErrText(e); toast(AI.err[key]);
+  }finally{ delete AI.busy[key]; aiRenderCard(); }
+}
+
+function aiRenderCard(){
+  const box = document.getElementById("ai-in"); if(!box) return;
+  const y = Y, m = M, key = mk();
+  const saved = aiSaved(key), busy = AI.busy[key], err = AI.err[key], hasKey = !!aiGetKey();
+  const hasData = aiHasData(aiMonth(y, m));
+  box.innerHTML = "";
+  if(err && !busy) box.appendChild(aiEl("div", "ai-err", err));
+  if(busy) box.appendChild(aiEl("div", "ai-hint ai-wait", "Gemini думает над разбором… Можно переключать вкладки — ответ сохранится сам."));
+  else if(saved){
+    const t = aiEl("div", "ai-text"); aiRender(t, saved.text); box.appendChild(t);
+    const when = new Date(saved.at).toLocaleString("ru-RU", {day:"numeric", month:"short", hour:"2-digit", minute:"2-digit"});
+    box.appendChild(aiEl("div", "ai-hint", when + (saved.model ? " · "+saved.model : "") + (saved.cut ? " · ответ обрезан по длине" : "")));
+  } else if(!hasData) box.appendChild(aiEl("div", "ai-hint", "За "+MONTHS_GEN[m]+" нет записей — разбирать пока нечего."));
+  else box.appendChild(aiEl("div", "ai-hint", "Gemini разберёт "+MONTHS[m].toLowerCase()+": доходы и расходы в рублях, траты в донгах по категориям, дням и способам оплаты, наличные — и сравнит с двумя предыдущими месяцами."));
+
+  const bar = aiEl("div", "tools ai-bar");
+  if(hasKey){
+    const go = aiEl("button", "btn sm", saved ? "Обновить разбор" : "Получить разбор");
+    go.disabled = !!busy || !hasData;
+    go.onclick = ()=> aiRun(y, m);
+    bar.appendChild(go);
+  } else {
+    const set = aiEl("button", "btn sm", "Подключить Gemini"); set.onclick = aiSettings; bar.appendChild(set);
+  }
+  if(hasData){ const pv = aiEl("button", "btn sm ghost", "Что отправится"); pv.onclick = ()=> aiPreview(y, m); bar.appendChild(pv); }
+  if(saved && !busy){
+    const del = aiEl("button", "btn sm ghost", "Удалить");
+    del.onclick = ()=> askConfirm({title:"Удалить разбор?", lines:["Разбор за "+MONTHS[m].toLowerCase()+" "+y+" удалится на всех устройствах."], ok:"Удалить"})
+      .then(yes=>{ if(!yes) return; aiPut(key, {at:nowTs(), del:1}); aiRenderCard(); toast("Разбор удалён"); });
+    bar.appendChild(del);
+  }
+  box.appendChild(bar);
+}
+
 /* ---------- init ---------- */
 (function init(){
+  document.getElementById("ai-set").onclick = aiSettings;
   const ms = document.getElementById("mSel"), ys = document.getElementById("ySel");
   MONTHS.forEach((n,i)=>{ const o=document.createElement("option"); o.value=i; o.textContent=n; ms.appendChild(o); });
   for(let y=today.getFullYear()-2; y<=today.getFullYear()+3; y++){
@@ -2077,7 +2402,7 @@ function bidvAddSelected(transactions, overlay){
         /* _meta — не месяц: его не чиним через fix(), но и не выбрасываем,
            иначе после восстановления все файлы BIDV снова покажутся новыми. */
         Object.keys(d).forEach(k=>{
-          if(k === META_KEY){ if(isObj(d[k])) d[k] = {bidvImported: bidvImportedList(d[k])}; else delete d[k]; return; }
+          if(k === META_KEY){ if(isObj(d[k])) d[k] = metaNorm(d[k]); else delete d[k]; return; }
           if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(k) || !isObj(d[k])) delete d[k]; else fix(d[k]);
         });
         if(impMode==="replace"){
