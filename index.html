@@ -197,6 +197,27 @@ input:focus,select:focus,textarea:focus,button:focus-visible,.chip:focus-visible
 .btn.rub{background:var(--rub)} .btn.vnd{background:var(--vnd)} .btn.cash{background:var(--cash)}
 .btn.ghost{background:var(--card);color:var(--ink-2);border:1px solid var(--line);font-weight:550}
 .btn.ghost:hover{background:var(--paper);filter:none}
+.btn.danger{background:var(--danger)}
+
+/* окно подтверждения: на телефоне — снизу, под большим пальцем */
+.ask-overlay{
+  position:fixed;inset:0;z-index:120;background:rgba(26,37,48,.42);
+  display:flex;align-items:flex-end;justify-content:center;
+  padding:10px 10px calc(10px + env(safe-area-inset-bottom));
+  animation:askFade .14s ease-out;
+}
+.ask{
+  background:var(--card);border-radius:20px;width:100%;max-width:420px;
+  padding:18px 16px 14px;box-shadow:0 10px 30px rgba(26,37,48,.25);
+  animation:askUp .18s ease-out;
+}
+.ask h3{margin:0 0 8px;font-size:17px;font-weight:700;letter-spacing:-.01em}
+.ask-main{margin:0;font-size:15px;font-weight:600;color:var(--ink)}
+.ask-sub{margin:3px 0 0;font-size:13.5px;color:var(--ink-3);overflow-wrap:anywhere}
+.ask-bar{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px}
+@media (min-width:640px){ .ask-overlay{align-items:center} }
+@keyframes askFade{from{opacity:0}}
+@keyframes askUp{from{transform:translateY(16px);opacity:0}}
 .btn.sm{padding:8px 13px;font-size:13.5px;border-radius:10px}
 .btn[disabled]{opacity:.5;cursor:default}
 
@@ -590,6 +611,7 @@ const CATS = {
 };
 const MONTHS = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
 const DOW = ["вс","пн","вт","ср","чт","пт","сб"];
+const MONTHS_GEN = ["января","февраля","марта","апреля","мая","июня","июля","августа","сентября","октября","ноября","декабря"];
 const KEY = "budget.v1";
 const CID_KEY = "budget.cid";
 const SEEN_KEY = "budget.synced";
@@ -983,6 +1005,46 @@ function wireMic(key){
   };
 }
 
+/* ---------- подтверждение ----------
+   Своё окно вместо confirm(): в нём видно, что именно удаляется, и оно
+   не выглядит системной ошибкой в установленном приложении.
+   Отмена — по кнопке, Esc или нажатию мимо окна. Фокус стоит на «Отмена»,
+   чтобы случайный Enter ничего не стёр. */
+function askConfirm({title, lines, ok}){
+  return new Promise(res=>{
+    const prev = document.activeElement;
+    const ov = document.createElement("div"); ov.className = "ask-overlay";
+    const box = document.createElement("div"); box.className = "ask";
+    box.setAttribute("role","alertdialog"); box.setAttribute("aria-modal","true");
+    const h = document.createElement("h3"); h.textContent = title; h.id = "ask-t";
+    box.setAttribute("aria-labelledby","ask-t");
+    box.appendChild(h);
+    (lines||[]).filter(Boolean).forEach((t,i)=>{
+      const p = document.createElement("p"); p.className = i ? "ask-sub" : "ask-main"; p.textContent = t;
+      box.appendChild(p);
+    });
+    const bar = document.createElement("div"); bar.className = "ask-bar";
+    const no = document.createElement("button"); no.className = "btn ghost"; no.textContent = "Отмена";
+    const yes = document.createElement("button"); yes.className = "btn danger"; yes.textContent = ok || "Да";
+    bar.append(no, yes); box.appendChild(bar); ov.appendChild(box);
+    const done = v=>{
+      document.removeEventListener("keydown", key, true);
+      ov.remove(); if(prev && prev.focus) try{ prev.focus({preventScroll:true}); }catch(e){}
+      res(v);
+    };
+    const key = e=>{
+      if(e.key==="Escape"){ e.preventDefault(); done(false); }
+      else if(e.key==="Tab"){ e.preventDefault(); (document.activeElement===no ? yes : no).focus(); }
+    };
+    no.onclick = ()=> done(false);
+    yes.onclick = ()=> done(true);
+    ov.addEventListener("click", e=>{ if(e.target===ov) done(false); });
+    document.addEventListener("keydown", key, true);
+    document.body.appendChild(ov);
+    no.focus();
+  });
+}
+
 /* ---------- render ---------- */
 function groupDays(arr){
   const g = {};
@@ -1068,9 +1130,21 @@ function renderList(box, arr, cur, key){
       const d = document.createElement("button"); d.className="del"; d.textContent="×";
       d.title="Удалить"; d.setAttribute("aria-label","Удалить запись");
       d.onclick = ()=>{
-        const m = monW(), list = key==="cash" ? m.topup : m[key];
-        const rec = list.find(x=>x.id===it.id);
-        if(rec){ rec.del = nowTs(); rec.ts = rec.del; save(); render(); toast("Запись удалена"); }
+        const k = mk(), when = it.day+" "+MONTHS_GEN[M];   // месяц запоминаем до вопроса
+        const what = key==="inc" ? "доход" : key==="cash" ? "пополнение" : "расход";
+        askConfirm({
+          title: "Удалить "+what+"?",
+          lines: [
+            (it.cat || "Пополнение")+" — "+f(it.amount),
+            [when, it.pay, it.note].filter(Boolean).join(" · ")
+          ],
+          ok: "Удалить"
+        }).then(yes=>{
+          if(!yes || !isObj(DB[k])) return;
+          const m = fix(DB[k]), list = key==="cash" ? m.topup : m[key];
+          const rec = list.find(x=>x.id===it.id);
+          if(rec){ rec.del = nowTs(); rec.ts = rec.del; save(); render(); toast("Запись удалена"); }
+        });
       };
       r.appendChild(d);
       wrap.appendChild(r);
