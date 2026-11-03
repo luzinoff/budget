@@ -3183,7 +3183,10 @@ function renderCap(){
     capRow(cry, a, capLabel(a), subs, v!=null ? fR0(v) : p ? "нет курса $" : "нет цены", u!=null ? fU(u) : "");
   });
   if(ca.length > 1 && cryUsd){
-    const s = aiEl("div","tot"); s.append(aiEl("span","lab","Всего на бирже"), aiEl("span","val num", fU(cryUsd)));
+    const usdR = ctx.c.rates.usd;
+    const s = aiEl("div","tot grand");
+    s.append(aiEl("span","lab", "Всего на бирже" + (usdR ? " · "+fU(cryUsd) : "")),
+             aiEl("span","val num", usdR ? "≈ "+fR0(cryUsd*usdR) : fU(cryUsd)));
     cry.appendChild(s);
   }
   const rt = capEl("cap-rates"); rt.innerHTML = "";
