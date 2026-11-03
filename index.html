@@ -3100,7 +3100,7 @@ function capTips(ctx, T){
   ctx.items.filter(a=> a.kind==="deposit" && a.end && capDays(a.end)<=14).forEach(a=>{
     const d = capDays(a.end);
     t.push(d>=0
-      ? "Вклад «"+capLabel(a)+"» ("+fR0(ctx.vals.get(a.id)||a.amount)+") заканчивается "+(d ? "через "+d+" дн." : "сегодня")+". Сравните ставку продления с предложениями других банков — и не выводите деньги из подушки."
+      ? "Вклад «"+capLabel(a)+"» ("+fR0(ctx.vals.get(a.id)||a.amount)+") заканчивается "+(d ? "через "+d+" "+capPlural(d,"день","дня","дней") : "сегодня")+". Сравните ставку продления с предложениями других банков — и не выводите деньги из подушки."
       : "Срок вклада «"+capLabel(a)+"» прошёл "+capDate(a.end)+" — обновите его в «Капитале», иначе расчёты неточны.");
   });
   const cm = ctx.spend ? ctx.cushion/ctx.spend : null;
