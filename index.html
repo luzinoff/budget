@@ -2871,6 +2871,8 @@ function capItemNorm(x){
   o.target = capNum(x.target);
   o.deadline = MKEY.test(x.deadline) ? x.deadline : "";
   o.links = Array.isArray(x.links) ? x.links.filter(s=> typeof s==="string" && s).slice(0,40) : [];
+  o.asOf = /^\d{4}-\d{2}-\d{2}$/.test(x.asOf) ? x.asOf : "";        // ипотека: остаток на эту дату
+  o.payDay = Number.isInteger(+x.payDay) && +x.payDay>=1 && +x.payDay<=31 ? +x.payDay : 0;   // ипотека: день платежа
   if(x.src==="bybit" && ["Trading","Funding","Earn"].includes(x.acct)){ o.src = "bybit"; o.acct = x.acct; }   // монета с биржи
   return o;
 }
@@ -2967,7 +2969,7 @@ function capCtx(){
     inc: capMedian(done.map(d=> sum(d.inc))),
     savAvg: done.length ? sum(done.map(savOf), x=>x)/done.length : 0,
     savNow: savOf(cur),
-    mortPay: mortRecs.length ? mortRecs[mortRecs.length-1].amount : 0,
+    mortPay: (mortRecs.filter(x=> !/досрочн/i.test(x.note)).slice(-1)[0] || {}).amount || 0,
     mortRecs,
     salary: done.length>=2 && done.every(d=> d.inc.some(x=>x.cat==="Зарплата")),
     kid: months.some(d=> d.rub.some(x=>x.cat==="Ребёнок"))
@@ -2982,13 +2984,54 @@ function capUsdOf(ctx, a){
 }
 /* Остаток ипотеки: введённый вручную на дату amountTs, минус платежи с «ипотек»
    в комментарии, добавленные позже, — по графику: сначала проценты, потом тело. */
-function capMortNow(ctx, a){
-  const r = a.rate/1200;
-  const pays = ctx.mortRecs.filter(x=> x.ts > a.amountTs);
-  let b = a.amount;
-  pays.forEach(x=>{ b = Math.max(0, b*(1+r) - x.amount); });
-  return {bal:b, n:pays.length};
+/* Ипотека по графику банка: аннуитет, проценты начисляются по дням
+   (ставка / 365, в високосный год / 366) от платежа до платежа, последний
+   платёж — в день окончания договора. Так считает Сбер: на реальном графике
+   расхождение — копейки. Остаток задаётся на дату asOf (обычно дата последнего
+   платежа), дальше он уменьшается сам по мере наступления платёжных дат.
+   Досрочные погашения — записи во «Тратах ₽» со словом «досрочн» в комментарии,
+   добавленные после ввода остатка: вся сумма идёт в основной долг. */
+const capD0 = d=> new Date(d.getFullYear(), d.getMonth(), d.getDate());
+const capPD = s=> new Date(+s.slice(0,4), +s.slice(5,7)-1, +s.slice(8,10));
+function capDayInt(b, rate, from, to){
+  let it = 0;
+  for(const d = new Date(from); d < to; d.setDate(d.getDate()+1)){
+    const y = d.getFullYear();
+    it += b*rate/100/(((y%4===0 && y%100!==0) || y%400===0) ? 366 : 365);
+  }
+  return Math.round(it*100)/100;
 }
+function capMortSim(ctx, a){
+  const r2 = n=> Math.round(n*100)/100;
+  const from = a.asOf ? capPD(a.asOf) : capD0(new Date(a.amountTs));
+  const pd = a.payDay || from.getDate();
+  const end = a.end ? capPD(a.end) : null;
+  const t0 = capD0(today);
+  const pre = ctx.mortRecs.filter(x=> /досрочн/i.test(x.note) && x.ts > a.amountTs);
+  const preSum = sum(pre);
+  let b = Math.max(0, a.amount - preSum), d = from, passed = 0, n = 0, over = 0, cur = null, next = null, never = false, last = null;
+  if(!a.pay || !b) return {bal:b, passed, n, over, next, never, last, pre:preSum};
+  for(let i=0; i<720 && b > 0.005; i++){
+    let nx = new Date(d.getFullYear(), d.getMonth()+1, 1);
+    nx.setDate(Math.min(pd, new Date(nx.getFullYear(), nx.getMonth()+1, 0).getDate()));
+    if(end && nx > end) nx = end;
+    if(nx <= d) break;
+    const it = capDayInt(b, a.rate, d, nx);
+    const fin = end && nx.getTime()===end.getTime();
+    const pay = fin ? r2(b+it) : Math.min(a.pay, r2(b+it));
+    if(nx > t0){
+      if(cur==null) cur = b;
+      if(pay <= it && !fin){ never = true; break; }
+      if(!next) next = {date:nx, pay, int:it, princ:r2(pay-it)};
+      n++; over += it;
+    } else passed++;
+    b = r2(b - (pay - it));
+    d = nx; last = nx;
+    if(fin) break;
+  }
+  return {bal: cur==null ? b : cur, passed, n, over:r2(over), next, never, last, pre:preSum};
+}
+function capMortNow(ctx, a){ const s = capMortSim(ctx, a); return {bal:s.bal, n:s.passed}; }
 function capRub(ctx, a){
   if(a.kind==="mortgage") return capMortNow(ctx, a).bal;
   if(a.kind==="crypto" || a.cur==="USD"){
@@ -3209,12 +3252,20 @@ function renderCap(){
   const mo = capEl("cap-mort"); mo.innerHTML = "";
   if(!morts.length) mo.appendChild(aiEl("div","empty","Добавьте остаток долга, ставку и платёж — посчитаю срок и переплату."));
   morts.forEach(a=>{
-    const now = capMortNow(ctx, a), s = capMort(now.bal, a.rate, a.pay), subs = [];
-    subs.push([a.rate ? fPct(a.rate) : "", a.pay ? "платёж "+fR0(a.pay) : ""].filter(Boolean).join(" · "));
-    if(s && s.never) subs.push({t:"платёж не покрывает проценты", bad:true});
-    else if(s) subs.push("≈ "+s.n+" "+capPlural(s.n,"платёж","платежа","платежей")+", до "+MONTHS_GEN[s.end.getMonth()]+" "+s.end.getFullYear()+" · переплата ≈ "+fR0(s.over));
-    subs.push("остаток на "+capDateTs(a.amountTs)+(now.n ? " минус "+now.n+" "+capPlural(now.n,"платёж","платежа","платежей")+" из бюджета" : ""));
-    capRow(mo, a, capLabel(a), subs, fR0(now.bal), "долг");
+    const s = capMortSim(ctx, a), subs = [];
+    const pd = a.payDay || (a.asOf ? +a.asOf.slice(8) : 0);
+    subs.push([a.rate ? fPct(a.rate) : "", a.pay ? "платёж "+fR(a.pay)+(pd ? ", "+pd+"-го" : "") : ""].filter(Boolean).join(" · "));
+    if(s.never) subs.push({t:"платёж не покрывает проценты", bad:true});
+    else if(s.next){
+      const nd = s.next.date;
+      subs.push("ближайший "+nd.getDate()+" "+MON_S[nd.getMonth()]+": "+fR(s.next.princ)+" в долг, "+fR(s.next.int)+" проценты");
+      subs.push(s.n+" "+capPlural(s.n,"платёж","платежа","платежей")+", последний "+s.last.getDate()+" "+MONTHS_GEN[s.last.getMonth()]+" "+s.last.getFullYear()+" · переплата ≈ "+fR0(s.over));
+    }
+    const base = a.asOf ? capDate(a.asOf) : capDateTs(a.amountTs);
+    subs.push("остаток "+fR0(a.amount)+" на "+base
+      + (s.passed ? ", дальше по графику −"+s.passed+" "+capPlural(s.passed,"платёж","платежа","платежей") : "")
+      + (s.pre ? ", досрочно −"+fR0(s.pre) : ""));
+    capRow(mo, a, capLabel(a), subs, fR0(s.bal), "долг");
   });
 
   // ---- цели
@@ -3364,10 +3415,14 @@ function capEdit(src, kind){
       }
       if(d.kind==="mortgage"){
         txt("Банк или название", "name", "Ипотека");
-        num("Остаток долга сейчас, ₽", "amount");
+        num("Остаток основного долга, ₽", "amount");
+        date("На дату (обычно — дата последнего платежа)", "asOf", "date");
         num("Ставка, % годовых", "rate");
         num("Ежемесячный платёж, ₽", "pay");
-        t.hint("Платежи во «Тратах ₽» со словом «ипотека» в комментарии, добавленные после этого, уменьшают остаток сами — по графику, сначала проценты.");
+        const pdI = t.fld("День платежа, число месяца", capInput(d.payDay, "18", true));
+        pdI.inputMode = "numeric"; pdI.oninput = ()=>{ const v = parseInt(pdI.value,10); d.payDay = v>=1 && v<=31 ? v : 0; };
+        date("Дата окончания договора", "end", "date");
+        t.hint("Всё есть в банковском приложении, в «Детальной информации» по кредиту. Дальше остаток уменьшается сам по графику — проценты по дням, как у банка. Досрочное погашение запишите во «Траты ₽» со словом «досрочно» в комментарии — вся сумма уйдёт в основной долг.");
       }
       if(d.kind==="goal"){
         if(isNew && ctx.spend) t.chips("Шаблон", [[3,"Подушка 3 мес."],[6,"Подушка 6 мес."],[0,"Своя цель"]], v=> d._tpl===v, v=>{
@@ -3409,7 +3464,7 @@ function capEdit(src, kind){
           if(!String(d.name||"").trim()) d.name = "Цель";
         } else if(!(d.amount>0)){ toast("Укажите сумму"); return; }
         if(d.kind!=="crypto" && d.kind!=="goal"){
-          if(isNew || d.amount !== shown || (src && d.cur !== src.cur)) d.amountTs = nowTs();
+          if(isNew || d.amount !== shown || (src && (d.cur !== src.cur || d.asOf !== src.asOf))) d.amountTs = nowTs();
           else d.amount = src.amount;   // сумма не менялась — пополнения продолжают прибавляться
         }
         delete d._tpl;
@@ -3775,10 +3830,12 @@ function capAiPrompt(){
   if(ctx.morts.length){
     L.push("Ипотека:");
     ctx.morts.forEach(a=>{
-      const bal = ctx.vals.get(a.id), s = capMort(bal, a.rate, a.pay), b = ["остаток "+R(bal)];
-      if(a.rate) b.push("ставка "+fPct(a.rate)); if(a.pay) b.push("платёж "+R(a.pay)+(ctx.inc ? " ("+pc(a.pay, ctx.inc)+" дохода)" : ""));
-      if(s && s.never) b.push("платёж не покрывает проценты");
-      else if(s) b.push("осталось ≈ "+s.n+" мес., до "+MONTHS[s.end.getMonth()].toLowerCase()+" "+s.end.getFullYear()+", переплата ≈ "+R(s.over));
+      const s = capMortSim(ctx, a), b = ["остаток основного долга "+R(s.bal)];
+      if(a.rate) b.push("ставка "+fPct(a.rate)); if(a.pay) b.push("аннуитетный платёж "+R(a.pay)+(ctx.inc ? " ("+pc(a.pay, ctx.inc)+" дохода)" : ""));
+      if(s.never) b.push("платёж не покрывает проценты");
+      else if(s.next) b.push("в ближайшем платеже "+R(s.next.princ)+" в долг и "+R(s.next.int)+" проценты",
+        "осталось "+s.n+" платежей, последний "+MONTHS[s.last.getMonth()].toLowerCase()+" "+s.last.getFullYear()+", оставшаяся переплата по процентам ≈ "+R(s.over));
+      if(s.pre) b.push("уже погашено досрочно "+R(s.pre));
       L.push("- "+b.join(" — "));
     });
   } else L.push("Ипотеки нет.");
