@@ -1356,7 +1356,7 @@ function renderList(box, arr, cur, key){
       const r = document.createElement("div"); r.className = "item" + (key==="rub" && it.cat===SAV ? " sav" : "");
       const c = document.createElement("div"); c.className="cat";
       let editBtn = null;
-      if(key === "vnd"){
+      if(key === "vnd" || key === "rub" || key === "inc"){   // категорию можно поправить у любой записи, кроме пополнений
         const label = document.createElement("span");
         label.textContent = it.cat || "Не указано";
         c.appendChild(label);
@@ -1364,7 +1364,7 @@ function renderList(box, arr, cur, key){
         const sel = document.createElement("select");
         sel.className = "cat-editor";
         sel.hidden = true;
-        const options = CATS.vnd.slice();
+        const options = CATS[key].slice();
         if(it.cat && !options.includes(it.cat)) options.push(it.cat);
         options.unshift("Не указано");
         options.forEach(name=>{
@@ -1375,9 +1375,10 @@ function renderList(box, arr, cur, key){
           sel.appendChild(o);
         });
         sel.onchange = ()=>{
-          const m = monW(), rec = m.vnd.find(x=>x.id===it.id);
+          const m = monW(), rec = m[key].find(x=>x.id===it.id);
           if(!rec) return;
           rec.cat = sel.value;
+          if(key==="rub" && rec.cat!==SAV) rec.pay = "";   // привязка к активу — только у «В накопления»
           rec.ts = nowTs();
           save();
           render();
@@ -2979,7 +2980,11 @@ function capCtx(){
 }
 function capCoinPx(c, coin){ return c.rates.px[coin] || (STABLE.includes(coin) ? 1 : 0); }
 function capUsdOf(ctx, a){
-  if(a.kind==="crypto"){ const p = capCoinPx(ctx.c, a.coin); return p ? a.qty*p : null; }
+  if(a.kind==="crypto"){
+    const p = capCoinPx(ctx.c, a.coin);
+    // монета с биржи без цены (делистинг, нет пары к USDT) — считаем как 0, а не «не учтено»
+    return p ? a.qty*p : a.src==="bybit" ? 0 : null;
+  }
   return a.cur==="USD" ? a.amount : null;
 }
 /* Остаток ипотеки: введённый вручную на дату amountTs, минус платежи с «ипотек»
@@ -3092,6 +3097,12 @@ function capRiskType(c){
 }
 function capTips(ctx, T){
   const t = [], tot = ctx.tot;
+  ctx.items.filter(a=> a.kind==="deposit" && a.end && capDays(a.end)<=14).forEach(a=>{
+    const d = capDays(a.end);
+    t.push(d>=0
+      ? "Вклад «"+capLabel(a)+"» ("+fR0(ctx.vals.get(a.id)||a.amount)+") заканчивается "+(d ? "через "+d+" дн." : "сегодня")+". Сравните ставку продления с предложениями других банков — и не выводите деньги из подушки."
+      : "Срок вклада «"+capLabel(a)+"» прошёл "+capDate(a.end)+" — обновите его в «Капитале», иначе расчёты неточны.");
+  });
   const cm = ctx.spend ? ctx.cushion/ctx.spend : null;
   if(cm!=null && cm < 3)
     t.push("Подушка — "+fN1(cm)+" мес. трат. Ориентир — 3–6 мес. (≈ "+fR0(ctx.spend*3)+" – "+fR0(ctx.spend*6)+") на вкладах или накопительном счёте; рисковать стоит деньгами сверх неё.");
@@ -3200,9 +3211,15 @@ function renderCap(){
     const v = vals.get(a.id), bits = [];
     bits.push(a.kind==="deposit" ? "вклад" : a.cur==="USD" ? "счёт в $" : "счёт");
     if(a.rate) bits.push(fPct(a.rate)+" годовых");
-    let bad = false;
-    if(a.end){ const d = capDays(a.end); bad = d<0; bits.push(d>=0 ? "до "+capDate(a.end)+" · "+d+" дн." : "срок истёк "+capDate(a.end)); }
+    let bad = false, soon = "";
+    if(a.end){
+      const d = capDays(a.end); bad = d<=14;
+      bits.push(d>=0 ? "до "+capDate(a.end)+" · "+d+" дн." : "срок истёк "+capDate(a.end));
+      if(d<0) soon = "обновите: вклад продлён — новая дата и ставка, закрыт — удалите или перенесите сумму";
+      else if(d<=14) soon = "скоро конец срока — решите, продлить или переложить";
+    }
     const subs = [{t:bits.join(" · "), bad}];
+    if(soon) subs.push({t:soon, bad:true});
     if(a.kind==="deposit" && a.rate && a.end && capDays(a.end)>0 && v)
       subs.push("доход к концу срока ≈ +"+fR0(v*a.rate/100*capDays(a.end)/365));
     const add = a.cur==="RUB" ? ctx.contrib(a, a.amountTs) : 0;
@@ -3215,9 +3232,13 @@ function renderCap(){
   const ca = assets.filter(a=> a.kind==="crypto").sort(byVal);
   if(!ca.length) cry.appendChild(aiEl("div","empty","Монет пока нет. Добавьте остатки со своего аккаунта Bybit."));
   let cryUsd = 0;
+  /* пыль меньше 1 $ — одной строкой, чтобы не загромождать список */
+  const dust = ca.filter(a=>{ const u = capUsdOf(ctx, a); return u!=null && u < 1 && !STABLE.includes(a.coin); });
+  const noPx = dust.filter(a=> !capCoinPx(ctx.c, a.coin));
   ca.forEach(a=>{
     const p = capCoinPx(ctx.c, a.coin), u = capUsdOf(ctx, a), v = vals.get(a.id);
     if(u!=null) cryUsd += u;
+    if(dust.includes(a)) return;
     const subs = [fQ(a.qty)+" "+a.coin+(p && !STABLE.includes(a.coin) ? " по "+fU(p) : "")];
     if(a.rate) subs.push("Earn "+fPct(a.rate)+" годовых");
     if(a.src==="bybit") subs.push("с биржи · "+(ctx.c.rates.byTs ? capDateTs(ctx.c.rates.byTs) : ""));
@@ -3225,6 +3246,12 @@ function renderCap(){
     if(inv) subs.push("вложено из бюджета "+fR0(inv)+(v!=null ? " · "+(v>=inv ? "+" : "−")+fR0(Math.abs(v-inv)) : ""));
     capRow(cry, a, capLabel(a), subs, v!=null ? fR0(v) : p ? "нет курса $" : "нет цены", u!=null ? fU(u) : "");
   });
+  if(dust.length){
+    const du = sum(dust, a=> capUsdOf(ctx, a));
+    const s = aiEl("div","tot"); s.style.borderTop = "1px solid var(--line-2)";
+    s.append(aiEl("span","lab",(noPx.length ? "Мелочь и монеты без цены: " : "Мелочь меньше 1 $: ")+dust.map(a=>a.coin).join(", ")), aiEl("span","val num", fU(du)));
+    cry.appendChild(s);
+  }
   if(ca.length > 1 && cryUsd){
     const usdR = ctx.c.rates.usd;
     const s = aiEl("div","tot grand");
