@@ -529,6 +529,13 @@ body[data-tab="cap"] .mnav{display:none}
 .cap-row .nm i.bad{color:var(--danger)}
 .cap-row .vl{text-align:right;font-size:15px;font-weight:650;white-space:nowrap}
 .cap-row .vl i{display:block;font-style:normal;font-size:12px;color:var(--ink-3);font-weight:500}
+.cap-ghead{display:flex;align-items:baseline;gap:10px;padding:10px 14px 6px;background:var(--paper);border-top:1px solid var(--line-2)}
+.cap-ghead:first-child{border-top:0}
+.cap-ghead .nm{flex:1;min-width:0;font-size:13px;font-weight:700;color:var(--ink-2)}
+.cap-ghead .nm i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:6px;vertical-align:0}
+.cap-ghead .nm small{font-size:12px;font-weight:500;color:var(--ink-3)}
+.cap-ghead .vl{font-size:13px;font-weight:650;color:var(--ink-2);white-space:nowrap}
+.cap-ghead + .cap-row{border-top:0}
 .cap-goal{flex-direction:column;align-items:stretch;gap:0}
 .cap-gtop{display:flex;align-items:baseline;gap:10px}
 .cap-goal .bar{height:8px;border-radius:4px}
@@ -3232,28 +3239,43 @@ function renderCap(){
   const ca = assets.filter(a=> a.kind==="crypto").sort(byVal);
   if(!ca.length) cry.appendChild(aiEl("div","empty","Монет пока нет. Добавьте остатки со своего аккаунта Bybit."));
   let cryUsd = 0;
-  /* пыль меньше 1 $ — одной строкой, чтобы не загромождать список */
-  const dust = ca.filter(a=>{ const u = capUsdOf(ctx, a); return u!=null && u < 1 && !STABLE.includes(a.coin); });
-  const noPx = dust.filter(a=> !capCoinPx(ctx.c, a.coin));
-  ca.forEach(a=>{
+  const usdR = ctx.c.rates.usd;
+  const money = u=> usdR ? fU(u)+" ≈ "+fR0(u*usdR) : fU(u);
+  const coinRow = a=>{
     const p = capCoinPx(ctx.c, a.coin), u = capUsdOf(ctx, a), v = vals.get(a.id);
-    if(u!=null) cryUsd += u;
-    if(dust.includes(a)) return;
     const subs = [fQ(a.qty)+" "+a.coin+(p && !STABLE.includes(a.coin) ? " по "+fU(p) : "")];
     if(a.rate) subs.push("Earn "+fPct(a.rate)+" годовых");
     if(a.src==="bybit") subs.push("с биржи · "+(ctx.c.rates.byTs ? capDateTs(ctx.c.rates.byTs) : ""));
     const inv = ctx.contrib(a);
     if(inv) subs.push("вложено из бюджета "+fR0(inv)+(v!=null ? " · "+(v>=inv ? "+" : "−")+fR0(Math.abs(v-inv)) : ""));
     capRow(cry, a, capLabel(a), subs, v!=null ? fR0(v) : p ? "нет курса $" : "нет цены", u!=null ? fU(u) : "");
+  };
+  /* две группы: стейблкоины (привязаны к доллару, риск — площадка) и
+     волатильная крипта; у каждой — заголовок с подытогом */
+  const groups = [
+    {t:"Стейблкоины", d:"привязаны к доллару", list:ca.filter(a=> STABLE.includes(a.coin)), c:CAP_C.stable},
+    {t:"Волатильная крипта", d:"цена меняется", list:ca.filter(a=> !STABLE.includes(a.coin)), c:CAP_C.risky}
+  ].filter(g=> g.list.length);
+  groups.forEach(g=>{
+    const gu = sum(g.list, a=> capUsdOf(ctx, a) || 0);
+    cryUsd += gu;
+    const h = aiEl("div","cap-ghead");
+    const nm = aiEl("span","nm"), dot = document.createElement("i"); dot.style.background = g.c;
+    nm.append(dot, document.createTextNode(g.t));
+    h.append(nm, aiEl("span","vl num", money(gu)));
+    cry.appendChild(h);
+    /* пыль меньше 1 $ и монеты без цены — одной строкой в конце группы */
+    const dust = g.list.filter(a=>{ const u = capUsdOf(ctx, a); return u!=null && u < 1 && !STABLE.includes(a.coin); });
+    g.list.forEach(a=>{ if(!dust.includes(a)) coinRow(a); });
+    if(dust.length){
+      const noPx = dust.some(a=> !capCoinPx(ctx.c, a.coin));
+      const s = aiEl("div","tot"); s.style.borderTop = "1px solid var(--line-2)";
+      s.append(aiEl("span","lab",(noPx ? "Мелочь и монеты без цены: " : "Мелочь меньше 1 $: ")+dust.map(a=>a.coin).join(", ")),
+               aiEl("span","val num", fU(sum(dust, a=> capUsdOf(ctx, a)))));
+      cry.appendChild(s);
+    }
   });
-  if(dust.length){
-    const du = sum(dust, a=> capUsdOf(ctx, a));
-    const s = aiEl("div","tot"); s.style.borderTop = "1px solid var(--line-2)";
-    s.append(aiEl("span","lab",(noPx.length ? "Мелочь и монеты без цены: " : "Мелочь меньше 1 $: ")+dust.map(a=>a.coin).join(", ")), aiEl("span","val num", fU(du)));
-    cry.appendChild(s);
-  }
-  if(ca.length > 1 && cryUsd){
-    const usdR = ctx.c.rates.usd;
+  if(groups.length > 1 && cryUsd){
     const s = aiEl("div","tot grand");
     s.append(aiEl("span","lab", "Всего на бирже" + (usdR ? " · "+fU(cryUsd) : "")),
              aiEl("span","val num", usdR ? "≈ "+fR0(cryUsd*usdR) : fU(cryUsd)));
