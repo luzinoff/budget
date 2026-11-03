@@ -2,7 +2,7 @@
    Меняйте CACHE при выкладке новой версии — старый кэш будет удалён. */
 "use strict";
 
-const CACHE = "budget-v21";
+const CACHE = "budget-v22";
 const ASSETS = [
   "./",
   "./index.html",

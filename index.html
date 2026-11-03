@@ -26,6 +26,7 @@
   --rub:#2F5D8C;  --rub-soft:#E8EFF7;
   --vnd:#5B7130;  --vnd-soft:#EEF2E3;
   --cash:#A9740F; --cash-soft:#FAF1DC;
+  --cap:#1F6F6B;  --cap-soft:#E1EFED;
   --danger:#B23A2B;
   --ok:#2C6B45;
   --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
@@ -37,6 +38,7 @@
 body[data-tab="inc"],body[data-tab="rub"]{--acc:var(--rub);--acc-soft:var(--rub-soft)}
 body[data-tab="cash"]{--acc:var(--cash);--acc-soft:var(--cash-soft)}
 body[data-tab="sum"],body[data-tab="dyn"]{--acc:var(--ink);--acc-soft:var(--line-2)}
+body[data-tab="cap"]{--acc:var(--cap);--acc-soft:var(--cap-soft)}
 
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0}
@@ -482,6 +484,85 @@ input.lit{animation:lit 1.8s ease-out}
   .bidv-in,.bidv-table select{font-size:15px;padding:7px 8px}
 }
 
+/* ---------- капитал ---------- */
+input[type="date"],input[type="month"]{
+  width:100%;border:1px solid var(--line);border-radius:var(--r-field);background:var(--paper);
+  padding:10px 12px;font:inherit;font-size:16px;color:var(--ink);min-height:46px;
+}
+.hrow h1{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (max-width:380px){ .hrow{gap:6px} .hrow h1{font-size:16px} .mnav select{font-size:15px} }
+.hcap{
+  background:none;border:0;color:var(--ink-2);width:36px;height:34px;border-radius:10px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;padding:0;flex:0 0 auto;
+}
+.hcap svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.hcap:hover{background:var(--line-2);color:var(--ink)}
+.hcap[aria-pressed="true"]{background:var(--cap-soft);color:var(--cap)}
+body[data-tab="cap"] .mnav{display:none}
+.cap-hero{padding:16px 14px 4px}
+.cap-hero .lab{font-size:13px;font-weight:600;color:var(--ink-3)}
+.cap-hero .v{font-size:32px;font-weight:750;color:var(--cap);margin-top:2px;letter-spacing:-.025em}
+.cap-hero .sub{font-size:12.5px;color:var(--ink-3)}
+.cap-hero.neg .v{color:var(--danger)}
+.big.debt .v{color:var(--ink-2)}
+.cap-bar{display:flex;height:10px;border-radius:5px;overflow:hidden;margin:2px 14px 8px;background:var(--line-2)}
+.cap-bar i{display:block;height:100%}
+.cap-bar i + i{border-left:2px solid var(--card)}
+.cap-leg{display:flex;flex-wrap:wrap;gap:4px 14px;padding:0 14px 10px;font-size:12.5px;color:var(--ink-2)}
+.cap-leg i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.cap-kpi{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--line-2);border-top:1px solid var(--line-2)}
+.cap-kpi > div{background:var(--card);padding:10px 12px 12px;min-width:0}
+.cap-kpi .lab{font-size:12px;color:var(--ink-3);font-weight:600}
+.cap-kpi .v{font-size:17px;font-weight:700;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cap-kpi .sub{font-size:11.5px;color:var(--ink-3);line-height:1.35;margin-top:1px}
+.cap-kpi .warn .v{color:var(--danger)}
+.cap-kpi .good .v{color:var(--ok)}
+@media (max-width:400px){ .cap-kpi > div{padding:9px 9px 11px} .cap-kpi .v{font-size:15px} }
+.cap-row{
+  display:flex;align-items:center;gap:10px;width:100%;padding:10px 14px;margin:0;
+  border:0;border-top:1px solid var(--line-2);background:none;font:inherit;color:inherit;text-align:left;cursor:pointer;
+}
+.cap-row:first-child{border-top:0}
+.cap-row:hover{background:var(--paper)}
+.cap-row .nm{flex:1;min-width:0;font-size:14.5px;font-weight:550}
+.cap-row .nm i{display:block;font-style:normal;font-weight:400;font-size:12.5px;color:var(--ink-3);margin-top:1px;line-height:1.4}
+.cap-row .nm i.bad{color:var(--danger)}
+.cap-row .vl{text-align:right;font-size:15px;font-weight:650;white-space:nowrap}
+.cap-row .vl i{display:block;font-style:normal;font-size:12px;color:var(--ink-3);font-weight:500}
+.cap-goal{flex-direction:column;align-items:stretch;gap:0}
+.cap-gtop{display:flex;align-items:baseline;gap:10px}
+.cap-goal .bar{height:8px;border-radius:4px}
+.cap-gmeta{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;margin-top:7px;font-size:12.5px;color:var(--ink-3)}
+.cap-pill{font-size:11.5px;font-weight:650;border-radius:6px;padding:2px 7px;background:var(--paper);color:var(--ink-2)}
+.cap-pill.ok{background:#E3F2E8;color:var(--ok)}
+.cap-pill.bad{background:#FBEAE7;color:var(--danger)}
+.cap-rates{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 14px 14px;border-top:1px solid var(--line-2)}
+.cap-rates .info{flex:1;min-width:180px;border:0;background:none;padding:0;font:inherit;font-size:13px;color:var(--ink-2);text-align:left;cursor:pointer;line-height:1.45}
+.cap-rates .info:hover{color:var(--ink)}
+.cap-rates .info u{text-decoration:none;border-bottom:1px dashed var(--ink-3)}
+.cap-tips{margin:0;padding:2px 14px 4px;list-style:none}
+.cap-tips li{position:relative;padding:5px 0 5px 16px;font-size:14px;line-height:1.45}
+.cap-tips li::before{content:"";position:absolute;left:3px;top:.95em;width:5px;height:5px;border-radius:50%;background:var(--cap)}
+.risk-type{padding:6px 14px 2px}
+.risk-type b{font-size:18px;font-weight:750;color:var(--cap)}
+.risk-type .sub{font-size:12.5px;color:var(--ink-3)}
+.risk-type p{margin:3px 0 0;font-size:13.5px;color:var(--ink-2);line-height:1.45}
+.risk-lab{display:flex;gap:8px;padding:10px 14px 0;font-size:13px;color:var(--ink-2)}
+.risk-lab span:first-child{flex:1}
+.risk-meter{position:relative;margin:7px 14px 6px;height:10px;border-radius:5px;background:var(--line-2)}
+.risk-meter i{position:absolute;left:0;top:0;bottom:0;border-radius:5px}
+.risk-meter b{position:absolute;top:-4px;bottom:-4px;width:2px;margin-left:-1px;background:var(--ink);border-radius:1px}
+.risk-q{margin:0 0 14px}
+.risk-q p{margin:0 0 6px;font-size:14.5px;font-weight:600}
+.risk-q small{display:block;color:var(--cap);font-size:12.5px;margin:-3px 0 6px}
+.ask .hint{font-size:12.5px;color:var(--ink-3);line-height:1.45;margin:-4px 0 10px}
+/* «В накопления» в рублёвых тратах: это расход, но выделенный */
+.item.sav{box-shadow:inset 3px 0 0 var(--cap)}
+.item .pay.sav{background:var(--cap-soft);color:var(--cap)}
+.tot.sav{background:var(--cap-soft);padding-top:8px;padding-bottom:8px}
+.tot.sav .lab{color:var(--cap);font-size:13px;font-weight:600}
+.tot.sav .val{color:var(--cap);font-size:14px}
+
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -489,13 +570,14 @@ input.lit{animation:lit 1.8s ease-out}
 
 <header>
   <div class="hrow">
-    <h1>Бюджет</h1>
+    <h1 id="app-h">Бюджет</h1>
     <div class="mnav">
       <button id="prev" title="Предыдущий месяц" aria-label="Предыдущий месяц"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
       <select id="mSel" aria-label="Месяц"></select>
       <select id="ySel" aria-label="Год"></select>
       <button id="next" title="Следующий месяц" aria-label="Следующий месяц"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
     </div>
+    <button class="hcap" id="cap-btn" title="Капитал: накопления, цели, риск-профиль" aria-label="Капитал" aria-pressed="false"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="7" ry="2.8"/><path d="M5 6v6c0 1.55 3.13 2.8 7 2.8s7-1.25 7-2.8V6"/><path d="M5 12v6c0 1.55 3.13 2.8 7 2.8s7-1.25 7-2.8v-6"/></svg></button>
     <span class="syncdot" id="sdot" title="Синхронизация выключена"></span>
   </div>
 </header>
@@ -602,6 +684,7 @@ input.lit{animation:lit 1.8s ease-out}
       <div class="chips days" data-days></div>
       <p class="f-lab">Категория</p>
       <div class="chips" data-cats></div>
+      <div data-dest-w hidden><p class="f-lab">Куда отложили</p><div class="chips" data-dest></div></div>
       <div class="entry">
         <button class="mic" data-mic title="Надиктовать" aria-label="Надиктовать"><svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V22h2v-3.08A7 7 0 0 0 19 12h-2z"/></svg></button>
         <input class="num" type="text" inputmode="decimal" placeholder="Сумма, ₽" data-amt aria-label="Сумма в рублях">
@@ -615,6 +698,7 @@ input.lit{animation:lit 1.8s ease-out}
     <h2 class="card-h">По дням</h2>
     <div id="l-rub"></div>
     <div class="tot grand"><span class="lab">Всего за месяц</span><span class="val num" id="t-rub">—</span></div>
+    <div class="tot sav" id="t-rub-sav-w" hidden><span class="lab">в т.ч. в накопления</span><span class="val num" id="t-rub-sav">—</span></div>
   </div>
   <div class="card"><h2 class="card-h">По категориям</h2><div id="c-rub"></div></div>
 </section>
@@ -653,6 +737,47 @@ input.lit{animation:lit 1.8s ease-out}
   </div>
 </section>
 
+<!-- ============ КАПИТАЛ (иконка в шапке) ============ -->
+<section id="s-cap" hidden>
+  <div class="card">
+    <div class="cap-hero" id="cap-hero">
+      <div class="lab">Чистый капитал</div>
+      <div class="v num" id="cap-net">—</div>
+      <div class="sub" id="cap-sub"></div>
+    </div>
+    <div class="split">
+      <div class="big"><div class="lab">Активы</div><div class="v num" id="cap-as">—</div></div>
+      <div class="big debt"><div class="lab">Ипотека</div><div class="v num" id="cap-debt">—</div></div>
+    </div>
+    <div id="cap-mix"></div>
+    <div class="cap-kpi" id="cap-kpi"></div>
+    <div class="note" id="cap-kpi-note"></div>
+  </div>
+  <div class="card">
+    <h2 class="card-h">Вклады и счета<button class="link-btn" data-cap-add="deposit">+ Добавить</button></h2>
+    <div id="cap-dep"></div>
+  </div>
+  <div class="card">
+    <h2 class="card-h">Крипта · Bybit<button class="link-btn" data-cap-add="crypto">+ Добавить</button></h2>
+    <div id="cap-cry"></div>
+    <div class="cap-rates" id="cap-rates"></div>
+  </div>
+  <div class="card">
+    <h2 class="card-h">Ипотека<button class="link-btn" data-cap-add="mortgage">+ Добавить</button></h2>
+    <div id="cap-mort"></div>
+  </div>
+  <div class="card">
+    <h2 class="card-h">Финансовые цели<button class="link-btn" data-cap-add="goal">+ Добавить</button></h2>
+    <div id="cap-goals"></div>
+    <div class="note" id="cap-goals-note" hidden></div>
+  </div>
+  <div class="card">
+    <h2 class="card-h">Риск-профиль</h2>
+    <div id="cap-risk"></div>
+    <div class="note" style="padding-bottom:12px">Ориентир по простым правилам, а не индивидуальная инвестиционная рекомендация.</div>
+  </div>
+</section>
+
 <!-- ============ ИТОГИ ============ -->
 <section id="s-sum" hidden>
   <div class="card">
@@ -661,6 +786,7 @@ input.lit{animation:lit 1.8s ease-out}
       <div class="big"><div class="lab">Доходы</div><div class="v num" id="s-i">—</div></div>
       <div class="big"><div class="lab">Расходы</div><div class="v num" id="s-r">—</div></div>
     </div>
+    <div class="tot sav" id="s-sav-w" hidden><span class="lab">в т.ч. отложено в накопления</span><span class="val num" id="s-sav">—</span></div>
     <div class="big" id="s-bal-w"><div class="lab">Остаток</div><div class="v num" id="s-bal">—</div></div>
   </div>
   <div class="card">
@@ -729,7 +855,7 @@ input.lit{animation:lit 1.8s ease-out}
 
 const CATS = {
   inc:  ["Зарплата","Аванс","Отпускные","Другое"],
-  rub:  ["Ребёнок","Квартира","Покупка иностранной валюты","Прочее"],
+  rub:  ["Ребёнок","Квартира","Покупка иностранной валюты","В накопления","Прочее"],
   vnd:  ["Еда/продукты","Кафе/напитки","Такси/транспорт","Медицина","Жильё","Развлечения","Одежда","Хозтовары","Прочее"],
   pay:  ["Наличные","Карта BIDV","Карта UnionPay","Русский QR"]
 };
@@ -916,7 +1042,7 @@ function mergeDB(a, b){
     if(k === META_KEY){
       const ma = isObj(a) && isObj(a[k]) ? a[k] : {};
       const mb = isObj(b) && isObj(b[k]) ? b[k] : {};
-      out[k] = {bidvImported: mergeBidvImported(ma.bidvImported, mb.bidvImported), ai: aiStoreMerge(ma.ai, mb.ai)};
+      out[k] = {bidvImported: mergeBidvImported(ma.bidvImported, mb.bidvImported), ai: aiStoreMerge(ma.ai, mb.ai), cap: capMerge(ma.cap, mb.cap)};
       return;
     }
     const ma = isObj(a) && isObj(a[k]) ? fix(a[k]) : EMPTY();
@@ -1002,6 +1128,22 @@ function buildForm(key, scroll){
       cbox.appendChild(b);
     });
   }
+  /* «В накопления»: можно указать актив — рублёвый вклад или счёт тогда
+     вырастет на эту сумму, а у крипты посчитается, сколько вложено. */
+  const dw = root.querySelector("[data-dest-w]");
+  if(dw){
+    const opts = pick[key].cat===SAV ? capLive().filter(a=> CAP_ASSET.includes(a.kind)) : [];
+    dw.hidden = !opts.length;
+    const box = dw.querySelector("[data-dest]"); box.innerHTML = "";
+    if(pick[key].dest && !opts.some(a=> a.id===pick[key].dest)) pick[key].dest = "";
+    if(opts.length) [{id:"", t:"Не указывать"}].concat(opts.map(a=>({id:a.id, t:capLabel(a)}))).forEach(o=>{
+      const b = document.createElement("button");
+      b.className = "chip"; b.textContent = o.t;
+      b.setAttribute("aria-pressed", (pick[key].dest||"")===o.id);
+      b.onclick = ()=>{ pick[key].dest = o.id; buildForm(key); };
+      box.appendChild(b);
+    });
+  }
   const pbox = root.querySelector("[data-pays]");
   if(pbox){
     pbox.innerHTML = "";
@@ -1025,7 +1167,12 @@ function wireAdd(key){
     const m = monW(), p = pick[key];
     const rec = {id:uid(), day:p.day, amount:v, note:(note.value||"").trim(), cat:"", pay:"", ts:nowTs(), del:0};
     if(key==="cash"){ m.topup.push(rec); }
-    else { rec.cat = p.cat; if(key==="vnd") rec.pay = p.pay; m[key].push(rec); }
+    else {
+      rec.cat = p.cat;
+      if(key==="vnd") rec.pay = p.pay;
+      if(key==="rub" && rec.cat===SAV && p.dest) rec.pay = p.dest;   // id актива из «Капитала»
+      m[key].push(rec);
+    }
     save(); amt.value=""; note.value="";
     const h = root.querySelector("[data-heard]"); if(h) h.textContent = "";
     render();
@@ -1191,6 +1338,7 @@ function renderList(box, arr, cur, key){
     return;
   }
   const f = cur==="R" ? fR : fV;
+  const capNames = key==="rub" ? new Map(capLive().map(a=> [a.id, capLabel(a)])) : null;
   groupDays(arr).forEach(g=>{
     const wrap = document.createElement("div"); wrap.className="daygrp";
     const h = document.createElement("div"); h.className="dayhead";
@@ -1200,7 +1348,7 @@ function renderList(box, arr, cur, key){
     h.append(hb, hd, ht);
     wrap.appendChild(h);
     g.items.forEach(it=>{
-      const r = document.createElement("div"); r.className="item";
+      const r = document.createElement("div"); r.className = "item" + (key==="rub" && it.cat===SAV ? " sav" : "");
       const c = document.createElement("div"); c.className="cat";
       let editBtn = null;
       if(key === "vnd"){
@@ -1248,7 +1396,12 @@ function renderList(box, arr, cur, key){
       }
       if(it.note){ const i=document.createElement("i"); i.textContent=it.note; c.appendChild(i); }
       r.appendChild(c);
-      if(it.pay){ const p=document.createElement("span"); p.className="pay"; p.textContent=it.pay; r.appendChild(p); }
+      if(it.pay){
+        const p = document.createElement("span"); p.className = "pay";
+        if(capNames){ p.classList.add("sav"); p.textContent = "→ "+(capNames.get(it.pay) || "актив удалён"); }
+        else p.textContent = it.pay;
+        r.appendChild(p);
+      }
       const a = document.createElement("span"); a.className="amt num"; a.textContent=f(it.amount); r.appendChild(a);
       if(editBtn) r.appendChild(editBtn);
       const d = document.createElement("button"); d.className="del"; d.textContent="×";
@@ -1298,7 +1451,8 @@ function renderCats(box, arr, cats, cur, field){
     top.append(nm, pcs, vl);
     const bar = document.createElement("div"); bar.className="bar";
     const fill = document.createElement("i");
-    fill.style.width = pc+"%"; fill.style.background = color;
+    fill.style.width = pc+"%"; fill.style.background = r.c===SAV ? "var(--cap)" : color;
+    if(r.c===SAV) nm.style.color = "var(--cap)";
     bar.appendChild(fill);
     el.append(top, bar);
     box.appendChild(el);
@@ -1340,6 +1494,9 @@ function render(){
   // расходы руб
   renderList(document.getElementById("l-rub"), m.rub, "R", "rub");
   document.getElementById("t-rub").textContent = fR(sum(m.rub));
+  const savM = sum(m.rub.filter(x=> x.cat===SAV));
+  document.getElementById("t-rub-sav-w").hidden = !savM;
+  document.getElementById("t-rub-sav").textContent = fR(savM);
   renderCats(document.getElementById("c-rub"), m.rub, CATS.rub, "R", "cat");
 
   // расходы донги
@@ -1392,6 +1549,8 @@ function render(){
   document.getElementById("s-i").textContent = fR(inc);
   document.getElementById("s-r").textContent = fR(rub);
   document.getElementById("s-bal").textContent = fR(bal);
+  document.getElementById("s-sav-w").hidden = !savM;
+  document.getElementById("s-sav").textContent = fR(savM) + (inc ? " · "+Math.round(savM/inc*100)+"% дохода" : "");
   const bw = document.getElementById("s-bal-w");
   bw.className = "big " + (bal>0?"pos":bal<0?"neg":"");
   document.getElementById("s-v").textContent = fV(sum(m.vnd));
@@ -1400,6 +1559,7 @@ function render(){
   renderCats(document.getElementById("s-cats"), m.vnd, CATS.vnd, "V", "cat");
   aiRenderCard();
   renderDyn();
+  renderCap();
 
   Object.keys(FORMS).forEach(k=>{ buildForm(k); });
 }
@@ -1419,14 +1579,19 @@ function refreshToday(){
 }
 
 /* ---------- tabs & month ---------- */
+let lastTab = "vnd";   // куда вернуться из «Капитала» повторным нажатием иконки
 function setTab(t){
+  if(t !== "cap") lastTab = t;
   tab = t;
   document.body.dataset.tab = t;   // цвет раздела в CSS: --acc
   document.querySelectorAll(".tab").forEach(b=> b.setAttribute("aria-selected", b.dataset.t===t));
-  ["inc","rub","vnd","cash","dyn","sum"].forEach(k=>
+  document.getElementById("cap-btn").setAttribute("aria-pressed", t==="cap");
+  document.getElementById("app-h").textContent = t==="cap" ? "Капитал" : "Бюджет";
+  ["inc","rub","vnd","cash","dyn","sum","cap"].forEach(k=>
     document.getElementById("s-"+k).hidden = (k!==t));
   window.scrollTo({top:0});
   if(t==="dyn") renderDyn();   // графикам нужна ширина видимой вкладки
+  if(t==="cap") renderCap();
   // лента дней длинная — подводим её к выбранному числу (в конце месяца иначе мотать вручную)
   if(FORMS[t]) buildForm(t, true);
 }
@@ -1489,6 +1654,7 @@ const V_CAT = {
     ["Ребёнок",   ["ребен","ребён","сын","дочь","дочк","школ","садик","детск","алимент"]],
     ["Квартира",  ["квартир","ипотек","жкх","коммунал","аренд","квартплат"]],
     ["Покупка иностранной валюты", ["валют","обмен","донг куп","куплю донг","купил донг","доллар","юан"]],
+    ["В накопления", ["накоплен","отложил","отложить","сбережен","на вклад","вклад","депозит","крипт","инвест"]],
     ["Прочее",    ["прочее","друг"]]
   ],
   vnd: [
@@ -2188,8 +2354,8 @@ function aiStoreMerge(a, b){
   Object.keys(bb).forEach(k=>{ if(!out[k] || bb[k].at > out[k].at || (bb[k].at === out[k].at && bb[k].del)) out[k] = bb[k]; });
   return out;
 }
-/* _meta целиком: метки импорта BIDV + разборы ИИ */
-function metaNorm(v){ return {bidvImported: bidvImportedList(v), ai: aiStoreNorm(isObj(v) ? v.ai : null)}; }
+/* _meta целиком: метки импорта BIDV + разборы ИИ + капитал */
+function metaNorm(v){ return {bidvImported: bidvImportedList(v), ai: aiStoreNorm(isObj(v) ? v.ai : null), cap: capNorm(isObj(v) ? v.cap : null)}; }
 function aiSaved(key){
   const meta = isObj(DB[META_KEY]) ? DB[META_KEY] : null;
   const x = meta && isObj(meta.ai) ? meta.ai[key] : null;
@@ -2270,6 +2436,7 @@ const AI_SYSTEM = `Ты — внимательный помощник по ли�
 Правила:
 - Рубли и донги не смешивай и не пересчитывай по курсу: разбирай их отдельно.
 - Донги указаны в тысячах; пиши суммы так же: «4 116 тыс. ₫».
+- Рублёвая категория «В накопления» — не трата, а отложенные деньги (вклад, крипта): учитывай её отдельно и считай хорошим знаком.
 - Если месяц ещё идёт, сравнивай с прошлыми по темпу (с учётом прошедших дней), а не по итогу — незаконченный месяц не повод говорить, что траты упали.
 - Опирайся только на присланные цифры и комментарии, ничего не выдумывай и не пересказывай таблицу целиком.
 Отвечай по-русски, коротко и по делу — так, чтобы прочитать за минуту-две.
@@ -2651,6 +2818,692 @@ function renderDyn(){
   dynHeat(document.getElementById("dyn-rcat"), months, "rub", CATS.rub, v=> dynCompR(v), [45,98,184], [235,241,250]);
 }
 
+/* ======================= КАПИТАЛ =======================
+   Вклады и счета, крипта на Bybit, ипотека, финансовые цели, риск-профиль.
+   Открывается иконкой в шапке, в нижнее меню не входит.
+   Хранится в DB._meta.cap и синхронизируется вместе с базой:
+     items   — {id, kind, ts, del, …}: kind = deposit | account | crypto | mortgage | goal.
+               Сливаются по id как операции: побеждает больший ts, удаление —
+               надгробие {id, kind, ts, del} на 90 дней.
+     rates   — {usd, usdTs, px:{BTC:$…}, pxTs}: курс доллара и цены монет.
+     profile — {a:{q1:индекс ответа,…}, ts}: ответы теста риск-профиля.
+   Донги здесь не участвуют и в рубли не пересчитываются: средние траты берутся из
+   «Трат ₽», где донговая жизнь уже видна как «Покупка иностранной валюты».
+   Связь с бюджетом: запись «В накопления» во «Тратах ₽» может указывать актив
+   (его id лежит в поле pay). Рублёвый вклад или счёт показывает сумму, введённую
+   вручную на дату amountTs, плюс такие пополнения, сделанные после этой даты. */
+const SAV = "В накопления";
+const CAP_KINDS = ["deposit","account","crypto","mortgage","goal"];
+const CAP_ASSET = ["deposit","account","crypto"];
+const STABLE = ["USDT","USDC","FDUSD","DAI","USDE","TUSD"];
+const COINS = ["USDT","BTC","ETH","TON","SOL","USDC"];
+const CG_ID = {BTC:"bitcoin",ETH:"ethereum",TON:"the-open-network",SOL:"solana",XRP:"ripple",BNB:"binancecoin",
+  DOGE:"dogecoin",TRX:"tron",ADA:"cardano",MNT:"mantle",NOT:"notcoin",LTC:"litecoin",DOT:"polkadot",
+  AVAX:"avalanche-2",LINK:"chainlink",USDT:"tether",USDC:"usd-coin"};
+const CAP_C = {safe:"#1F6F6B", stable:"#7FB5AE", risky:"#C2772B"};
+const MKEY = /^\d{4}-(0[1-9]|1[0-2])$/;
+const capStr = (v,n)=> v==null ? "" : String(v).slice(0,n);
+const capNum = v=>{ const n = Number(v); return isFinite(n) && n>0 ? n : 0; };
+const capEl = id=> document.getElementById(id);
+
+function capItemNorm(x){
+  if(!isObj(x) || typeof x.id!=="string" || !x.id || !CAP_KINDS.includes(x.kind)) return null;
+  const ts = num0(x.ts); if(!ts) return null;
+  const o = {id:x.id.slice(0,40), kind:x.kind, ts, del:num0(x.del)};
+  if(o.del) return o;
+  o.name = capStr(x.name,80).trim();
+  o.amount = capNum(x.amount);
+  o.amountTs = num0(x.amountTs) || ts;
+  o.cur = x.cur==="USD" ? "USD" : "RUB";
+  o.coin = capStr(x.coin,12).toUpperCase().replace(/[^A-Z0-9]/g,"");
+  o.qty = capNum(x.qty);
+  o.rate = Math.min(capNum(x.rate), 1000);
+  o.end = /^\d{4}-\d{2}-\d{2}$/.test(x.end) ? x.end : "";
+  o.pay = capNum(x.pay);
+  o.cushion = x.cushion ? 1 : 0;
+  o.risky = x.risky ? 1 : 0;
+  o.target = capNum(x.target);
+  o.deadline = MKEY.test(x.deadline) ? x.deadline : "";
+  o.links = Array.isArray(x.links) ? x.links.filter(s=> typeof s==="string" && s).slice(0,40) : [];
+  return o;
+}
+function capNorm(v){
+  v = isObj(v) ? v : {};
+  const cut = nowTs() - TOMB_TTL, byId = new Map();
+  (Array.isArray(v.items) ? v.items : []).forEach(x=>{
+    const o = capItemNorm(x);
+    if(!o || (o.del && o.del < cut)) return;
+    const p = byId.get(o.id);
+    if(!p || o.ts > p.ts || (o.ts === p.ts && o.del)) byId.set(o.id, o);
+  });
+  const r = isObj(v.rates) ? v.rates : {}, px = {};
+  if(isObj(r.px)) Object.keys(r.px).forEach(k=>{ const n = capNum(r.px[k]); if(n && /^[A-Z0-9]{1,12}$/.test(k)) px[k] = n; });
+  const p = isObj(v.profile) ? v.profile : {}, a = {};
+  if(isObj(p.a)) Object.keys(p.a).forEach(k=>{
+    const n = Number(p.a[k]);
+    if(/^q\d{1,2}$/.test(k) && Number.isInteger(n) && n>=0 && n<10) a[k] = n;
+  });
+  return {
+    items: Array.from(byId.values()),
+    rates: {usd:capNum(r.usd), usdTs:num0(r.usdTs), px, pxTs:num0(r.pxTs)},
+    profile: {a, ts:num0(p.ts)}
+  };
+}
+function capMerge(a, b){
+  const A = capNorm(a), B = capNorm(b);
+  const out = capNorm({items: A.items.concat(B.items)});   // слияние по id
+  const u = B.rates.usdTs > A.rates.usdTs ? B.rates : A.rates;
+  const p = B.rates.pxTs > A.rates.pxTs ? B.rates : A.rates;
+  out.rates = {usd:u.usd, usdTs:u.usdTs, px:p.px, pxTs:p.pxTs};
+  out.profile = B.profile.ts > A.profile.ts ? B.profile : A.profile;
+  return out;
+}
+function capGet(){ return capNorm(isObj(DB[META_KEY]) ? DB[META_KEY].cap : null); }
+function capSave(cap){
+  const meta = metaNorm(DB[META_KEY]);   // соседние поля _meta не теряем
+  meta.cap = cap;
+  DB[META_KEY] = meta;
+  save(); render();
+}
+function capLive(){ return capGet().items.filter(x=>!x.del); }
+function capPut(it){
+  const c = capGet();
+  it.ts = nowTs();
+  const i = c.items.findIndex(x=>x.id===it.id);
+  if(i>-1) c.items[i] = it; else c.items.push(it);
+  capSave(c);
+}
+function capRemove(id){
+  const c = capGet(), i = c.items.findIndex(x=>x.id===id);
+  if(i<0) return;
+  const t = nowTs();
+  c.items[i] = {id, kind:c.items[i].kind, ts:t, del:t};
+  // цели перестают ссылаться на удалённый актив
+  c.items.forEach(g=>{ if(g.kind==="goal" && !g.del && g.links.includes(id)){ g.links = g.links.filter(x=>x!==id); g.ts = t; } });
+  capSave(c);
+}
+function capLabel(a){
+  if(a.kind==="crypto") return (a.name||"Bybit")+" · "+a.coin;
+  return a.name || (a.kind==="deposit" ? "Вклад" : a.kind==="mortgage" ? "Ипотека" : "Счёт");
+}
+
+/* ---------- цифры из бюджета ---------- */
+function capMonths(){
+  return Object.keys(DB).filter(k=> MKEY.test(k) && isObj(DB[k])).sort().map(k=>{
+    const m = fix(DB[k]);
+    return {k, rub:live(m.rub), inc:live(m.inc)};
+  });
+}
+function capMedian(a){
+  if(!a.length) return 0;
+  const s = a.slice().sort((x,y)=>x-y), h = s.length>>1;
+  return s.length%2 ? s[h] : (s[h-1]+s[h])/2;
+}
+/* Средние берём по трём последним полным месяцам и медианой: разовые
+   крупные суммы (продажа машины, закрытие кредита) не искажают картину. */
+function capCtx(){
+  const c = capGet(), items = c.items.filter(x=>!x.del);
+  const months = capMonths();
+  const nowK = today.getFullYear()+"-"+String(today.getMonth()+1).padStart(2,"0");
+  const savOf = d=> sum(d.rub.filter(x=>x.cat===SAV));
+  const done = months.filter(d=> d.k < nowK && (d.rub.length || d.inc.length)).slice(-3);
+  const cur = months.find(d=> d.k===nowK) || {rub:[], inc:[]};
+  const savRecs = [], mortRecs = [];
+  months.forEach(d=> d.rub.forEach(x=>{
+    if(x.cat===SAV && x.pay) savRecs.push(x);
+    if(/ипотек/i.test(x.note)) mortRecs.push(Object.assign({k:d.k}, x));
+  }));
+  mortRecs.sort((a,b)=> a.k===b.k ? a.day-b.day : (a.k<b.k ? -1 : 1));
+  const ctx = {
+    c, items, nowK, n:done.length,
+    spend: capMedian(done.map(d=> sum(d.rub) - savOf(d))),
+    inc: capMedian(done.map(d=> sum(d.inc))),
+    savAvg: done.length ? sum(done.map(savOf), x=>x)/done.length : 0,
+    savNow: savOf(cur),
+    mortPay: mortRecs.length ? mortRecs[mortRecs.length-1].amount : 0,
+    mortRecs,
+    salary: done.length>=2 && done.every(d=> d.inc.some(x=>x.cat==="Зарплата")),
+    kid: months.some(d=> d.rub.some(x=>x.cat==="Ребёнок"))
+  };
+  ctx.contrib = (a, after)=> sum(savRecs.filter(x=> x.pay===a.id && (!after || x.ts > after)));
+  return ctx;
+}
+function capCoinPx(c, coin){ return c.rates.px[coin] || (STABLE.includes(coin) ? 1 : 0); }
+function capUsdOf(ctx, a){
+  if(a.kind==="crypto"){ const p = capCoinPx(ctx.c, a.coin); return p ? a.qty*p : null; }
+  return a.cur==="USD" ? a.amount : null;
+}
+/* Остаток ипотеки: введённый вручную на дату amountTs, минус платежи с «ипотек»
+   в комментарии, добавленные позже, — по графику: сначала проценты, потом тело. */
+function capMortNow(ctx, a){
+  const r = a.rate/1200;
+  const pays = ctx.mortRecs.filter(x=> x.ts > a.amountTs);
+  let b = a.amount;
+  pays.forEach(x=>{ b = Math.max(0, b*(1+r) - x.amount); });
+  return {bal:b, n:pays.length};
+}
+function capRub(ctx, a){
+  if(a.kind==="mortgage") return capMortNow(ctx, a).bal;
+  if(a.kind==="crypto" || a.cur==="USD"){
+    const u = capUsdOf(ctx, a), r = ctx.c.rates.usd;
+    return u!=null && r ? u*r : null;
+  }
+  return a.amount + ctx.contrib(a, a.amountTs);
+}
+function capClass(a){
+  if(a.kind==="crypto") return STABLE.includes(a.coin) ? "stable" : "risky";
+  return a.risky ? "risky" : "safe";
+}
+function capMort(bal, rate, pay){
+  const r = rate/1200;
+  if(!bal || !pay) return null;
+  let n;
+  if(!r) n = bal/pay;
+  else { if(pay <= bal*r) return {never:true}; n = -Math.log(1 - r*bal/pay)/Math.log(1+r); }
+  n = Math.max(1, Math.ceil(n - 1e-9));
+  return {n, end:new Date(today.getFullYear(), today.getMonth()+n, 1), over:Math.max(0, pay*n - bal)};
+}
+
+/* ---------- форматы ---------- */
+const fU = n=> (n||0).toLocaleString("ru-RU",{maximumFractionDigits: Math.abs(n)<1 ? 4 : 2})+" $";
+const fQ = n=> (n||0).toLocaleString("ru-RU",{maximumFractionDigits:8});
+const fPct = n=> (Math.round((n||0)*10)/10).toLocaleString("ru-RU")+"%";
+const fN1 = n=> (Math.round((n||0)*10)/10).toLocaleString("ru-RU");
+function capDate(s){ const p = s.split("-").map(Number); return p[2]+" "+MON_S[p[1]-1]+" "+p[0]; }
+function capDateTs(t){ const d = new Date(t); return d.getDate()+" "+MON_S[d.getMonth()]+(d.getFullYear()!==today.getFullYear() ? " "+d.getFullYear() : ""); }
+function capDays(s){
+  const p = s.split("-").map(Number);
+  return Math.round((new Date(p[0],p[1]-1,p[2]) - new Date(today.getFullYear(),today.getMonth(),today.getDate()))/864e5);
+}
+function capPlural(n, one, few, many){
+  n = Math.abs(n)%100; const n1 = n%10;
+  return n>10 && n<20 ? many : n1>1 && n1<5 ? few : n1===1 ? one : many;
+}
+
+/* ---------- риск-профиль ---------- */
+const RISK_Q = [
+  {k:"q1", t:"На какой срок готовы вложить деньги, не трогая их?", o:["До года","1–3 года","3–5 лет","Больше 5 лет"]},
+  {k:"q2", t:"Вложения за месяц подешевели на 20%. Что сделаете?", o:["Продам всё","Продам часть","Подожду","Докуплю"]},
+  {k:"q3", t:"Насколько стабилен доход?", o:["Нестабильный","Скорее стабильный","Стабильная зарплата"]},
+  {k:"q4", t:"Главная цель вложений", o:["Сохранить","Обогнать инфляцию","Заметно приумножить","Максимальный рост"]},
+  {k:"q5", t:"Опыт с инвестициями", o:["Только вклады","Пробовал фонды и акции","Регулярно — акции или крипта"]},
+  {k:"q6", t:"Финансовые обязательства", o:["Много: иждивенцы и долги","Есть ребёнок или кредит","Почти нет"]}
+];
+const RISK_MAX = RISK_Q.reduce((s,q)=> s+q.o.length-1, 0);
+const RISK_T = [
+  {max:5,  name:"Консервативный", risky:10, d:"Главное — сохранность. Основа — вклады и накопительные счета, рискованные активы — не больше 10%."},
+  {max:10, name:"Умеренный",      risky:30, d:"Баланс надёжности и роста: основа — вклады, рискованные активы — до 30%."},
+  {max:99, name:"Агрессивный",    risky:60, d:"Готовность к сильным просадкам ради роста: рискованные активы — до 60%, но подушка — отдельно и без риска."}
+];
+function capRiskType(c){
+  if(!RISK_Q.every(q=> c.profile.a[q.k]!=null)) return null;
+  const score = RISK_Q.reduce((s,q)=> s+Math.min(c.profile.a[q.k], q.o.length-1), 0);
+  return Object.assign({score}, RISK_T.find(t=> score<=t.max));
+}
+function capTips(ctx, T){
+  const t = [], tot = ctx.tot;
+  const cm = ctx.spend ? ctx.cushion/ctx.spend : null;
+  if(cm!=null && cm < 3)
+    t.push("Подушка — "+fN1(cm)+" мес. трат. Ориентир — 3–6 мес. (≈ "+fR0(ctx.spend*3)+" – "+fR0(ctx.spend*6)+") на вкладах или накопительном счёте; рисковать стоит деньгами сверх неё.");
+  else if(cm!=null && cm >= 6)
+    t.push("Подушка закрыта ("+fN1(cm)+" мес. трат) — дальше накопления можно направлять на цели.");
+  const rp = tot ? ctx.by.risky/tot*100 : 0;
+  if(T && tot){
+    if(rp > T.risky+5) t.push("Рискованная часть — "+Math.round(rp)+"%, выше ориентира "+T.risky+"% для вашего профиля. Новые накопления лучше направлять в защитную часть.");
+    else if(rp < T.risky/2 && cm!=null && cm>=3) t.push("Рискованная часть — "+Math.round(rp)+"% при ориентире до "+T.risky+"%: запас по риску есть, если нужна доходность выше вкладов.");
+  }
+  const cry = ctx.by.stable + ctx.by.risky;
+  if(tot && cry/tot > 0.25)
+    t.push("На бирже лежит "+Math.round(cry/tot*100)+"% капитала. Это риск площадки, в том числе для стейблкоинов: крупную сумму стоит разнести.");
+  const mort = ctx.items.find(a=> a.kind==="mortgage" && a.rate);
+  const rates = ctx.items.filter(a=> (a.kind==="deposit" || a.kind==="account") && a.cur==="RUB" && a.rate).map(a=>a.rate);
+  const dep = rates.length ? Math.max.apply(null, rates) : 0;
+  if(mort && dep){
+    if(mort.rate < dep) t.push("Ставка ипотеки ("+fPct(mort.rate)+") ниже ставки вклада ("+fPct(dep)+"): гасить досрочно пока невыгодно — вклад приносит больше, чем стоит долг.");
+    else t.push("Ставка ипотеки ("+fPct(mort.rate)+") не ниже ставки вклада ("+fPct(dep)+"): после подушки досрочное погашение выгоднее вклада.");
+  }
+  const mp = mort ? mort.pay : ctx.mortPay;
+  if(mp && ctx.inc && mp/ctx.inc > 0.3)
+    t.push("Ипотечный платёж — "+Math.round(mp/ctx.inc*100)+"% дохода: это высокая нагрузка, подушку стоит держать ближе к 6 месяцам.");
+  if(ctx.n && !ctx.savAvg && ctx.inc > ctx.spend)
+    t.push("За последние месяцы в «В накопления» ничего не записано, а свободно остаётся ≈ "+fR0(ctx.inc-ctx.spend)+" в месяц. Отмечайте отложенное этой категорией — темп и цели посчитаются сами.");
+  return t;
+}
+
+/* ---------- вкладка ---------- */
+function capRow(box, a, title, subs, val, valSub){
+  const b = aiEl("button","cap-row"); b.type = "button";
+  const nm = aiEl("span","nm",title);
+  subs.filter(Boolean).forEach(s=> nm.appendChild(aiEl("i", s.bad ? "bad" : "", s.t!=null ? s.t : s)));
+  const vl = aiEl("span","vl num",val);
+  if(valSub) vl.appendChild(aiEl("i",null,valSub));
+  b.append(nm, vl);
+  b.onclick = ()=> capEdit(a);
+  box.appendChild(b);
+}
+let capBusy = false;
+function renderCap(){
+  const sec = capEl("s-cap");
+  if(!sec || sec.hidden) return;
+  const ctx = capCtx(), items = ctx.items;
+  const assets = items.filter(a=> CAP_ASSET.includes(a.kind));
+  const morts = items.filter(a=> a.kind==="mortgage");
+  const goals = items.filter(a=> a.kind==="goal");
+  const vals = new Map();
+  assets.concat(morts).forEach(a=> vals.set(a.id, capRub(ctx, a)));
+  const by = {safe:0, stable:0, risky:0};
+  let tot = 0, unknown = 0, cushion = 0;
+  assets.forEach(a=>{
+    const v = vals.get(a.id);
+    if(v==null){ unknown++; return; }
+    tot += v; by[capClass(a)] += v;
+    if(a.cushion) cushion += v;
+  });
+  const debt = sum(morts, a=> vals.get(a.id));
+  Object.assign(ctx, {tot, by, cushion, debt});
+  const byVal = (x,y)=> (vals.get(y.id)||0) - (vals.get(x.id)||0);
+
+  // ---- сводка
+  const net = tot - debt;
+  capEl("cap-net").textContent = (net<0 ? "−" : "")+fR0(Math.abs(net));
+  capEl("cap-hero").className = "cap-hero" + (net<0 ? " neg" : "");
+  capEl("cap-sub").textContent = !assets.length && !morts.length
+    ? "Добавьте вклады, крипту и ипотеку ниже"
+    : unknown ? "не учтено: "+unknown+" "+capPlural(unknown,"актив","актива","активов")+" без курса"
+    : "активы минус ипотека";
+  capEl("cap-as").textContent = fR0(tot);
+  capEl("cap-debt").textContent = debt ? "−"+fR0(debt) : "—";
+  const mix = capEl("cap-mix"); mix.innerHTML = "";
+  if(tot > 0){
+    const bar = aiEl("div","cap-bar"), leg = aiEl("div","cap-leg");
+    [["safe","Вклады и счета"],["stable","Стейблкоины"],["risky","Рискованные"]].forEach(([k,t])=>{
+      if(!(by[k] > 0)) return;
+      const i = document.createElement("i"); i.style.width = (by[k]/tot*100)+"%"; i.style.background = CAP_C[k]; bar.appendChild(i);
+      const s = aiEl("span"), dot = document.createElement("i"); dot.style.background = CAP_C[k];
+      s.append(dot, document.createTextNode(t+" · "+Math.round(by[k]/tot*100)+"%"));
+      leg.appendChild(s);
+    });
+    mix.append(bar, leg);
+  }
+  const kpi = capEl("cap-kpi"); kpi.innerHTML = "";
+  const tile = (lab, v, sub, cls)=>{ const d = aiEl("div", cls||""); d.append(aiEl("div","lab",lab), aiEl("div","v num",v), aiEl("div","sub",sub)); kpi.appendChild(d); };
+  const cm = ctx.spend ? cushion/ctx.spend : 0;
+  tile("Подушка", ctx.spend ? fN1(cm)+" мес." : "—",
+    ctx.spend ? "траты ≈ "+fR0(ctx.spend)+" в мес." : "мало данных", ctx.spend ? (cm<3 ? "warn" : cm>=6 ? "good" : "") : "");
+  tile("Отложено", fR0(ctx.savNow), "в этом месяце"+(ctx.savAvg ? " · в ср. "+fR0(ctx.savAvg) : ""));
+  tile("Норма сбережений", ctx.inc ? Math.round(ctx.savAvg/ctx.inc*100)+"%" : "—",
+    ctx.inc ? "свободно ≈ "+fR0(Math.max(0, ctx.inc-ctx.spend))+" в мес." : "нет доходов");
+  capEl("cap-kpi-note").textContent = ctx.n
+    ? "Траты и доход — медиана за "+ctx.n+" "+capPlural(ctx.n,"полный месяц","полных месяца","полных месяцев")+", рубли без «В накопления» (донговая жизнь в них — как покупка валюты). Подушка — активы с отметкой «в подушку»."
+    : "Средние появятся, когда закончится первый месяц с записями.";
+
+  // ---- вклады и счета
+  const dep = capEl("cap-dep"); dep.innerHTML = "";
+  const da = assets.filter(a=> a.kind!=="crypto").sort(byVal);
+  if(!da.length) dep.appendChild(aiEl("div","empty","Вкладов и счетов пока нет."));
+  da.forEach(a=>{
+    const v = vals.get(a.id), bits = [];
+    bits.push(a.kind==="deposit" ? "вклад" : a.cur==="USD" ? "счёт в $" : "счёт");
+    if(a.rate) bits.push(fPct(a.rate)+" годовых");
+    let bad = false;
+    if(a.end){ const d = capDays(a.end); bad = d<0; bits.push(d>=0 ? "до "+capDate(a.end)+" · "+d+" дн." : "срок истёк "+capDate(a.end)); }
+    const subs = [{t:bits.join(" · "), bad}];
+    if(a.kind==="deposit" && a.rate && a.end && capDays(a.end)>0 && v)
+      subs.push("доход к концу срока ≈ +"+fR0(v*a.rate/100*capDays(a.end)/365));
+    const add = a.cur==="RUB" ? ctx.contrib(a, a.amountTs) : 0;
+    if(add) subs.push("в т.ч. +"+fR0(add)+" из бюджета после "+capDateTs(a.amountTs));
+    capRow(dep, a, capLabel(a), subs, v==null ? "нет курса $" : fR0(v), a.cur==="USD" ? fU(a.amount) : (a.cushion ? "в подушке" : ""));
+  });
+
+  // ---- крипта
+  const cry = capEl("cap-cry"); cry.innerHTML = "";
+  const ca = assets.filter(a=> a.kind==="crypto").sort(byVal);
+  if(!ca.length) cry.appendChild(aiEl("div","empty","Монет пока нет. Добавьте остатки со своего аккаунта Bybit."));
+  let cryUsd = 0;
+  ca.forEach(a=>{
+    const p = capCoinPx(ctx.c, a.coin), u = capUsdOf(ctx, a), v = vals.get(a.id);
+    if(u!=null) cryUsd += u;
+    const subs = [fQ(a.qty)+" "+a.coin+(p && !STABLE.includes(a.coin) ? " по "+fU(p) : "")];
+    if(a.rate) subs.push("Earn "+fPct(a.rate)+" годовых");
+    const inv = ctx.contrib(a);
+    if(inv) subs.push("вложено из бюджета "+fR0(inv)+(v!=null ? " · "+(v>=inv ? "+" : "−")+fR0(Math.abs(v-inv)) : ""));
+    capRow(cry, a, capLabel(a), subs, v!=null ? fR0(v) : p ? "нет курса $" : "нет цены", u!=null ? fU(u) : "");
+  });
+  if(ca.length > 1 && cryUsd){
+    const s = aiEl("div","tot"); s.append(aiEl("span","lab","Всего на бирже"), aiEl("span","val num", fU(cryUsd)));
+    cry.appendChild(s);
+  }
+  const rt = capEl("cap-rates"); rt.innerHTML = "";
+  const r = ctx.c.rates;
+  const info = aiEl("button","info"); info.type = "button";
+  const u = aiEl("u",null, r.usd ? "Курс $: "+r.usd.toLocaleString("ru-RU",{maximumFractionDigits:4})+" ₽" : "Курс $ не задан");
+  info.append(u, document.createTextNode(r.usdTs ? " · "+capDateTs(r.usdTs) : ""));
+  const coins = Array.from(new Set(ca.map(a=>a.coin).filter(c=> !STABLE.includes(c))));
+  if(coins.length) info.appendChild(document.createTextNode(r.pxTs ? " · цены монет "+capDateTs(r.pxTs) : " · цен монет нет"));
+  info.title = "Задать вручную"; info.onclick = capRatesEdit;
+  const upd = aiEl("button","btn sm ghost", capBusy ? "Обновляю…" : "Обновить курсы");
+  upd.disabled = capBusy; upd.onclick = capRefresh;
+  rt.append(info, upd);
+
+  // ---- ипотека
+  const mo = capEl("cap-mort"); mo.innerHTML = "";
+  if(!morts.length) mo.appendChild(aiEl("div","empty","Добавьте остаток долга, ставку и платёж — посчитаю срок и переплату."));
+  morts.forEach(a=>{
+    const now = capMortNow(ctx, a), s = capMort(now.bal, a.rate, a.pay), subs = [];
+    subs.push([a.rate ? fPct(a.rate) : "", a.pay ? "платёж "+fR0(a.pay) : ""].filter(Boolean).join(" · "));
+    if(s && s.never) subs.push({t:"платёж не покрывает проценты", bad:true});
+    else if(s) subs.push("≈ "+s.n+" "+capPlural(s.n,"платёж","платежа","платежей")+", до "+MONTHS[s.end.getMonth()].toLowerCase()+" "+s.end.getFullYear()+" · переплата ≈ "+fR0(s.over));
+    subs.push("остаток на "+capDateTs(a.amountTs)+(now.n ? " минус "+now.n+" "+capPlural(now.n,"платёж","платежа","платежей")+" из бюджета" : ""));
+    capRow(mo, a, capLabel(a), subs, fR0(now.bal), "долг");
+  });
+
+  // ---- цели
+  const gb = capEl("cap-goals"); gb.innerHTML = "";
+  if(!goals.length) gb.appendChild(aiEl("div","empty","Целей пока нет. Начните с подушки безопасности."));
+  const pace = ctx.savAvg;
+  goals.forEach(g=>{
+    let have = g.amount;
+    g.links.forEach(id=>{ const v = vals.get(id); if(v) have += v; });
+    const pc = g.target ? Math.min(100, have/g.target*100) : 0;
+    const b = aiEl("button","cap-row cap-goal"); b.type = "button";
+    const top = aiEl("div","cap-gtop");
+    top.append(aiEl("span","nm", g.name||"Цель"), aiEl("span","vl num", fR0(have)+" из "+fR0(g.target)));
+    const bar = aiEl("div","bar"), fill = document.createElement("i");
+    fill.style.width = pc+"%"; fill.style.background = "var(--cap)"; bar.appendChild(fill);
+    const meta = aiEl("div","cap-gmeta");
+    let pill = null;
+    if(g.target && have >= g.target) pill = ["ok","цель достигнута"];
+    else if(g.deadline){
+      const y = +g.deadline.slice(0,4), m = +g.deadline.slice(5)-1;
+      const left = (y - today.getFullYear())*12 + (m - today.getMonth()) + 1;   // с текущим месяцем
+      if(left <= 0){ pill = ["bad","срок прошёл"]; meta.appendChild(aiEl("span",null,"не хватает "+fR0(g.target-have))); }
+      else {
+        const need = (g.target-have)/left;
+        meta.appendChild(aiEl("span",null,"до "+MONTHS[m].toLowerCase()+" "+y+" · нужно "+fR0(need)+" в мес."));
+        pill = pace >= need ? ["ok","успеваете"] : ["bad", pace ? "не хватает "+fR0(need-pace)+" в мес." : "пока не откладываете"];
+      }
+    } else if(pace > 0){
+      const n = Math.ceil((g.target-have)/pace);
+      meta.appendChild(aiEl("span",null,"в нынешнем темпе ≈ "+n+" мес."));
+    } else meta.appendChild(aiEl("span",null,"осталось "+fR0(Math.max(0, g.target-have))));
+    if(pill) meta.appendChild(aiEl("span","cap-pill "+pill[0], pill[1]));
+    b.append(top, bar, meta);
+    b.onclick = ()=> capEdit(g);
+    gb.appendChild(b);
+  });
+  capEl("cap-goals-note").textContent = goals.length
+    ? "Темп — сколько в среднем уходило в «В накопления» за полные месяцы: "+fR0(pace)+" в мес."
+    : "";
+  capEl("cap-goals-note").hidden = !goals.length;
+
+  // ---- риск-профиль
+  const rk = capEl("cap-risk"); rk.innerHTML = "";
+  const T = capRiskType(ctx.c);
+  if(T){
+    const h = aiEl("div","risk-type");
+    h.append(aiEl("b",null,T.name), aiEl("span","sub","  · "+T.score+" из "+RISK_MAX), aiEl("p",null,T.d));
+    rk.appendChild(h);
+    if(tot){
+      const rp = by.risky/tot*100;
+      const lab = aiEl("div","risk-lab");
+      lab.append(aiEl("span",null,"Рискованные активы: "+Math.round(rp)+"%"), aiEl("span",null,"ориентир до "+T.risky+"%"));
+      const mt = aiEl("div","risk-meter"), fi = document.createElement("i"), mk = document.createElement("b");
+      fi.style.width = Math.min(100, rp)+"%"; fi.style.background = rp > T.risky+5 ? "var(--danger)" : CAP_C.risky;
+      mk.style.left = T.risky+"%";
+      mt.append(fi, mk);
+      rk.append(lab, mt);
+    }
+  } else {
+    rk.appendChild(aiEl("div","note","6 вопросов о сроках, отношении к просадкам и обязательствах. По ответам — ориентир, какую долю капитала держать в рискованных активах."));
+  }
+  const tips = capTips(ctx, T);
+  if(tips.length){
+    const ul = aiEl("ul","cap-tips");
+    tips.forEach(x=> ul.appendChild(aiEl("li",null,x)));
+    rk.appendChild(ul);
+  }
+  const tb = aiEl("div","tools");
+  const qb = aiEl("button", T ? "btn sm ghost" : "btn sm", T ? "Пройти тест заново" : "Пройти тест");
+  qb.onclick = capQuiz; tb.appendChild(qb);
+  rk.appendChild(tb);
+}
+
+/* ---------- окна ---------- */
+function capSheetBase(box, title){
+  box.innerHTML = "";
+  box.appendChild(aiEl("h3",null,title));
+  const fld = (label, el)=>{ const l = aiEl("label","ask-fld"); l.appendChild(aiEl("span",null,label)); l.appendChild(el); box.appendChild(l); return el; };
+  const chips = (label, opts, isOn, onPick)=>{
+    const w = aiEl("div","ask-fld"); w.appendChild(aiEl("span",null,label));
+    const ch = aiEl("div","chips"); w.appendChild(ch); box.appendChild(w);
+    const paint = ()=>{
+      ch.innerHTML = "";
+      opts.forEach(o=>{
+        const b = aiEl("button","chip",o[1]); b.type = "button";
+        b.setAttribute("aria-pressed", String(!!isOn(o[0])));
+        b.onclick = ()=>{ if(onPick(o[0]) !== false) paint(); };
+        ch.appendChild(b);
+      });
+    };
+    paint();
+  };
+  const hint = t=> box.appendChild(aiEl("p","hint",t));
+  return {fld, chips, hint};
+}
+function capInput(val, ph, dec){
+  const i = document.createElement("input"); i.type = "text";
+  if(dec){ i.inputMode = "decimal"; i.className = "num"; i.value = val ? String(Math.round(val*1e8)/1e8).replace(".",",") : ""; }
+  else i.value = val || "";
+  i.placeholder = ph || "";
+  return i;
+}
+const CAP_TITLE = {deposit:"Вклад", account:"Счёт", crypto:"Монета на Bybit", mortgage:"Ипотека", goal:"Финансовая цель"};
+function capEdit(src, kind){
+  const isNew = !src, ctx = capCtx();
+  const d = src ? Object.assign({}, src, {links:src.links.slice()}) : {
+    id:uid(), kind, name:"", amount:0, amountTs:0, cur:"RUB", coin:"USDT", qty:0, rate:0, end:"", pay:0,
+    cushion: kind==="deposit" || kind==="account" ? 1 : 0, risky:0, target:0, deadline:"", links:[]
+  };
+  if(isNew && kind==="crypto") d.name = "Bybit";
+  if(isNew && kind==="mortgage") d.pay = ctx.mortPay;
+  // у рублёвого вклада показываем сумму с пополнениями — ту же, что в списке
+  const extra = !isNew && (d.kind==="deposit" || d.kind==="account") && d.cur==="RUB" ? ctx.contrib(src, src.amountTs) : 0;
+  const shown = d.amount + extra;
+  d.amount = shown;
+  let otherCoin = !COINS.includes(d.coin);
+  aiSheet((box, close)=>{
+    const draw = ()=>{
+      const t = capSheetBase(box, CAP_TITLE[d.kind]);
+      const num = (label, f, ph)=>{ const i = t.fld(label, capInput(d[f], ph, true)); i.oninput = ()=>{ d[f] = parseAmt(i.value)||0; }; return i; };
+      const txt = (label, f, ph)=>{ const i = t.fld(label, capInput(d[f], ph)); i.oninput = ()=>{ d[f] = i.value; }; return i; };
+      const date = (label, f, type)=>{ const i = document.createElement("input"); i.type = type; i.value = d[f]||""; i.oninput = i.onchange = ()=>{ d[f] = i.value; }; t.fld(label, i); };
+      const yesNo = (label, f, yes, no)=> t.chips(label, [[1,yes||"Да"],[0,no||"Нет"]], v=> d[f]===v, v=>{ d[f] = v; });
+      if(d.kind==="deposit" || d.kind==="account"){
+        if(isNew) t.chips("Что это", [["deposit","Вклад"],["account","Счёт или другое"]], v=> d.kind===v, v=>{ d.kind = v; if(v==="deposit") d.cur = "RUB"; draw(); return false; });
+        txt("Название", "name", d.kind==="deposit" ? "Сбер, «Лучший %»" : "Накопительный счёт, доллары наличными…");
+        if(d.kind==="account") t.chips("Валюта", [["RUB","₽ рубли"],["USD","$ доллары"]], v=> d.cur===v, v=>{ d.cur = v; draw(); return false; });
+        num(d.cur==="USD" ? "Сумма, $" : "Сумма сейчас, ₽", "amount");
+        if(extra) t.hint("В т.ч. "+fR0(extra)+" пополнений из бюджета. Если поменяете сумму, она станет новой точкой отсчёта.");
+        num("Ставка, % годовых", "rate", "необязательно");
+        if(d.kind==="deposit") date("Окончание вклада", "end", "date");
+        yesNo("Считать подушкой безопасности", "cushion");
+        if(d.kind==="account") t.chips("Риск", [[0,"Низкий"],[1,"Высокий: акции, фонды"]], v=> d.risky===v, v=>{ d.risky = v; });
+      }
+      if(d.kind==="crypto"){
+        t.chips("Монета", COINS.map(c=>[c,c]).concat([["*","Другая"]]),
+          v=> v==="*" ? otherCoin : !otherCoin && d.coin===v,
+          v=>{ otherCoin = v==="*"; if(!otherCoin) d.coin = v; else if(COINS.includes(d.coin)) d.coin = ""; draw(); return false; });
+        if(otherCoin){ const i = txt("Тикер монеты", "coin", "XRP, NOT, MNT…"); i.autocapitalize = "characters"; }
+        num("Количество", "qty");
+        txt("Где лежит", "name", "Bybit, Bybit Earn…");
+        num("Доходность Earn, % годовых", "rate", "если монеты в Earn");
+        yesNo("Считать подушкой безопасности", "cushion");
+        t.hint("Цену подтянет кнопка «Обновить курсы» (Bybit, запасной вариант — CoinGecko) — или задайте её вручную, нажав на строку с курсом.");
+      }
+      if(d.kind==="mortgage"){
+        txt("Банк или название", "name", "Ипотека");
+        num("Остаток долга сейчас, ₽", "amount");
+        num("Ставка, % годовых", "rate");
+        num("Ежемесячный платёж, ₽", "pay");
+        t.hint("Платежи во «Тратах ₽» со словом «ипотека» в комментарии, добавленные после этого, уменьшают остаток сами — по графику, сначала проценты.");
+      }
+      if(d.kind==="goal"){
+        if(isNew && ctx.spend) t.chips("Шаблон", [[3,"Подушка 3 мес."],[6,"Подушка 6 мес."],[0,"Своя цель"]], v=> d._tpl===v, v=>{
+          d._tpl = v;
+          if(v){
+            d.name = "Подушка безопасности";
+            d.target = Math.ceil(ctx.spend*v/1000)*1000;
+            d.links = ctx.items.filter(a=> CAP_ASSET.includes(a.kind) && a.cushion).map(a=>a.id);
+          }
+          draw(); return false;
+        });
+        txt("Название", "name", "Ремонт, учёба ребёнка…");
+        num("Сумма цели, ₽", "target");
+        date("Срок (необязательно)", "deadline", "month");
+        const av = ctx.items.filter(a=> CAP_ASSET.includes(a.kind));
+        if(av.length) t.chips("Что идёт в цель", av.map(a=>[a.id, capLabel(a)]), v=> d.links.includes(v), v=>{
+          d.links = d.links.includes(v) ? d.links.filter(x=>x!==v) : d.links.concat(v);
+        });
+        else t.hint("Добавьте вклады или крипту — их можно будет привязать к цели.");
+        num("Накоплено отдельно, ₽", "amount", "необязательно");
+      }
+      const bar = aiEl("div","ask-bar three");
+      const del = aiEl("button","btn ghost","Удалить"); del.disabled = isNew;
+      const no = aiEl("button","btn ghost","Отмена");
+      const ok = aiEl("button","btn","Сохранить");
+      del.onclick = ()=>{
+        close();
+        askConfirm({title:"Удалить?", lines:[capLabel(src) || CAP_TITLE[src.kind], src.kind==="goal" ? "Цель на "+fR0(src.target) : ""], ok:"Удалить"})
+          .then(yes=>{ if(yes){ capRemove(src.id); toast("Удалено"); } });
+      };
+      no.onclick = close;
+      ok.onclick = ()=>{
+        if(d.kind==="crypto"){
+          d.coin = String(d.coin||"").toUpperCase().replace(/[^A-Z0-9]/g,"");
+          if(!d.coin){ toast("Укажите монету"); return; }
+          if(!(d.qty>0)){ toast("Укажите количество"); return; }
+        } else if(d.kind==="goal"){
+          if(!(d.target>0)){ toast("Укажите сумму цели"); return; }
+          if(!String(d.name||"").trim()) d.name = "Цель";
+        } else if(!(d.amount>0)){ toast("Укажите сумму"); return; }
+        if(d.kind!=="crypto" && d.kind!=="goal"){
+          if(isNew || d.amount !== shown || (src && d.cur !== src.cur)) d.amountTs = nowTs();
+          else d.amount = src.amount;   // сумма не менялась — пополнения продолжают прибавляться
+        }
+        delete d._tpl;
+        close();
+        capPut(d);
+        toast(isNew ? "Добавлено" : "Сохранено");
+      };
+      bar.append(del, no, ok);
+      box.appendChild(bar);
+    };
+    draw();
+  });
+}
+function capRatesEdit(){
+  const c = capGet();
+  const coins = Array.from(new Set(capLive().filter(a=> a.kind==="crypto" && !STABLE.includes(a.coin)).map(a=>a.coin)));
+  const v = {usd:c.rates.usd}, px = Object.assign({}, c.rates.px);
+  aiSheet((box, close)=>{
+    const t = capSheetBase(box, "Курсы вручную");
+    const u = t.fld("Курс доллара, ₽", capInput(v.usd, "например, 81,5", true));
+    u.oninput = ()=>{ v.usd = parseAmt(u.value)||0; };
+    coins.forEach(cn=>{ const i = t.fld("Цена "+cn+", $", capInput(px[cn], "", true)); i.oninput = ()=>{ px[cn] = parseAmt(i.value)||0; }; });
+    t.hint("Стейблкоины (USDT, USDC…) считаются по 1 $, если цена не задана.");
+    const bar = aiEl("div","ask-bar");
+    const no = aiEl("button","btn ghost","Отмена"), ok = aiEl("button","btn","Сохранить");
+    no.onclick = close;
+    ok.onclick = ()=>{
+      const cc = capGet(), t0 = nowTs();
+      if(v.usd !== cc.rates.usd){ cc.rates.usd = v.usd; cc.rates.usdTs = t0; }
+      if(coins.some(cn=> (px[cn]||0) !== (cc.rates.px[cn]||0))){
+        coins.forEach(cn=>{ if(px[cn]) cc.rates.px[cn] = px[cn]; else delete cc.rates.px[cn]; });
+        cc.rates.pxTs = t0;
+      }
+      close(); capSave(cc); toast("Курсы сохранены");
+    };
+    bar.append(no, ok); box.appendChild(bar);
+  });
+}
+function capQuiz(){
+  const ctx = capCtx(), ans = Object.assign({}, ctx.c.profile.a);
+  const hints = {};
+  if(ctx.salary) hints.q3 = "По бюджету: зарплата приходит каждый месяц.";
+  if(ctx.kid || ctx.mortPay) hints.q6 = "По бюджету: "+[ctx.kid ? "есть траты на ребёнка" : "", ctx.mortPay ? "есть ипотека" : ""].filter(Boolean).join(" и ")+".";
+  aiSheet((box, close)=>{
+    box.appendChild(aiEl("h3",null,"Риск-профиль"));
+    const ok = aiEl("button","btn","Сохранить"), no = aiEl("button","btn ghost","Отмена");
+    const all = ()=> RISK_Q.every(q=> ans[q.k]!=null);
+    ok.disabled = !all();
+    RISK_Q.forEach(q=>{
+      const w = aiEl("div","risk-q");
+      w.appendChild(aiEl("p",null,q.t));
+      if(hints[q.k]) w.appendChild(aiEl("small",null,hints[q.k]));
+      const ch = aiEl("div","chips");
+      const paint = ()=>{
+        ch.innerHTML = "";
+        q.o.forEach((t,i)=>{
+          const b = aiEl("button","chip",t); b.type = "button";
+          b.setAttribute("aria-pressed", String(ans[q.k]===i));
+          b.onclick = ()=>{ ans[q.k] = i; paint(); ok.disabled = !all(); };
+          ch.appendChild(b);
+        });
+      };
+      paint();
+      w.appendChild(ch); box.appendChild(w);
+    });
+    no.onclick = close;
+    ok.onclick = ()=>{
+      if(!all()) return;
+      const c = capGet(); c.profile = {a:ans, ts:nowTs()};
+      close(); capSave(c); toast("Риск-профиль сохранён");
+    };
+    const bar = aiEl("div","ask-bar"); bar.append(no, ok); box.appendChild(bar);
+  }, true);
+}
+
+/* Курсы — только по нажатию: ЦБ РФ для доллара, Bybit для монет,
+   CoinGecko — запасной вариант. Наружу уходят лишь тикеры монет. */
+async function capFetch(url){
+  const ctl = new AbortController(), t = setTimeout(()=> ctl.abort(), 12000);
+  try{
+    const r = await fetch(url, {signal:ctl.signal, cache:"no-store"});
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    return await r.json();
+  } finally { clearTimeout(t); }
+}
+async function capRefresh(){
+  if(capBusy) return;
+  capBusy = true; renderCap();
+  const coins = Array.from(new Set(capLive().filter(a=> a.kind==="crypto" && a.coin && !STABLE.includes(a.coin)).map(a=>a.coin)));
+  let usd = 0; const px = {};
+  const jobs = [capFetch("https://www.cbr-xml-daily.ru/daily_json.js")
+    .then(j=>{ usd = capNum(j && j.Valute && j.Valute.USD && j.Valute.USD.Value); }).catch(()=>{})];
+  coins.forEach(cn=> jobs.push(capFetch("https://api.bybit.com/v5/market/tickers?category=spot&symbol="+cn+"USDT")
+    .then(j=>{
+      const x = j && j.result && Array.isArray(j.result.list) ? j.result.list[0] : null;
+      const p = capNum(x && x.lastPrice); if(p) px[cn] = p;
+    }).catch(()=>{})));
+  await Promise.all(jobs);
+  const miss = coins.filter(cn=> !px[cn] && CG_ID[cn]);
+  if(miss.length){
+    try{
+      const j = await capFetch("https://api.coingecko.com/api/v3/simple/price?vs_currencies=usd&ids="+miss.map(cn=>CG_ID[cn]).join(","));
+      miss.forEach(cn=>{ const p = capNum(j && j[CG_ID[cn]] && j[CG_ID[cn]].usd); if(p) px[cn] = p; });
+    }catch(e){}
+  }
+  capBusy = false;
+  const c = capGet(), t = nowTs(), got = Object.keys(px), lost = coins.filter(cn=> !px[cn]);
+  if(usd){ c.rates.usd = usd; c.rates.usdTs = t; }
+  if(got.length){ c.rates.px = Object.assign({}, c.rates.px, px); c.rates.pxTs = t; }
+  if(usd || got.length) capSave(c); else renderCap();
+  toast(!usd && !got.length ? "Не удалось получить курсы — проверьте интернет или задайте вручную"
+    : !usd ? "Цены монет обновлены, курс ЦБ не получен"
+    : lost.length ? "Обновлено, кроме: "+lost.join(", ")
+    : "Курсы обновлены");
+}
+
 /* ---------- init ---------- */
 (function init(){
   document.getElementById("ai-set").onclick = aiSettings;
@@ -2678,6 +3531,8 @@ function renderDyn(){
   document.getElementById("prev").onclick = ()=>shift(-1);
   document.getElementById("next").onclick = ()=>shift(1);
   document.querySelectorAll(".tab").forEach(b=> b.onclick = ()=>setTab(b.dataset.t));
+  document.getElementById("cap-btn").onclick = ()=> setTab(tab==="cap" ? lastTab : "cap");
+  document.querySelectorAll("[data-cap-add]").forEach(b=> b.onclick = ()=> capEdit(null, b.dataset.capAdd));
 
   const cs = document.getElementById("cash-start");
   const applyCash = ()=>{
