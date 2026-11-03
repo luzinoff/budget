@@ -288,7 +288,7 @@ input:focus,select:focus,textarea:focus,button:focus-visible,.chip:focus-visible
 }
 .icon-btn svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .icon-btn:hover{background:var(--paper);color:var(--ink)}
-#ai-in{padding:4px 14px 0}
+#ai-in,#cap-ai-in{padding:4px 14px 0}
 .ai-hint{font-size:13px;color:var(--ink-3);line-height:1.5;margin:4px 0 2px}
 .ai-err{font-size:13.5px;color:var(--danger);line-height:1.5;margin:4px 0 6px}
 .ai-wait{animation:aiPulse 1.3s ease-in-out infinite}
@@ -775,6 +775,11 @@ body[data-tab="cap"] .mnav{display:none}
     <h2 class="card-h">Риск-профиль</h2>
     <div id="cap-risk"></div>
     <div class="note" style="padding-bottom:12px">Ориентир по простым правилам, а не индивидуальная инвестиционная рекомендация.</div>
+  </div>
+  <div class="card" id="cap-ai-card">
+    <h2 class="card-h">Разбор капитала от ИИ<button class="icon-btn" id="cap-ai-set" title="Настройки Gemini" aria-label="Настройки Gemini"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button></h2>
+    <div id="cap-ai-in"></div>
+    <div class="note" style="padding:0 14px 12px">Ориентир от ИИ, а не индивидуальная инвестиционная рекомендация.</div>
   </div>
 </section>
 
@@ -2340,7 +2345,7 @@ function aiStoreNorm(v){
   if(!isObj(v)) return out;
   Object.keys(v).forEach(k=>{
     const x = v[k];
-    if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(k) || !isObj(x)) return;
+    if(!(/^\d{4}-(0[1-9]|1[0-2])$/.test(k) || k==="cap") || !isObj(x)) return;   // "cap" — разбор капитала
     const at = num0(x.at); if(!at) return;
     if(x.del){ if(at >= nowTs() - TOMB_TTL) out[k] = {at, del:1}; return; }
     if(typeof x.text !== "string" || !x.text.trim()) return;
@@ -2608,6 +2613,7 @@ function aiRenderCard(){
     bar.appendChild(del);
   }
   box.appendChild(bar);
+  capAiRenderCard();   // настройки Gemini общие — обновляем и карточку капитала
 }
 
 /* ================= Динамика: сравнение месяцев =================
@@ -3081,10 +3087,8 @@ function capRow(box, a, title, subs, val, valSub){
   b.onclick = ()=> capEdit(a);
   box.appendChild(b);
 }
-let capBusy = false;
-function renderCap(){
-  const sec = capEl("s-cap");
-  if(!sec || sec.hidden) return;
+/* стоимость активов и долга в рублях — общая для вкладки и разбора ИИ */
+function capSummary(){
   const ctx = capCtx(), items = ctx.items;
   const assets = items.filter(a=> CAP_ASSET.includes(a.kind));
   const morts = items.filter(a=> a.kind==="mortgage");
@@ -3100,7 +3104,14 @@ function renderCap(){
     if(a.cushion) cushion += v;
   });
   const debt = sum(morts, a=> vals.get(a.id));
-  Object.assign(ctx, {tot, by, cushion, debt});
+  return Object.assign(ctx, {assets, morts, goals, vals, tot, by, unknown, cushion, debt});
+}
+let capBusy = false;
+function renderCap(){
+  const sec = capEl("s-cap");
+  if(!sec || sec.hidden) return;
+  const ctx = capSummary();
+  const {items, assets, morts, goals, vals, by, tot, unknown, cushion, debt} = ctx;
   const byVal = (x,y)=> (vals.get(y.id)||0) - (vals.get(x.id)||0);
 
   // ---- сводка
@@ -3192,7 +3203,7 @@ function renderCap(){
     const now = capMortNow(ctx, a), s = capMort(now.bal, a.rate, a.pay), subs = [];
     subs.push([a.rate ? fPct(a.rate) : "", a.pay ? "платёж "+fR0(a.pay) : ""].filter(Boolean).join(" · "));
     if(s && s.never) subs.push({t:"платёж не покрывает проценты", bad:true});
-    else if(s) subs.push("≈ "+s.n+" "+capPlural(s.n,"платёж","платежа","платежей")+", до "+MONTHS[s.end.getMonth()].toLowerCase()+" "+s.end.getFullYear()+" · переплата ≈ "+fR0(s.over));
+    else if(s) subs.push("≈ "+s.n+" "+capPlural(s.n,"платёж","платежа","платежей")+", до "+MONTHS_GEN[s.end.getMonth()]+" "+s.end.getFullYear()+" · переплата ≈ "+fR0(s.over));
     subs.push("остаток на "+capDateTs(a.amountTs)+(now.n ? " минус "+now.n+" "+capPlural(now.n,"платёж","платежа","платежей")+" из бюджета" : ""));
     capRow(mo, a, capLabel(a), subs, fR0(now.bal), "долг");
   });
@@ -3219,7 +3230,7 @@ function renderCap(){
       if(left <= 0){ pill = ["bad","срок прошёл"]; meta.appendChild(aiEl("span",null,"не хватает "+fR0(g.target-have))); }
       else {
         const need = (g.target-have)/left;
-        meta.appendChild(aiEl("span",null,"до "+MONTHS[m].toLowerCase()+" "+y+" · нужно "+fR0(need)+" в мес."));
+        meta.appendChild(aiEl("span",null,"до "+MONTHS_GEN[m]+" "+y+" · нужно "+fR0(need)+" в мес."));
         pill = pace >= need ? ["ok","успеваете"] : ["bad", pace ? "не хватает "+fR0(need-pace)+" в мес." : "пока не откладываете"];
       }
     } else if(pace > 0){
@@ -3266,6 +3277,7 @@ function renderCap(){
   const qb = aiEl("button", T ? "btn sm ghost" : "btn sm", T ? "Пройти тест заново" : "Пройти тест");
   qb.onclick = capQuiz; tb.appendChild(qb);
   rk.appendChild(tb);
+  capAiRenderCard();
 }
 
 /* ---------- окна ---------- */
@@ -3504,6 +3516,174 @@ async function capRefresh(){
     : "Курсы обновлены");
 }
 
+/* ---------- разбор капитала от ИИ ----------
+   Тот же Gemini и ключ, что у разбора месяца. Ответ хранится в DB._meta.ai["cap"]
+   и синхронизируется так же. Наружу уходит только то, что собирает capAiPrompt(). */
+const CAP_AI_KEY = "cap";
+const CAP_AI_SYSTEM = `Ты — внимательный помощник по личным финансам. Человек живёт во Вьетнаме: доходы в рублях, повседневные траты во вьетнамских донгах — в рублёвом бюджете они видны как «Покупка иностранной валюты». Тебе присылают состояние капитала: вклады и счета, криптовалюту на бирже Bybit, ипотеку, финансовые цели, риск-профиль и сводку бюджета.
+Правила:
+- Опирайся только на присланные цифры, ничего не выдумывай. Если данных не хватает для вывода (нет вкладов, не пройден тест, нет курса), так и скажи.
+- Суммы пиши в рублях с пробелами между разрядами, долларовые — в $.
+- Подушка безопасности — 3–6 месяцев трат в надёжных и доступных активах. Крипта, в том числе стейблкоины на бирже, несёт риск площадки — если она отмечена как подушка, обрати на это внимание.
+- Сравни долю рискованных активов с ориентиром риск-профиля.
+- По ипотеке сравни её ставку со ставками вкладов: что выгоднее — досрочное погашение или вклад. Подушка важнее досрочного погашения.
+- Оцени реалистичность целей по фактическому темпу откладывания и свободному остатку бюджета.
+- Можно давать общие советы по распределению: доли, подушка, порядок действий. Нельзя советовать конкретные банки, монеты, акции, фонды и продукты или прогнозировать курсы.
+Отвечай по-русски, коротко и по делу — так, чтобы прочитать за пару минут.
+Формат:
+**Коротко** — 1–2 предложения про общее состояние.
+**Подушка и ликвидность** — 1–3 пункта.
+**Риски** — 1–3 пункта: рискованная доля против профиля, концентрация на одной бирже, сроки вкладов.
+**Ипотека** — 1–2 пункта. Если ипотеки нет — пропусти раздел.
+**Цели** — по пункту на цель: успевает ли и что поменять. Если целей нет — пропусти раздел.
+**Что сделать в ближайший месяц** — 3–5 конкретных шагов с суммами.
+Пункты начинай с «- ».`;
+
+function capGoalInfo(ctx, g){
+  let have = g.amount;
+  g.links.forEach(id=>{ const v = ctx.vals.get(id); if(v) have += v; });
+  const o = {have, pc: g.target ? Math.min(100, have/g.target*100) : 0, left:null, need:null};
+  if(g.deadline){
+    const y = +g.deadline.slice(0,4), m = +g.deadline.slice(5)-1;
+    o.left = (y - today.getFullYear())*12 + (m - today.getMonth()) + 1;
+    if(o.left > 0 && have < g.target) o.need = (g.target-have)/o.left;
+  }
+  return o;
+}
+/* Текст для Gemini. Белый список: только то, что перечислено здесь. */
+function capAiPrompt(){
+  const ctx = capSummary(), L = [], r = ctx.c.rates;
+  const R = n=> fR0(n), pc = (a,b)=> b ? Math.round(a/b*100)+"%" : "—";
+  L.push("Сегодня: "+today.getDate()+" "+MONTHS_GEN[today.getMonth()]+" "+today.getFullYear()+".");
+  L.push(r.usd ? "Курс доллара: "+r.usd.toLocaleString("ru-RU")+" ₽ (на "+capDateTs(r.usdTs||nowTs())+")." : "Курс доллара не задан — долларовые активы и крипта без оценки в рублях.");
+
+  L.push("", "== БЮДЖЕТ (рубли) ==");
+  if(ctx.n){
+    L.push("Медиана за "+ctx.n+" полных мес.: доход "+R(ctx.inc)+", траты без накоплений "+R(ctx.spend)+", свободно "+R(ctx.inc-ctx.spend)+" в месяц.");
+    L.push("В среднем уходило в «В накопления»: "+R(ctx.savAvg)+" в месяц ("+pc(ctx.savAvg, ctx.inc)+" дохода). В текущем месяце уже: "+R(ctx.savNow)+".");
+  } else L.push("Полных месяцев с записями пока нет.");
+  const ms = capMonths().slice(-6);
+  if(ms.length){
+    L.push("По месяцам (доход — расходы, в т.ч. в накопления, в т.ч. покупка валюты на жизнь):");
+    ms.forEach(d=>{
+      const y = +d.k.slice(0,4), m = +d.k.slice(5)-1;
+      const of = c=> sum(d.rub.filter(x=> x.cat===c));
+      L.push("- "+MONTHS[m]+" "+y+(d.k===ctx.nowK ? " (идёт)" : "")+": "+R(sum(d.inc))+" — "+R(sum(d.rub))+", в накопления "+R(of(SAV))+", валюта "+R(of("Покупка иностранной валюты")));
+    });
+  }
+
+  L.push("", "== КАПИТАЛ ==");
+  L.push("Чистый капитал: "+R(ctx.tot-ctx.debt)+". Активы: "+R(ctx.tot)+". Долг по ипотеке: "+R(ctx.debt)+".");
+  if(ctx.tot) L.push("Структура активов: вклады и счета "+R(ctx.by.safe)+" ("+pc(ctx.by.safe,ctx.tot)+"), стейблкоины "+R(ctx.by.stable)+" ("+pc(ctx.by.stable,ctx.tot)+"), рискованные "+R(ctx.by.risky)+" ("+pc(ctx.by.risky,ctx.tot)+").");
+  L.push("Подушка (активы с отметкой «в подушку»): "+R(ctx.cushion)+(ctx.spend ? " = "+fN1(ctx.cushion/ctx.spend)+" мес. трат." : "."));
+  if(ctx.unknown) L.push("Без оценки (нет курса или цены): "+ctx.unknown+" шт.");
+  const da = ctx.assets.filter(a=> a.kind!=="crypto");
+  L.push("Вклады и счета:" + (da.length ? "" : " нет."));
+  da.forEach(a=>{
+    const v = ctx.vals.get(a.id), b = [(a.kind==="deposit" ? "вклад" : "счёт")+" «"+capLabel(a)+"»"];
+    b.push(v!=null ? R(v) : "нет курса"); if(a.cur==="USD") b.push(fU(a.amount));
+    if(a.rate) b.push(fPct(a.rate)+" годовых");
+    if(a.end) b.push("до "+capDate(a.end)+" ("+capDays(a.end)+" дн.)");
+    b.push(a.cushion ? "в подушке" : "не в подушке");
+    if(a.risky) b.push("высокий риск");
+    L.push("- "+b.join(" — "));
+  });
+  const ca = ctx.assets.filter(a=> a.kind==="crypto");
+  L.push("Крипта на Bybit:" + (ca.length ? "" : " нет."));
+  ca.forEach(a=>{
+    const v = ctx.vals.get(a.id), u = capUsdOf(ctx, a), inv = ctx.contrib(a);
+    const b = [a.coin+(STABLE.includes(a.coin) ? " (стейблкоин)" : ""), fQ(a.qty)+" шт.", u!=null ? fU(u) : "нет цены", v!=null ? R(v) : ""];
+    if(a.rate) b.push("Earn "+fPct(a.rate)+" годовых");
+    if(a.cushion) b.push("отмечено как подушка");
+    if(inv) b.push("вложено из бюджета "+R(inv));
+    L.push("- "+b.filter(Boolean).join(" — "));
+  });
+  if(ctx.morts.length){
+    L.push("Ипотека:");
+    ctx.morts.forEach(a=>{
+      const bal = ctx.vals.get(a.id), s = capMort(bal, a.rate, a.pay), b = ["остаток "+R(bal)];
+      if(a.rate) b.push("ставка "+fPct(a.rate)); if(a.pay) b.push("платёж "+R(a.pay)+(ctx.inc ? " ("+pc(a.pay, ctx.inc)+" дохода)" : ""));
+      if(s && s.never) b.push("платёж не покрывает проценты");
+      else if(s) b.push("осталось ≈ "+s.n+" мес., до "+MONTHS[s.end.getMonth()].toLowerCase()+" "+s.end.getFullYear()+", переплата ≈ "+R(s.over));
+      L.push("- "+b.join(" — "));
+    });
+  } else L.push("Ипотеки нет.");
+
+  L.push("", "== ЦЕЛИ ==");
+  if(!ctx.goals.length) L.push("Целей нет.");
+  ctx.goals.forEach(g=>{
+    const o = capGoalInfo(ctx, g), b = ["«"+(g.name||"Цель")+"»", "цель "+R(g.target), "накоплено "+R(o.have)+" ("+Math.round(o.pc)+"%)"];
+    if(g.deadline) b.push("срок "+MONTHS[+g.deadline.slice(5)-1].toLowerCase()+" "+g.deadline.slice(0,4)+(o.left>0 ? " ("+o.left+" мес. с текущим)" : " — срок прошёл"));
+    if(o.need) b.push("нужно "+R(o.need)+" в мес.");
+    const lk = g.links.map(id=> ctx.items.find(a=>a.id===id)).filter(Boolean).map(capLabel);
+    if(lk.length) b.push("в цель идут: "+lk.join(", "));
+    L.push("- "+b.join(" — "));
+  });
+
+  L.push("", "== РИСК-ПРОФИЛЬ ==");
+  const T = capRiskType(ctx.c);
+  if(T){
+    L.push("Тип: "+T.name+" ("+T.score+" из "+RISK_MAX+" баллов), ориентир рискованных активов — до "+T.risky+"%.");
+    RISK_Q.forEach(q=> L.push("- "+q.t+" — "+q.o[Math.min(ctx.c.profile.a[q.k], q.o.length-1)]));
+  } else L.push("Тест не пройден.");
+  return L.join("\n");
+}
+function capAiLastChange(){
+  const c = capGet();
+  return Math.max(c.profile.ts||0, c.rates.pxTs||0, ...c.items.map(x=> x.ts||0));
+}
+function capAiHasData(){ return capLive().some(a=> a.kind!=="goal"); }
+async function capAiRun(){
+  const key = CAP_AI_KEY;
+  if(AI.busy[key]) return;
+  AI.busy[key] = true; delete AI.err[key]; capAiRenderCard();
+  try{
+    const r = await aiCall(CAP_AI_SYSTEM, capAiPrompt());
+    const val = {text:r.text, at:nowTs(), model:r.model}; if(r.cut) val.cut = true;
+    aiPut(key, val);
+    toast("Разбор капитала готов");
+  }catch(e){
+    AI.err[key] = aiErrText(e); toast(AI.err[key]);
+  }finally{ delete AI.busy[key]; capAiRenderCard(); }
+}
+function capAiPreview(){
+  aiSheet((box, close)=>{
+    box.appendChild(aiEl("h3", "", "Что отправится в Gemini"));
+    box.appendChild(aiEl("p", "ask-sub", "Ровно этот текст и инструкция, как отвечать. Отдельные записи трат, комментарии, донги, ключ Gemini и настройки не отправляются."));
+    box.appendChild(aiEl("pre", "ai-pre", capAiPrompt()));
+    const bar = aiEl("div", "ask-bar one"); const ok = aiEl("button", "btn", "Понятно"); ok.onclick = close;
+    bar.appendChild(ok); box.appendChild(bar);
+  }, true);
+}
+function capAiRenderCard(){
+  const box = capEl("cap-ai-in"); if(!box) return;
+  const key = CAP_AI_KEY, saved = aiSaved(key), busy = AI.busy[key], err = AI.err[key], hasKey = !!aiGetKey();
+  const hasData = capAiHasData();
+  box.innerHTML = "";
+  if(err && !busy) box.appendChild(aiEl("div", "ai-err", err));
+  if(busy) box.appendChild(aiEl("div", "ai-hint ai-wait", "Gemini разбирает капитал… Можно переключать вкладки — ответ сохранится сам."));
+  else if(saved){
+    if(capAiLastChange() > saved.at) box.appendChild(aiEl("div", "ai-hint", "После этого разбора данные капитала менялись — его можно обновить."));
+    const t = aiEl("div", "ai-text"); aiRender(t, saved.text); box.appendChild(t);
+    const when = new Date(saved.at).toLocaleString("ru-RU", {day:"numeric", month:"short", hour:"2-digit", minute:"2-digit"});
+    box.appendChild(aiEl("div", "ai-hint", when + (saved.model ? " · "+saved.model : "") + (saved.cut ? " · ответ обрезан по длине" : "")));
+  } else if(!hasData) box.appendChild(aiEl("div", "ai-hint", "Добавьте вклады, крипту или ипотеку — тогда будет что разбирать."));
+  else box.appendChild(aiEl("div", "ai-hint", "Gemini посмотрит подушку, структуру и риски капитала, ипотеку против вкладов, реалистичность целей с учётом риск-профиля и бюджета — и предложит шаги на ближайший месяц."));
+  const bar = aiEl("div", "tools ai-bar");
+  if(hasKey){
+    const go = aiEl("button", "btn sm", saved ? "Обновить разбор" : "Получить разбор");
+    go.disabled = !!busy || !hasData; go.onclick = capAiRun; bar.appendChild(go);
+  } else { const set = aiEl("button", "btn sm", "Подключить Gemini"); set.onclick = aiSettings; bar.appendChild(set); }
+  if(hasData){ const pv = aiEl("button", "btn sm ghost", "Что отправится"); pv.onclick = capAiPreview; bar.appendChild(pv); }
+  if(saved && !busy){
+    const del = aiEl("button", "btn sm ghost", "Удалить");
+    del.onclick = ()=> askConfirm({title:"Удалить разбор капитала?", lines:["Разбор удалится на всех устройствах."], ok:"Удалить"})
+      .then(yes=>{ if(!yes) return; aiPut(key, {at:nowTs(), del:1}); capAiRenderCard(); toast("Разбор удалён"); });
+    bar.appendChild(del);
+  }
+  box.appendChild(bar);
+}
+
 /* ---------- init ---------- */
 (function init(){
   document.getElementById("ai-set").onclick = aiSettings;
@@ -3531,6 +3711,7 @@ async function capRefresh(){
   document.getElementById("prev").onclick = ()=>shift(-1);
   document.getElementById("next").onclick = ()=>shift(1);
   document.querySelectorAll(".tab").forEach(b=> b.onclick = ()=>setTab(b.dataset.t));
+  document.getElementById("cap-ai-set").onclick = aiSettings;
   document.getElementById("cap-btn").onclick = ()=> setTab(tab==="cap" ? lastTab : "cap");
   document.querySelectorAll("[data-cap-add]").forEach(b=> b.onclick = ()=> capEdit(null, b.dataset.capAdd));
 
