@@ -758,7 +758,7 @@ body[data-tab="cap"] .mnav{display:none}
     <div id="cap-dep"></div>
   </div>
   <div class="card">
-    <h2 class="card-h">Крипта · Bybit<button class="link-btn" data-cap-add="crypto">+ Добавить</button></h2>
+    <h2 class="card-h">Крипта · Bybit<button class="link-btn" data-cap-add="crypto">+ Добавить</button><button class="icon-btn" id="cap-bybit-set" style="margin-left:2px" title="Ключ Bybit" aria-label="Ключ Bybit"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button></h2>
     <div id="cap-cry"></div>
     <div class="cap-rates" id="cap-rates"></div>
   </div>
@@ -2871,6 +2871,7 @@ function capItemNorm(x){
   o.target = capNum(x.target);
   o.deadline = MKEY.test(x.deadline) ? x.deadline : "";
   o.links = Array.isArray(x.links) ? x.links.filter(s=> typeof s==="string" && s).slice(0,40) : [];
+  if(x.src==="bybit" && ["Trading","Funding","Earn"].includes(x.acct)){ o.src = "bybit"; o.acct = x.acct; }   // монета с биржи
   return o;
 }
 function capNorm(v){
@@ -2891,7 +2892,7 @@ function capNorm(v){
   });
   return {
     items: Array.from(byId.values()),
-    rates: {usd:capNum(r.usd), usdTs:num0(r.usdTs), px, pxTs:num0(r.pxTs)},
+    rates: {usd:capNum(r.usd), usdTs:num0(r.usdTs), px, pxTs:num0(r.pxTs), byTs:num0(r.byTs)},
     profile: {a, ts:num0(p.ts)}
   };
 }
@@ -2900,7 +2901,7 @@ function capMerge(a, b){
   const out = capNorm({items: A.items.concat(B.items)});   // слияние по id
   const u = B.rates.usdTs > A.rates.usdTs ? B.rates : A.rates;
   const p = B.rates.pxTs > A.rates.pxTs ? B.rates : A.rates;
-  out.rates = {usd:u.usd, usdTs:u.usdTs, px:p.px, pxTs:p.pxTs};
+  out.rates = {usd:u.usd, usdTs:u.usdTs, px:p.px, pxTs:p.pxTs, byTs:Math.max(A.rates.byTs, B.rates.byTs)};
   out.profile = B.profile.ts > A.profile.ts ? B.profile : A.profile;
   return out;
 }
@@ -3176,6 +3177,7 @@ function renderCap(){
     if(u!=null) cryUsd += u;
     const subs = [fQ(a.qty)+" "+a.coin+(p && !STABLE.includes(a.coin) ? " по "+fU(p) : "")];
     if(a.rate) subs.push("Earn "+fPct(a.rate)+" годовых");
+    if(a.src==="bybit") subs.push("с биржи · "+(ctx.c.rates.byTs ? capDateTs(ctx.c.rates.byTs) : ""));
     const inv = ctx.contrib(a);
     if(inv) subs.push("вложено из бюджета "+fR0(inv)+(v!=null ? " · "+(v>=inv ? "+" : "−")+fR0(Math.abs(v-inv)) : ""));
     capRow(cry, a, capLabel(a), subs, v!=null ? fR0(v) : p ? "нет курса $" : "нет цены", u!=null ? fU(u) : "");
@@ -3193,8 +3195,12 @@ function renderCap(){
   if(coins.length) info.appendChild(document.createTextNode(r.pxTs ? " · цены монет "+capDateTs(r.pxTs) : " · цен монет нет"));
   info.title = "Задать вручную"; info.onclick = capRatesEdit;
   const upd = aiEl("button","btn sm ghost", capBusy ? "Обновляю…" : "Обновить курсы");
-  upd.disabled = capBusy; upd.onclick = capRefresh;
-  rt.append(info, upd);
+  upd.disabled = capBusy || bybitBusy; upd.onclick = ()=> capRefresh();
+  const hasBy = !!bybitCreds().key;
+  const byb = aiEl("button", hasBy ? "btn sm" : "btn sm ghost", bybitBusy ? "Загружаю…" : hasBy ? "Загрузить с Bybit" : "Подключить Bybit");
+  byb.disabled = bybitBusy || capBusy; byb.onclick = ()=> bybitImport();
+  if(bybitErr){ const e = aiEl("div","ai-err",bybitErr); e.style.flexBasis = "100%"; e.style.margin = "0"; rt.appendChild(e); }
+  rt.append(info, byb, upd);
 
   // ---- ипотека
   const mo = capEl("cap-mort"); mo.innerHTML = "";
@@ -3345,6 +3351,7 @@ function capEdit(src, kind){
         t.chips("Монета", COINS.map(c=>[c,c]).concat([["*","Другая"]]),
           v=> v==="*" ? otherCoin : !otherCoin && d.coin===v,
           v=>{ otherCoin = v==="*"; if(!otherCoin) d.coin = v; else if(COINS.includes(d.coin)) d.coin = ""; draw(); return false; });
+        if(d.src==="bybit") t.hint("Монета загружена с Bybit ("+d.acct+"): количество перезапишется при следующей загрузке.");
         if(otherCoin){ const i = txt("Тикер монеты", "coin", "XRP, NOT, MNT…"); i.autocapitalize = "characters"; }
         num("Количество", "qty");
         txt("Где лежит", "name", "Bybit, Bybit Earn…");
@@ -3485,8 +3492,8 @@ async function capFetch(url){
     return await r.json();
   } finally { clearTimeout(t); }
 }
-async function capRefresh(){
-  if(capBusy) return;
+async function capRefresh(quiet){
+  if(capBusy) return "";
   capBusy = true; renderCap();
   const coins = Array.from(new Set(capLive().filter(a=> a.kind==="crypto" && a.coin && !STABLE.includes(a.coin)).map(a=>a.coin)));
   let usd = 0; const px = {};
@@ -3510,10 +3517,174 @@ async function capRefresh(){
   if(usd){ c.rates.usd = usd; c.rates.usdTs = t; }
   if(got.length){ c.rates.px = Object.assign({}, c.rates.px, px); c.rates.pxTs = t; }
   if(usd || got.length) capSave(c); else renderCap();
-  toast(!usd && !got.length ? "Не удалось получить курсы — проверьте интернет или задайте вручную"
+  const msg = !usd && !got.length ? "Не удалось получить курсы — проверьте интернет или задайте вручную"
     : !usd ? "Цены монет обновлены, курс ЦБ не получен"
     : lost.length ? "Обновлено, кроме: "+lost.join(", ")
-    : "Курсы обновлены");
+    : "Курсы обновлены";
+  if(quiet !== true) toast(msg);
+  return msg;
+}
+
+/* ---------- Bybit: остатки по ключу только на чтение ----------
+   Запросы идут прямо из браузера к api.bybit.com, подписываются HMAC-SHA256
+   (Web Crypto). Ключ и секрет — только в localStorage этого устройства:
+   в базу, на Диск, в копии и в разбор ИИ не попадают.
+   Счета: Trading (единый торговый, wallet-balance), Funding (финансирование),
+   Earn (FlexibleSaving). Монеты с Bybit — записи crypto с src:"bybit" и acct;
+   при загрузке их количество перезаписывается, пропавшие удаляются.
+   Ручные записи не трогаются. */
+const BYBIT_KEY_LS = "budget.bybit.key", BYBIT_SEC_LS = "budget.bybit.secret";
+const BYBIT_HOST = "https://api.bybit.com";
+const BYBIT_ACCTS = ["Trading","Funding","Earn"];
+let bybitBusy = false, bybitErr = "", bybitOff = 0;
+function bybitCreds(){
+  try{ return {key:(localStorage.getItem(BYBIT_KEY_LS)||"").trim(), sec:(localStorage.getItem(BYBIT_SEC_LS)||"").trim()}; }
+  catch(e){ return {key:"", sec:""}; }
+}
+async function bybitHmac(sec, msg){
+  const enc = new TextEncoder();
+  const k = await crypto.subtle.importKey("raw", enc.encode(sec), {name:"HMAC", hash:"SHA-256"}, false, ["sign"]);
+  const sig = await crypto.subtle.sign("HMAC", k, enc.encode(msg));
+  return Array.from(new Uint8Array(sig)).map(b=> b.toString(16).padStart(2,"0")).join("");
+}
+async function bybitGet(path, query, cr){
+  const ts = String(Date.now() + bybitOff), rw = "20000";
+  const sign = await bybitHmac(cr.sec, ts + cr.key + rw + query);
+  const ctl = new AbortController(), t = setTimeout(()=> ctl.abort(), 15000);
+  let r;
+  try{
+    r = await fetch(BYBIT_HOST + path + "?" + query, {
+      headers:{"X-BAPI-API-KEY":cr.key, "X-BAPI-TIMESTAMP":ts, "X-BAPI-SIGN":sign, "X-BAPI-RECV-WINDOW":rw},
+      signal:ctl.signal, cache:"no-store"});
+  }catch(e){ throw new Error(e && e.name==="AbortError" ? "BYBIT_TIMEOUT" : "BYBIT_NET"); }
+  finally{ clearTimeout(t); }
+  let j = null; try{ j = await r.json(); }catch(e){}
+  if(!j || typeof j.retCode !== "number"){ const e = new Error("HTTP "+r.status); e.status = r.status; throw e; }
+  if(j.retCode !== 0){ const e = new Error(j.retMsg || ("код "+j.retCode)); e.code = j.retCode; throw e; }
+  return j.result || {};
+}
+function bybitErrText(e){
+  const m = String(e && e.message || e), c = e && e.code, s = e && e.status;
+  if(m==="BYBIT_CORS") return "Bybit не принимает запросы с ключом прямо из браузера. Остатки пока придётся вводить вручную; второй путь — свой сервер вне США.";
+  if(m==="BYBIT_NET") return "Нет связи с Bybit — проверьте интернет.";
+  if(m==="BYBIT_TIMEOUT") return "Bybit не ответил за 15 секунд. Попробуйте ещё раз.";
+  if(s===403) return "Bybit недоступен из этой страны или сети.";
+  if(c===10003 || c===33004) return "Bybit не узнал ключ: он удалён или истёк. Создайте новый — кнопка ⚙ в карточке.";
+  if(c===10004) return "Секрет не подходит к ключу. Проверьте его — кнопка ⚙ в карточке.";
+  if(c===10005) return "У ключа нет прав на чтение кошелька. Включите права «только чтение» для кошелька/активов.";
+  if(c===10010) return "Ключ привязан к IP-адресу, а у телефона IP меняется. Нужен ключ без привязки к IP.";
+  if(c===10002) return "Часы устройства сильно расходятся с Bybit. Включите автоматическое время и повторите.";
+  return "Bybit: "+m;
+}
+function bybitSettings(){
+  const cr = bybitCreds();
+  aiSheet((box, close)=>{
+    const t = capSheetBase(box, "Подключение Bybit");
+    t.hint("На Bybit в разделе API создайте системный ключ с правами только на чтение — без торговли и вывода. Привязку к IP не включайте: у телефона адрес меняется (такой ключ Bybit выдаёт на ограниченный срок, потом создайте новый).");
+    const k = t.fld("API Key", capInput(cr.key, "ключ")); k.spellcheck = false; k.autocomplete = "off";
+    const s = document.createElement("input"); s.type = "password"; s.autocomplete = "off"; s.spellcheck = false;
+    s.placeholder = "секрет"; s.value = cr.sec; t.fld("API Secret", s);
+    t.hint("Ключ и секрет хранятся только в этом браузере: на Google Диск, в резервные копии и в разбор ИИ они не попадают. На каждом устройстве вводятся отдельно.");
+    const bar = aiEl("div","ask-bar three");
+    const del = aiEl("button","btn ghost","Удалить ключ"); del.disabled = !cr.key;
+    const no = aiEl("button","btn ghost","Отмена"), ok = aiEl("button","btn","Сохранить и загрузить");
+    del.onclick = ()=>{ try{ localStorage.removeItem(BYBIT_KEY_LS); localStorage.removeItem(BYBIT_SEC_LS); }catch(e){} bybitErr = ""; close(); renderCap(); toast("Ключ Bybit удалён"); };
+    no.onclick = close;
+    ok.onclick = ()=>{
+      const kv = k.value.trim(), sv = s.value.trim();
+      if(!kv || !sv){ toast("Нужны и ключ, и секрет"); return; }
+      try{ localStorage.setItem(BYBIT_KEY_LS, kv); localStorage.setItem(BYBIT_SEC_LS, sv); }
+      catch(e){ toast("Не удалось сохранить ключ"); return; }
+      close(); bybitImport();
+    };
+    bar.append(del, no, ok); box.appendChild(bar);
+  });
+}
+async function bybitImport(){
+  const cr = bybitCreds();
+  if(!cr.key || !cr.sec){ bybitSettings(); return; }
+  if(bybitBusy) return;
+  if(!(window.crypto && crypto.subtle)){ bybitErr = "Этот браузер не умеет подписывать запросы (нужен https)."; renderCap(); return; }
+  bybitBusy = true; bybitErr = ""; renderCap();
+  const got = [], failed = [], px = {};
+  let firstErr = null;
+  try{
+    /* время сервера: часы телефона могут отставать, а подпись живёт 20 секунд */
+    try{ const tj = await capFetch(BYBIT_HOST+"/v5/market/time"); const st = Number(tj && tj.time); if(st) bybitOff = st - Date.now(); }
+    catch(e){ throw new Error("BYBIT_NET"); }
+    const step = async (acct, fn)=>{
+      try{ await fn(); }
+      catch(e){
+        // публичный запрос прошёл, а этот нет — значит, Bybit не пустил запрос с ключом
+        if(e.message==="BYBIT_NET") e.message = "BYBIT_CORS";
+        if(!firstErr) firstErr = e;
+        failed.push(acct);
+      }
+    };
+    await step("Trading", async ()=>{
+      let res;
+      try{ res = await bybitGet("/v5/account/wallet-balance", "accountType=UNIFIED", cr); }
+      catch(e){ if(e.code==null) throw e; res = await bybitGet("/v5/account/wallet-balance", "accountType=SPOT", cr); }
+      const acc = Array.isArray(res.list) ? res.list[0] : null;
+      (acc && Array.isArray(acc.coin) ? acc.coin : []).forEach(c=> got.push({acct:"Trading", coin:c.coin, qty:Number(c.walletBalance)||0, usd:Number(c.usdValue)||0}));
+    });
+    if(firstErr && firstErr.message==="BYBIT_CORS") throw firstErr;   // остальные упадут так же
+    await step("Funding", async ()=>{
+      const res = await bybitGet("/v5/asset/transfer/query-account-coins-balance", "accountType=FUND", cr);
+      (Array.isArray(res.balance) ? res.balance : []).forEach(c=> got.push({acct:"Funding", coin:c.coin, qty:Number(c.walletBalance)||0}));
+    });
+    await step("Earn", async ()=>{
+      const res = await bybitGet("/v5/earn/position", "category=FlexibleSaving", cr);
+      (Array.isArray(res.list) ? res.list : []).forEach(c=> got.push({acct:"Earn", coin:c.coin, qty:Number(c.amount)||0}));
+    });
+    if(failed.length === BYBIT_ACCTS.length) throw firstErr;
+  }catch(e){
+    bybitBusy = false; bybitErr = bybitErrText(e); renderCap(); toast(bybitErr); return;
+  }
+  bybitBusy = false;
+
+  const agg = new Map();
+  got.forEach(g=>{
+    const coin = String(g.coin||"").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,12);
+    if(!coin || !(g.qty > 1e-9)) return;
+    const k = g.acct+"|"+coin, p = agg.get(k) || {acct:g.acct, coin, qty:0};
+    p.qty += g.qty; agg.set(k, p);
+    if(g.usd > 0 && !STABLE.includes(coin)) px[coin] = g.usd/g.qty;
+  });
+  const c = capGet(), t = nowTs();
+  const hadSync = c.items.some(x=> !x.del && x.src==="bybit");
+  const manual = c.items.filter(x=> !x.del && x.kind==="crypto" && x.src!=="bybit" && /bybit/i.test(x.name||""));
+  let drop = false;
+  if(!hadSync && manual.length && agg.size){
+    drop = await askConfirm({title:"Убрать ручные записи Bybit?", lines:[
+      "Теперь остатки приходят с биржи. Чтобы монеты не посчитались дважды, ручные записи стоит убрать:",
+      manual.map(capLabel).join(", ")], ok:"Убрать"});
+  }
+  let add = 0, upd = 0, gone = 0;
+  const cc = capGet();   // заново: пока висел вопрос, база могла обновиться синхронизацией
+  const tomb = id=>{ const i = cc.items.findIndex(x=>x.id===id); if(i>-1) cc.items[i] = {id, kind:"crypto", ts:t, del:t}; cc.items.forEach(g=>{ if(g.kind==="goal" && !g.del && g.links.includes(id)){ g.links = g.links.filter(x=>x!==id); g.ts = t; } }); };
+  if(drop) manual.forEach(m=> tomb(m.id));
+  cc.items.slice().forEach(it=>{
+    if(it.del || it.src!=="bybit" || failed.includes(it.acct)) return;
+    const k = it.acct+"|"+it.coin, g = agg.get(k);
+    if(g){ if(Math.abs(it.qty - g.qty) > 1e-12){ it.qty = g.qty; it.ts = t; upd++; } agg.delete(k); }
+    else { tomb(it.id); gone++; }
+  });
+  agg.forEach(g=>{
+    if(failed.includes(g.acct)) return;
+    cc.items.push({id:uid(), kind:"crypto", name:"Bybit "+g.acct, coin:g.coin, qty:g.qty, src:"bybit", acct:g.acct, cushion:0, ts:t});
+    add++;
+  });
+  if(Object.keys(px).length){ cc.rates.px = Object.assign({}, cc.rates.px, px); cc.rates.pxTs = t; }
+  cc.rates.byTs = t;
+  capSave(cc);
+  const msg = await capRefresh(true);   // курс $ и цены монет из Funding/Earn
+  const parts = [];
+  if(add) parts.push("новых "+add); if(upd) parts.push("обновлено "+upd); if(gone) parts.push("убрано "+gone);
+  toast("Bybit: " + (parts.length ? parts.join(", ") : "без изменений")
+    + (failed.length ? " · не прочитано: "+failed.join(", ") : "")
+    + (msg && msg !== "Курсы обновлены" ? " · "+msg.charAt(0).toLowerCase()+msg.slice(1) : ""));
+  if(failed.length){ bybitErr = "Не прочитано: "+failed.join(", ")+" — "+bybitErrText(firstErr); renderCap(); }
 }
 
 /* ---------- разбор капитала от ИИ ----------
@@ -3712,6 +3883,7 @@ function capAiRenderCard(){
   document.getElementById("next").onclick = ()=>shift(1);
   document.querySelectorAll(".tab").forEach(b=> b.onclick = ()=>setTab(b.dataset.t));
   document.getElementById("cap-ai-set").onclick = aiSettings;
+  document.getElementById("cap-bybit-set").onclick = bybitSettings;
   document.getElementById("cap-btn").onclick = ()=> setTab(tab==="cap" ? lastTab : "cap");
   document.querySelectorAll("[data-cap-add]").forEach(b=> b.onclick = ()=> capEdit(null, b.dataset.capAdd));
 
