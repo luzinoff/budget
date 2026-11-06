@@ -380,6 +380,9 @@ input:focus,select:focus,textarea:focus,button:focus-visible,.chip:focus-visible
 .cashrow .flow u{text-decoration:none;color:var(--danger)}
 .cashrow .bal{font-size:14.5px;font-weight:650;white-space:nowrap}
 .cashrow.neg .bal{color:var(--danger)}
+.cashbig.neg .v{color:var(--danger)}
+.cashbig.wal{padding-bottom:2px}
+.tot.grand .lab i{font-style:normal;font-size:12.5px;font-weight:500;color:var(--ink-3)}
 
 /* ---------- сводка ---------- */
 .big{padding:12px 14px 14px}
@@ -640,41 +643,54 @@ textarea.chat-in{min-height:76px;resize:vertical;margin:8px 0 10px;font:inherit;
   <div class="card"><h2 class="card-h">По способу оплаты</h2><div id="p-vnd"></div></div>
 </section>
 
-<!-- ============ НАЛИЧНЫЕ ============ -->
+<!-- ============ КОШЕЛЬКИ ₫: карта BIDV и наличные ============ -->
 <section id="s-cash" hidden>
   <div class="card">
-    <div class="cashbig">
-      <div class="lab">Наличных сейчас</div>
-      <div class="v num" id="cash-now">—</div>
-      <div class="sub" id="cash-sub"></div>
+    <div class="cashbig wal" id="w-bidv">
+      <div class="lab">Карта BIDV</div>
+      <div class="v num" id="w-bidv-now">—</div>
     </div>
     <div class="cashstart">
-      <label for="cash-start">Было на начало месяца</label>
-      <input class="num" type="text" inputmode="decimal" placeholder="0 ₫" id="cash-start">
+      <label for="w-bidv-start">Было на начало месяца</label>
+      <input class="num" type="text" inputmode="decimal" placeholder="0 ₫" id="w-bidv-start">
     </div>
+    <div class="cashbig wal" id="w-cash" style="border-top:1px solid var(--line-2)">
+      <div class="lab">Наличные</div>
+      <div class="v num" id="w-cash-now">—</div>
+    </div>
+    <div class="cashstart">
+      <label for="w-cash-start">Было на начало месяца</label>
+      <input class="num" type="text" inputmode="decimal" placeholder="0 ₫" id="w-cash-start">
+    </div>
+    <div class="tot grand"><span class="lab">Всего <i id="cash-sub"></i></span><span class="val num" id="w-all-now">—</span></div>
   </div>
   <div class="card">
-    <h2 class="card-h">Пополнить наличные</h2>
+    <h2 class="card-h">Внесение</h2>
     <div class="form" id="f-cash">
       <div class="chips days" data-days></div>
+      <p class="f-lab">Куда</p>
+      <div class="chips" data-wallet></div>
+      <div data-src-w hidden><p class="f-lab">Откуда</p><div class="chips" data-src></div></div>
       <div class="entry">
         <button class="mic" data-mic title="Надиктовать" aria-label="Надиктовать"><svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V22h2v-3.08A7 7 0 0 0 19 12h-2z"/></svg></button>
         <input class="num" type="text" inputmode="decimal" placeholder="Сумма, ₫" data-amt aria-label="Сумма в донгах">
         <button class="btn" data-add>Добавить</button>
-        <input type="text" placeholder="Комментарий: обмен, снятие…" data-note aria-label="Комментарий">
+        <input type="text" placeholder="Комментарий: обмен, перевод, P2P…" data-note aria-label="Комментарий">
       </div>
       <div class="heard" data-heard></div>
     </div>
   </div>
   <div class="card">
-    <h2 class="card-h">Пополнения</h2>
+    <h2 class="card-h">Внесения</h2>
     <div id="l-topup"></div>
     <div class="tot grand"><span class="lab">Всего за месяц</span><span class="val num" id="t-topup">—</span></div>
+    <div class="tot avg"><span class="lab" id="t-topup-sub"></span></div>
   </div>
   <div class="card">
     <h2 class="card-h">Остаток по дням</h2>
+    <div class="chips" id="wal-day" style="padding:4px 14px 6px"></div>
     <div id="l-cash"></div>
-    <div class="note">Траты берутся с вкладки «Траты ₫» с оплатой «Наличные». Дни без движения скрыты.</div>
+    <div class="note" id="wal-note"></div>
   </div>
 </section>
 
@@ -823,9 +839,10 @@ textarea.chat-in{min-height:76px;resize:vertical;margin:8px 0 10px;font:inherit;
   </div>
   <div class="card">
     <h2 class="card-h">Донги</h2>
+    <div class="big"><div class="lab">Расходы</div><div class="v num" id="s-v">—</div></div>
     <div class="split">
-      <div class="big"><div class="lab">Расходы</div><div class="v num" id="s-v">—</div></div>
-      <div class="big"><div class="lab" id="s-c-lab">Наличных сейчас</div><div class="v num" id="s-c">—</div></div>
+      <div class="big"><div class="lab" id="s-b-lab">На карте BIDV</div><div class="v num" id="s-b">—</div></div>
+      <div class="big"><div class="lab" id="s-c-lab">Наличных</div><div class="v num" id="s-c">—</div></div>
     </div>
   </div>
   <div class="card">
@@ -873,7 +890,7 @@ textarea.chat-in{min-height:76px;resize:vertical;margin:8px 0 10px;font:inherit;
 
 <nav class="tabs" role="tablist" aria-label="Разделы">
   <button class="tab" role="tab" data-t="vnd"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9.5 8h5M9.5 12h5"/></svg><span>Траты ₫</span></button>
-  <button class="tab" role="tab" data-t="cash"><svg viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2.5"/><circle cx="12" cy="12" r="2.6"/></svg><span>Наличка</span></button>
+  <button class="tab" role="tab" data-t="cash"><svg viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2.5"/><circle cx="12" cy="12" r="2.6"/></svg><span>Кошельки</span></button>
   <button class="tab" role="tab" data-t="inc"><svg viewBox="0 0 24 24"><path d="M12 3.5v11M7.5 10.5l4.5 4.5 4.5-4.5"/><path d="M4 20h16"/></svg><span>Доходы</span></button>
   <button class="tab" role="tab" data-t="rub"><svg viewBox="0 0 24 24"><path d="M12 15.5v-11M7.5 9l4.5-4.5L16.5 9"/><path d="M4 20h16"/></svg><span>Траты ₽</span></button>
   <button class="tab" role="tab" data-t="sum"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9h-9z"/><path d="M15 3.5a9 9 0 0 1 5.5 5.5H15z"/></svg><span>Итоги</span></button>
@@ -955,7 +972,7 @@ function save(){
   autoSync();
 }
 function mk(){ return Y+"-"+String(M+1).padStart(2,"0"); }
-const EMPTY = () => ({inc:[],rub:[],vnd:[],topup:[],cashStart:0,cashStartTs:1});
+const EMPTY = () => ({inc:[],rub:[],vnd:[],topup:[],cashStart:0,cashStartTs:1,bidvStart:0,bidvStartTs:1});
 const META_KEY = "_meta"; // ключ для метаданных в DB
 function num0(v){ const n = Number(v); return isFinite(n) && n>0 ? n : 0; }
 
@@ -1008,6 +1025,8 @@ function fix(m){
   });
   if(typeof m.cashStart!=="number" || !isFinite(m.cashStart)) m.cashStart=0;
   m.cashStartTs = num0(m.cashStartTs) || 1;
+  if(typeof m.bidvStart!=="number" || !isFinite(m.bidvStart)) m.bidvStart=0;   // остаток на карте BIDV
+  m.bidvStartTs = num0(m.bidvStartTs) || 1;
   return m;
 }
 function itemTime(x){
@@ -1023,7 +1042,7 @@ const live = a => a.filter(x=>!x.del);
 function mon(){
   const k = mk();
   const m = DB[k] ? fix(DB[k]) : EMPTY();
-  return {inc:live(m.inc), rub:live(m.rub), vnd:live(m.vnd), topup:live(m.topup), cashStart:m.cashStart};
+  return {inc:live(m.inc), rub:live(m.rub), vnd:live(m.vnd), topup:live(m.topup), cashStart:m.cashStart, bidvStart:m.bidvStart};
 }
 /* запись: создаёт месяц только когда реально что-то добавляют */
 function monW(){
@@ -1032,7 +1051,8 @@ function monW(){
   return fix(DB[k]);
 }
 function isEmptyMonth(m){
-  if(m.inc.length || m.rub.length || m.vnd.length || m.topup.length || m.cashStart) return false;
+  if(m.inc.length || m.rub.length || m.vnd.length || m.topup.length || m.cashStart || m.bidvStart) return false;
+  if(m.bidvStartTs > 1 && m.bidvStartTs >= nowTs() - TOMB_TTL) return false;
   /* Обнуление остатка наличных — тоже правка. Если удалить такой месяц целиком,
      пропадёт cashStartTs, и при синхронизации старое значение с Диска воскреснет. */
   return !(m.cashStartTs > 1 && m.cashStartTs >= nowTs() - TOMB_TTL);
@@ -1090,6 +1110,8 @@ function mergeDB(a, b){
     });
     if(mb.cashStartTs > ma.cashStartTs){ m.cashStart = mb.cashStart; m.cashStartTs = mb.cashStartTs; }
     else { m.cashStart = ma.cashStart; m.cashStartTs = ma.cashStartTs; }
+    if(mb.bidvStartTs > ma.bidvStartTs){ m.bidvStart = mb.bidvStart; m.bidvStartTs = mb.bidvStartTs; }
+    else { m.bidvStart = ma.bidvStart; m.bidvStartTs = ma.bidvStartTs; }
     out[k] = m;
   });
   return out;
@@ -1176,6 +1198,27 @@ function buildForm(key, scroll){
       box.appendChild(b);
     });
   }
+  /* внесение: куда (карта или наличные) и, для наличных, откуда */
+  const wbox = root.querySelector("[data-wallet]");
+  if(wbox){
+    if(!WALLETS.some(w=> w.k===pick[key].wallet)) pick[key].wallet = "bidv";
+    wbox.innerHTML = "";
+    WALLETS.forEach(w=>{
+      const b = document.createElement("button"); b.className = "chip"; b.textContent = w.name;
+      b.setAttribute("aria-pressed", pick[key].wallet===w.k);
+      b.onclick = ()=>{ pick[key].wallet = w.k; buildForm(key); };
+      wbox.appendChild(b);
+    });
+    const sw = root.querySelector("[data-src-w]"), sbox = root.querySelector("[data-src]");
+    sw.hidden = pick[key].wallet !== "cash";
+    sbox.innerHTML = "";
+    [["","Обмен, перевод"],[FROM_BIDV,"Снял с карты BIDV"]].forEach(([v,t])=>{
+      const b = document.createElement("button"); b.className = "chip"; b.textContent = t;
+      b.setAttribute("aria-pressed", (pick[key].src||"")===v);
+      b.onclick = ()=>{ pick[key].src = v; buildForm(key); };
+      sbox.appendChild(b);
+    });
+  }
   const pbox = root.querySelector("[data-pays]");
   if(pbox){
     pbox.innerHTML = "";
@@ -1198,7 +1241,11 @@ function wireAdd(key){
     if(!v || v<=0){ amt.focus(); toast("Введите сумму больше нуля"); return; }
     const m = monW(), p = pick[key];
     const rec = {id:uid(), day:p.day, amount:v, note:(note.value||"").trim(), cat:"", pay:"", ts:nowTs(), del:0};
-    if(key==="cash"){ m.topup.push(rec); }
+    if(key==="cash"){
+      rec.pay = p.wallet==="cash" ? "Наличные" : BIDV_PAY;
+      if(p.wallet==="cash" && p.src===FROM_BIDV) rec.cat = FROM_BIDV;   // снятие: минус карте
+      m.topup.push(rec);
+    }
     else {
       rec.cat = p.cat;
       if(key==="vnd") rec.pay = p.pay;
@@ -1208,7 +1255,7 @@ function wireAdd(key){
     save(); amt.value=""; note.value="";
     const h = root.querySelector("[data-heard]"); if(h) h.textContent = "";
     render();
-    toast(key==="inc" ? "Доход добавлен" : key==="cash" ? "Наличные добавлены" : "Расход добавлен");
+    toast(key==="inc" ? "Доход добавлен" : key==="cash" ? (rec.cat===FROM_BIDV ? "Снятие с карты добавлено" : rec.pay===BIDV_PAY ? "Внесение на карту добавлено" : "Наличные добавлены") : "Расход добавлен");
     amt.focus();
   };
   root.querySelector("[data-add]").onclick = go;
@@ -1235,6 +1282,7 @@ function applyVoice(key, text){
   }
   if(p.cat){ pick[key].cat = p.cat; got.push(p.cat.toLowerCase()); }
   if(p.pay){ pick[key].pay = p.pay; got.push(p.pay.toLowerCase()); }
+  if(p.wallet){ pick[key].wallet = p.wallet; pick[key].src = p.src || ""; got.push(p.src ? "снятие с карты" : p.wallet==="bidv" ? "на карту" : "наличные"); }
   buildForm(key, true);
   if(p.cat || p.pay || p.day){
     root.querySelectorAll('.chip[aria-pressed="true"]').forEach(lit);
@@ -1425,13 +1473,14 @@ function renderList(box, arr, cur, key){
           sel.focus();
         };
       } else {
-        c.textContent = it.cat || "Пополнение";
+        c.textContent = key==="cash" ? (it.cat===FROM_BIDV ? "Снятие с карты" : "Внесение") : (it.cat || "Пополнение");
       }
       if(it.note){ const i=document.createElement("i"); i.textContent=it.note; c.appendChild(i); }
       r.appendChild(c);
-      if(it.pay){
+      if(it.pay || key==="cash"){
         const p = document.createElement("span"); p.className = "pay";
         if(capNames){ p.classList.add("sav"); p.textContent = "→ "+(capNames.get(it.pay) || "актив удалён"); }
+        else if(key==="cash") p.textContent = it.pay===BIDV_PAY ? "→ карта BIDV" : "→ наличные";
         else p.textContent = it.pay;
         r.appendChild(p);
       }
@@ -1492,20 +1541,37 @@ function renderCats(box, arr, cats, cur, field){
   });
 }
 
-function cashRows(){
-  const m = mon(), n = dim();
-  const spend = {}, top = {};
-  m.vnd.filter(x=>x.pay==="Наличные").forEach(x=> spend[x.day]=(spend[x.day]||0)+x.amount);
-  m.topup.forEach(x=> top[x.day]=(top[x.day]||0)+x.amount);
-  let bal = m.cashStart||0;
-  const out = [];
+/* ---------- кошельки ₫: карта BIDV и наличные ----------
+   Внесение (topup) с pay «Карта BIDV» пополняет карту, остальные — наличные
+   (у старых записей pay пустой). Наличные с cat «С карты BIDV» — снятие с карты:
+   плюс наличным, минус карте. Траты списываются по способу оплаты в «Тратах ₫». */
+const BIDV_PAY = "Карта BIDV", FROM_BIDV = "С карты BIDV";
+const WALLETS = [
+  {k:"bidv", name:"Карта BIDV", pay:BIDV_PAY,   start:"bidvStart", ts:"bidvStartTs"},
+  {k:"cash", name:"Наличные",   pay:"Наличные", start:"cashStart", ts:"cashStartTs"}
+];
+const topWallet = x=> x.pay===BIDV_PAY ? "bidv" : "cash";
+let walDay = "bidv";   // какой кошелёк показан в «Остатке по дням»
+function walletRows(k, m, n){
+  m = m || mon(); n = n || dim();
+  const w = WALLETS.find(x=> x.k===k), spend = {}, top = {}, out = {};
+  m.vnd.filter(x=> x.pay===w.pay).forEach(x=> spend[x.day] = (spend[x.day]||0) + x.amount);
+  m.topup.forEach(x=>{
+    if(topWallet(x)===k) top[x.day] = (top[x.day]||0) + x.amount;
+    if(k==="bidv" && topWallet(x)==="cash" && x.cat===FROM_BIDV) out[x.day] = (out[x.day]||0) + x.amount;
+  });
+  let bal = m[w.start]||0;
+  const rows = [];
   for(let d=1; d<=n; d++){
-    const t = top[d]||0, s = spend[d]||0;
-    bal = bal + t - s;
-    out.push({day:d, top:t, spend:s, bal, move:(t||s)>0});
+    const t = top[d]||0, sp = spend[d]||0, o = out[d]||0;
+    bal = bal + t - sp - o;
+    rows.push({day:d, top:t, spend:sp, out:o, bal, move:(t||sp||o)>0});
   }
-  return out;
+  return rows;
 }
+function cashRows(){ return walletRows("cash"); }
+/* остаток на конец месяца — для разбора ИИ и выжимки */
+function walletEnd(k, d){ const r = walletRows(k, d, new Date(d.y, d.m+1, 0).getDate()); return r.length ? r[r.length-1].bal : 0; }
 
 function render(){
   const m = mon();
@@ -1543,34 +1609,52 @@ function render(){
   renderCats(document.getElementById("c-vnd"), m.vnd, CATS.vnd, "V", "cat");
   renderCats(document.getElementById("p-vnd"), m.vnd, CATS.pay, "V", "pay");
 
-  // наличные
+  // кошельки: карта BIDV и наличные
   renderList(document.getElementById("l-topup"), m.topup, "V", "cash");
   document.getElementById("t-topup").textContent = fV(sum(m.topup));
-  const csEl = document.getElementById("cash-start");
-  if(document.activeElement !== csEl) csEl.value = m.cashStart ? m.cashStart : "";
-  const rows = cashRows(), last = rows[rows.length-1];
+  const topB = sum(m.topup.filter(x=> topWallet(x)==="bidv")), topC = sum(m.topup.filter(x=> topWallet(x)==="cash")), wd = sum(m.topup.filter(x=> topWallet(x)==="cash" && x.cat===FROM_BIDV));
+  document.getElementById("t-topup-sub").textContent = m.topup.length
+    ? "на карту BIDV "+fV(topB)+" · наличными "+fV(topC)+(wd ? " (в т.ч. снято с карты "+fV(wd)+")" : "") : "";
   const isNow = (Y===today.getFullYear() && M===today.getMonth());
-  const nowRow = isNow ? rows[today.getDate()-1] : last;
-  document.getElementById("cash-now").textContent = fV(nowRow ? nowRow.bal : 0);
-  document.getElementById("cash-sub").textContent = isNow
-    ? "на конец сегодняшнего дня"
-    : "на конец месяца";
+  const W = {};
+  WALLETS.forEach(w=>{
+    const el = document.getElementById("w-"+w.k+"-start");
+    if(document.activeElement !== el) el.value = m[w.start] ? m[w.start] : "";
+    const rows = walletRows(w.k), r = isNow ? rows[today.getDate()-1] : rows[rows.length-1];
+    W[w.k] = {rows, bal: r ? r.bal : 0};
+    document.getElementById("w-"+w.k+"-now").textContent = fV(W[w.k].bal);
+    document.getElementById("w-"+w.k).classList.toggle("neg", W[w.k].bal < 0);
+  });
+  document.getElementById("w-all-now").textContent = fV(W.bidv.bal + W.cash.bal);
+  document.getElementById("cash-sub").textContent = isNow ? "· на конец сегодняшнего дня" : "· на конец месяца";
+  const wdc = document.getElementById("wal-day"); wdc.innerHTML = "";
+  WALLETS.forEach(w=>{
+    const b = document.createElement("button"); b.className = "chip"; b.textContent = w.name;
+    b.setAttribute("aria-pressed", walDay===w.k);
+    b.onclick = ()=>{ walDay = w.k; render(); };
+    wdc.appendChild(b);
+  });
+  document.getElementById("wal-note").textContent = walDay==="bidv"
+    ? "Траты — с вкладки «Траты ₫» с оплатой «Карта BIDV» (в том числе импорт BIDV), снятия наличных с карты — из внесений. Дни без движения скрыты."
+    : "Траты — с вкладки «Траты ₫» с оплатой «Наличные». Дни без движения скрыты.";
   const lc = document.getElementById("l-cash");
   lc.innerHTML = "";
   /* Считаем по порядку (баланс накопительный), а показываем задом наперёд —
      свежие дни сверху. Массив rows не трогаем: по нему берут остаток на сегодня. */
-  const shown = rows.filter(r=>r.move);
+  const shown = W[walDay].rows.filter(r=>r.move);
   if(!shown.length){
-    lc.innerHTML = '<div class="empty">Движения наличных пока нет.</div>';
+    lc.innerHTML = '<div class="empty">Движения за месяц пока нет.</div>';
   } else {
     shown.slice().reverse().forEach(r=>{
       const el = document.createElement("div");
       el.className = "cashrow" + (r.bal<0 ? " neg" : "");
       const d = document.createElement("span"); d.className="d"; d.textContent = r.day;
       const fl = document.createElement("span"); fl.className="flow num";
-      if(r.top){ const s=document.createElement("s"); s.textContent="+"+fV(r.top); fl.appendChild(s); }
-      if(r.top && r.spend) fl.appendChild(document.createTextNode("  "));
-      if(r.spend){ const u=document.createElement("u"); u.textContent="−"+fV(r.spend); fl.appendChild(u); }
+      const parts = [];
+      if(r.top){ const x=document.createElement("s"); x.textContent="+"+fV(r.top); parts.push(x); }
+      if(r.spend){ const x=document.createElement("u"); x.textContent="−"+fV(r.spend); parts.push(x); }
+      if(r.out){ const x=document.createElement("u"); x.textContent="−"+fV(r.out)+" снято"; parts.push(x); }
+      parts.forEach((x,i)=>{ if(i) fl.appendChild(document.createTextNode("  ")); fl.appendChild(x); });
       const b = document.createElement("span"); b.className="bal num"; b.textContent = fV(r.bal);
       el.append(d, fl, b);
       lc.appendChild(el);
@@ -1587,8 +1671,10 @@ function render(){
   const bw = document.getElementById("s-bal-w");
   bw.className = "big " + (bal>0?"pos":bal<0?"neg":"");
   document.getElementById("s-v").textContent = fV(sum(m.vnd));
-  document.getElementById("s-c").textContent = fV(nowRow ? nowRow.bal : 0);
+  document.getElementById("s-c").textContent = fV(W.cash.bal);
   document.getElementById("s-c-lab").textContent = isNow ? "Наличных сейчас" : "Наличных на конец месяца";
+  document.getElementById("s-b").textContent = fV(W.bidv.bal);
+  document.getElementById("s-b-lab").textContent = isNow ? "На карте BIDV сейчас" : "На карте BIDV на конец месяца";
   renderCats(document.getElementById("s-cats"), m.vnd, CATS.vnd, "V", "cat");
   aiRenderCard();
   renderDyn();
@@ -1663,9 +1749,12 @@ function exportCsv(){
   push(["РАСХОДЫ, донги"]); push(["День","Категория","Способ оплаты","Сумма","Комментарий"]);
   m.vnd.slice().sort((a,b)=>a.day-b.day).forEach(x=> push([String(x.day),x.cat,x.pay,x.amount,x.note]));
   push(["","","ИТОГО",sum(m.vnd),""]); push([]);
-  push(["НАЛИЧНЫЕ, донги"]); push(["На начало месяца",m.cashStart||0]);
-  push(["День","Пополнение","Потрачено","Остаток"]);
-  cashRows().filter(r=>r.move).forEach(r=> push([String(r.day),r.top,r.spend,r.bal]));
+  WALLETS.forEach(w=>{
+    push([w.name.toUpperCase()+", донги"]); push(["На начало месяца", m[w.start]||0]);
+    push(["День","Внесено","Потрачено","Снято наличными","Остаток"]);
+    walletRows(w.k).filter(r=>r.move).forEach(r=> push([String(r.day),r.top,r.spend,r.out,r.bal]));
+    push([]);
+  });
   dl("Бюджет-"+mk()+".csv", "﻿"+L.join("\n"), "text/csv;charset=utf-8");
   toast("Файл выгружен — откройте его в Excel");
 }
@@ -1808,6 +1897,11 @@ function vParse(text, key){
   if(key === "vnd"){
     out.pay = vMatch(t, V_PAY);
     if(out.pay) V_PAY.forEach(r=> r[0]===out.pay && r[1].forEach(k=>{ if(t.indexOf(k)>-1) used.push(k); }));
+  }
+  if(key === "cash"){
+    if(/снял|сняти|банкомат/.test(t)){ out.wallet = "cash"; out.src = FROM_BIDV; }
+    else if(/карт|bidv|бидв/.test(t)) out.wallet = "bidv";
+    else if(/налич|налик|кэш|кеш/.test(t)) out.wallet = "cash";
   }
   if(d){ out.day = d; V_DAY.forEach(([w])=>{ if(t.indexOf(w)>-1) used.push(w); }); }
 
@@ -2405,7 +2499,7 @@ function aiPut(key, val){
 function aiMonth(y, m){
   const k = y+"-"+String(m+1).padStart(2,"0");
   const r = isObj(DB[k]) ? fix(DB[k]) : EMPTY();
-  return {k, y, m, inc:live(r.inc), rub:live(r.rub), vnd:live(r.vnd), topup:live(r.topup), cashStart:r.cashStart||0};
+  return {k, y, m, inc:live(r.inc), rub:live(r.rub), vnd:live(r.vnd), topup:live(r.topup), cashStart:r.cashStart||0, bidvStart:r.bidvStart||0};
 }
 const aiR = n => (Math.round((n||0)*100)/100).toLocaleString("ru-RU") + " ₽";
 const aiV = n => (Math.round((n||0)*10)/10).toLocaleString("ru-RU") + " тыс. ₫";
@@ -2414,7 +2508,7 @@ function aiGroup(arr, field){
   arr.forEach(x=>{ const c = x[field] || "Не указано"; g[c] = (g[c]||0) + x.amount; });
   return Object.keys(g).map(c=>({c, v:g[c]})).sort((a,b)=> b.v - a.v);
 }
-function aiHasData(d){ return !!(d.inc.length || d.rub.length || d.vnd.length || d.topup.length || d.cashStart); }
+function aiHasData(d){ return !!(d.inc.length || d.rub.length || d.vnd.length || d.topup.length || d.cashStart || d.bidvStart); }
 
 /* Текст для Gemini. Белый список: только то, что перечислено здесь. */
 function aiPrompt(y, m){
@@ -2448,9 +2542,12 @@ function aiPrompt(y, m){
     L.push("Записи (день — категория — оплата — сумма — комментарий):", ...list(d.vnd, true));
   }
 
-  L.push("", "== НАЛИЧНЫЕ ДОНГИ ==");
-  const cashSpent = sum(d.vnd.filter(x=>x.pay==="Наличные")), top = sum(d.topup);
-  L.push(`На начало месяца: ${aiV(d.cashStart)}. Пополнения: ${aiV(top)}. Потрачено наличными: ${aiV(cashSpent)}. Остаток ${isNow ? "сейчас" : "на конец месяца"}: ${aiV(d.cashStart + top - cashSpent)}.`);
+  L.push("", "== КОШЕЛЬКИ В ДОНГАХ ==");
+  WALLETS.forEach(w=>{
+    const rows = walletRows(w.k, d, n), r = rows[passed-1] || rows[rows.length-1];
+    const top = sum(rows, x=> x.top), sp = sum(rows, x=> x.spend), o = sum(rows, x=> x.out);
+    L.push(`${w.name}: на начало месяца ${aiV(d[w.start])}, внесено ${aiV(top)}, потрачено ${aiV(sp)}${o ? ", снято наличными "+aiV(o) : ""}, остаток ${isNow ? "сейчас" : "на конец месяца"} ${aiV(r ? r.bal : d[w.start])}.`);
+  });
 
   const prev = [1,2].map(i=>{ const t = new Date(y, m-i, 1); return aiMonth(t.getFullYear(), t.getMonth()); }).filter(aiHasData);
   if(prev.length){
@@ -4075,13 +4172,13 @@ function chatContext(opt){
   if(S.vnd && months.length){
     L.push("", "## Донги по месяцам");
     months.forEach(d=>{
-      if(!d.vnd.length && !d.topup.length && !d.cashStart) return;
+      if(!d.vnd.length && !d.topup.length && !d.cashStart && !d.bidvStart) return;
       L.push("### "+nm(d), "Расходы "+aiV(sum(d.vnd))+", дней с тратами "+new Set(d.vnd.map(x=>x.day)).size+".");
       if(d.vnd.length){
         L.push("По категориям: "+aiGroup(d.vnd,"cat").map(r=> r.c+" "+aiV(r.v)).join("; "));
         L.push("По оплате: "+aiGroup(d.vnd,"pay").map(r=> r.c+" "+aiV(r.v)).join("; "));
       }
-      L.push("Наличные: на начало "+aiV(d.cashStart)+", пополнения "+aiV(sum(d.topup))+".");
+      WALLETS.forEach(w=> L.push(w.name+": на начало "+aiV(d[w.start])+", внесено "+aiV(sum(d.topup.filter(x=> topWallet(x)===w.k)))+", на конец "+aiV(walletEnd(w.k, d))+"."));
     });
   }
   if(S.rec && months.length){
@@ -4256,22 +4353,25 @@ function chatOpen(){
   document.getElementById("cap-btn").onclick = ()=> setTab(tab==="cap" ? lastTab : "cap");
   document.querySelectorAll("[data-cap-add]").forEach(b=> b.onclick = ()=> capEdit(null, b.dataset.capAdd));
 
-  const cs = document.getElementById("cash-start");
-  const applyCash = ()=>{
-    const v = parseAmt(cs.value)||0;
-    /* Без изменения значения не трогаем cashStartTs: иначе простой заход в поле
-       создаст свежую метку с нулём и при слиянии затрёт остаток с другого устройства. */
-    if(v === (mon().cashStart||0)) return;
-    const m = monW();
-    m.cashStart = v;
-    m.cashStartTs = nowTs();
-    save(); render();
-  };
-  // save() прогоняет prune() по всей базе, поэтому не дёргаем его на каждую цифру
-  let csT = null;
-  cs.addEventListener("input", ()=>{ clearTimeout(csT); csT = setTimeout(applyCash, 400); });
-  cs.addEventListener("change", ()=>{ clearTimeout(csT); applyCash(); });
-  cs.addEventListener("blur", ()=>{ clearTimeout(csT); applyCash(); });
+  /* остаток на начало месяца — для карты и для наличных */
+  WALLETS.forEach(w=>{
+    const cs = document.getElementById("w-"+w.k+"-start");
+    const apply = ()=>{
+      const v = parseAmt(cs.value)||0;
+      /* Без изменения значения не трогаем метку времени: иначе простой заход в поле
+         создаст свежую метку с нулём и при слиянии затрёт остаток с другого устройства. */
+      if(v === (mon()[w.start]||0)) return;
+      const m = monW();
+      m[w.start] = v;
+      m[w.ts] = nowTs();
+      save(); render();
+    };
+    // save() прогоняет prune() по всей базе, поэтому не дёргаем его на каждую цифру
+    let t = null;
+    cs.addEventListener("input", ()=>{ clearTimeout(t); t = setTimeout(apply, 400); });
+    cs.addEventListener("change", ()=>{ clearTimeout(t); apply(); });
+    cs.addEventListener("blur", ()=>{ clearTimeout(t); apply(); });
+  });
 
   document.getElementById("ex-json").onclick = ()=>{
     dl("Бюджет-копия-"+new Date().toISOString().slice(0,10)+".json", JSON.stringify(DB,null,1), "application/json");
@@ -4300,12 +4400,12 @@ function chatOpen(){
           const t = nowTs(), keep = new Set();
           Object.keys(d).forEach(k=> LISTS.forEach(kk=>
             (Array.isArray(d[k][kk])?d[k][kk]:[]).forEach(r=>{ if(isObj(r) && r.id) keep.add(r.id); })));
-          Object.keys(d).forEach(k=>{ if(k !== META_KEY) d[k].cashStartTs = t; });   // остаток из файла должен победить
+          Object.keys(d).forEach(k=>{ if(k !== META_KEY){ d[k].cashStartTs = t; d[k].bidvStartTs = t; } });   // остаток из файла должен победить
           Object.keys(DB).forEach(k=>{
             if(k === META_KEY || !isObj(DB[k])) return;   // метки импорта не стираем: они лишь «уже видели»
             const m = fix(DB[k]);
             LISTS.forEach(kk=> m[kk].forEach(r=>{ if(!keep.has(r.id) && !r.del){ r.del = t; r.ts = t; } }));
-            if(!isObj(d[k])){ m.cashStart = 0; m.cashStartTs = t; }  // месяца нет в файле — обнуляем и его остаток
+            if(!isObj(d[k])){ m.cashStart = 0; m.cashStartTs = t; m.bidvStart = 0; m.bidvStartTs = t; }  // месяца нет в файле — обнуляем и его остаток
             DB[k] = m;
           });
         }
