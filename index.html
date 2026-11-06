@@ -575,6 +575,11 @@ body[data-tab="cap"] .mnav{display:none}
 
 /* вопросы к ИИ */
 .chat-h{display:flex;align-items:center;gap:8px}
+#cap-ai-in .chat-h{font-size:15px;font-weight:700;margin:4px 0 0}
+#cap-ai-in .chat-h .link-btn{margin-left:auto}
+#cap-ai-in .chat-opt{margin:2px 0 10px}
+#cap-ai-in .ai-bar{padding-left:0;padding-right:0}
+#cap-ai-in .chat-hist{margin-bottom:12px}
 .chat-h .link-btn{flex:0 0 auto}
 .chat-log{margin:4px 0 6px}
 .chat-q{background:var(--acc-soft);border-radius:12px;padding:8px 12px;margin:12px 0 6px;font-weight:550;white-space:pre-wrap;overflow-wrap:anywhere}
@@ -820,9 +825,9 @@ textarea.chat-in{min-height:76px;resize:vertical;margin:8px 0 10px;font:inherit;
     <div class="note" style="padding-bottom:12px">Ориентир по простым правилам, а не индивидуальная инвестиционная рекомендация.</div>
   </div>
   <div class="card" id="cap-ai-card">
-    <h2 class="card-h">Разбор капитала от ИИ<button class="icon-btn" id="cap-ai-set" title="Настройки Gemini" aria-label="Настройки Gemini"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button></h2>
+    <h2 class="card-h">Спросить ИИ<button class="icon-btn" id="cap-ai-set" title="Настройки Gemini" aria-label="Настройки Gemini"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button></h2>
     <div id="cap-ai-in"></div>
-    <div class="note" style="padding:0 14px 12px">Ориентир от ИИ, а не индивидуальная инвестиционная рекомендация.</div>
+    <div class="note" style="padding:0 14px 12px">Ответы Gemini — ориентир, а не индивидуальная инвестиционная рекомендация.</div>
   </div>
 </section>
 
@@ -3915,26 +3920,6 @@ async function bybitImport(){
 /* ---------- разбор капитала от ИИ ----------
    Тот же Gemini и ключ, что у разбора месяца. Ответ хранится в DB._meta.ai["cap"]
    и синхронизируется так же. Наружу уходит только то, что собирает capAiPrompt(). */
-const CAP_AI_KEY = "cap";
-const CAP_AI_SYSTEM = `Ты — внимательный помощник по личным финансам. Человек живёт во Вьетнаме: доходы в рублях, повседневные траты во вьетнамских донгах — в рублёвом бюджете они видны как «Покупка иностранной валюты». Тебе присылают состояние капитала: вклады и счета, криптовалюту на бирже Bybit, ипотеку, финансовые цели, риск-профиль и сводку бюджета.
-Правила:
-- Опирайся только на присланные цифры, ничего не выдумывай. Если данных не хватает для вывода (нет вкладов, не пройден тест, нет курса), так и скажи.
-- Суммы пиши в рублях с пробелами между разрядами, долларовые — в $.
-- Подушка безопасности — 3–6 месяцев трат в надёжных и доступных активах. Крипта, в том числе стейблкоины на бирже, несёт риск площадки — если она отмечена как подушка, обрати на это внимание.
-- Сравни долю рискованных активов с ориентиром риск-профиля.
-- По ипотеке сравни её ставку со ставками вкладов: что выгоднее — досрочное погашение или вклад. Подушка важнее досрочного погашения.
-- Оцени реалистичность целей по фактическому темпу откладывания и свободному остатку бюджета.
-- Можно давать общие советы по распределению: доли, подушка, порядок действий. Нельзя советовать конкретные банки, монеты, акции, фонды и продукты или прогнозировать курсы.
-Отвечай по-русски, коротко и по делу — так, чтобы прочитать за пару минут.
-Формат:
-**Коротко** — 1–2 предложения про общее состояние.
-**Подушка и ликвидность** — 1–3 пункта.
-**Риски** — 1–3 пункта: рискованная доля против профиля, концентрация на одной бирже, сроки вкладов.
-**Ипотека** — 1–2 пункта. Если ипотеки нет — пропусти раздел.
-**Цели** — по пункту на цель: успевает ли и что поменять. Если целей нет — пропусти раздел.
-**Что сделать в ближайший месяц** — 3–5 конкретных шагов с суммами.
-Пункты начинай с «- ».`;
-
 function capGoalInfo(ctx, g){
   let have = g.amount;
   g.links.forEach(id=>{ const v = ctx.vals.get(id); if(v) have += v; });
@@ -4026,62 +4011,6 @@ function capAiPrompt(){
   } else L.push("Тест не пройден.");
   return L.join("\n");
 }
-function capAiLastChange(){
-  const c = capGet();
-  return Math.max(c.profile.ts||0, c.rates.pxTs||0, ...c.items.map(x=> x.ts||0));
-}
-function capAiHasData(){ return capLive().some(a=> a.kind!=="goal"); }
-async function capAiRun(){
-  const key = CAP_AI_KEY;
-  if(AI.busy[key]) return;
-  AI.busy[key] = true; delete AI.err[key]; capAiRenderCard();
-  try{
-    const r = await aiCall(CAP_AI_SYSTEM, capAiPrompt());
-    const val = {text:r.text, at:nowTs(), model:r.model}; if(r.cut) val.cut = true;
-    aiPut(key, val);
-    toast("Разбор капитала готов");
-  }catch(e){
-    AI.err[key] = aiErrText(e); toast(AI.err[key]);
-  }finally{ delete AI.busy[key]; capAiRenderCard(); }
-}
-function capAiPreview(){
-  aiSheet((box, close)=>{
-    box.appendChild(aiEl("h3", "", "Что отправится в Gemini"));
-    box.appendChild(aiEl("p", "ask-sub", "Ровно этот текст и инструкция, как отвечать. Отдельные записи трат, комментарии, донги, ключ Gemini и настройки не отправляются."));
-    box.appendChild(aiEl("pre", "ai-pre", capAiPrompt()));
-    const bar = aiEl("div", "ask-bar one"); const ok = aiEl("button", "btn", "Понятно"); ok.onclick = close;
-    bar.appendChild(ok); box.appendChild(bar);
-  }, true);
-}
-function capAiRenderCard(){
-  const box = capEl("cap-ai-in"); if(!box) return;
-  const key = CAP_AI_KEY, saved = aiSaved(key), busy = AI.busy[key], err = AI.err[key], hasKey = !!aiGetKey();
-  const hasData = capAiHasData();
-  box.innerHTML = "";
-  if(err && !busy) box.appendChild(aiEl("div", "ai-err", err));
-  if(busy) box.appendChild(aiEl("div", "ai-hint ai-wait", "Gemini разбирает капитал… Можно переключать вкладки — ответ сохранится сам."));
-  else if(saved){
-    if(capAiLastChange() > saved.at) box.appendChild(aiEl("div", "ai-hint", "После этого разбора данные капитала менялись — его можно обновить."));
-    const t = aiEl("div", "ai-text"); aiRender(t, saved.text); box.appendChild(t);
-    const when = new Date(saved.at).toLocaleString("ru-RU", {day:"numeric", month:"short", hour:"2-digit", minute:"2-digit"});
-    box.appendChild(aiEl("div", "ai-hint", when + (saved.model ? " · "+saved.model : "") + (saved.cut ? " · ответ обрезан по длине" : "")));
-  } else if(!hasData) box.appendChild(aiEl("div", "ai-hint", "Добавьте вклады, крипту или ипотеку — тогда будет что разбирать."));
-  else box.appendChild(aiEl("div", "ai-hint", "Gemini посмотрит подушку, структуру и риски капитала, ипотеку против вкладов, реалистичность целей с учётом риск-профиля и бюджета — и предложит шаги на ближайший месяц."));
-  const bar = aiEl("div", "tools ai-bar");
-  if(hasKey){
-    const go = aiEl("button", "btn sm", saved ? "Обновить разбор" : "Получить разбор");
-    go.disabled = !!busy || !hasData; go.onclick = capAiRun; bar.appendChild(go);
-  } else { const set = aiEl("button", "btn sm", "Подключить Gemini"); set.onclick = aiSettings; bar.appendChild(set); }
-  if(hasData){ const pv = aiEl("button", "btn sm ghost", "Что отправится"); pv.onclick = capAiPreview; bar.appendChild(pv); }
-  if(hasKey){ const qa = aiEl("button", "btn sm ghost", "Задать вопрос"); qa.onclick = chatOpen; bar.appendChild(qa); }
-  if(saved && !busy){
-    const del = aiEl("button", "btn sm ghost", "Удалить");
-    del.onclick = ()=> askConfirm({title:"Удалить разбор капитала?", lines:["Разбор удалится на всех устройствах."], ok:"Удалить"})
-      .then(yes=>{ if(!yes) return; aiPut(key, {at:nowTs(), del:1}); capAiRenderCard(); toast("Разбор удалён"); });
-    bar.appendChild(del);
-  }
-  box.appendChild(bar);
-}
 
 /* ================= Вопросы к ИИ (переписка) =================
    Как «Спросить ИИ» в Медкарте: свободный вопрос к Gemini по данным бюджета
@@ -4109,7 +4038,7 @@ const CHAT_SYS = `Ты — внимательный помощник по лич
 - Ссылайся на конкретные месяцы и суммы. Незаконченный текущий месяц сравнивай с прошлыми по темпу, а не по итогу.
 - Можно давать общие советы по бюджету, подушке и распределению накоплений. Нельзя советовать конкретные банки, монеты, акции, фонды и продукты или прогнозировать курсы.
 - Структура: короткий итог в начале, затем разбор по пунктам. Оформление: заголовки ###, списки «- », **жирный**; без таблиц.`;
-const CHAT = {id:null, busy:null, draw:null};
+const CHAT = {busy:null, views:new Set()};
 let chatOpt = {per:6, sec:{rub:true, vnd:true, rec:false, cap:true}};
 try{ const o = JSON.parse(localStorage.getItem(CHAT_OPT_LS)||"null"); if(isObj(o)) chatOpt = chatOptNorm(o); }catch(e){}
 
@@ -4200,18 +4129,21 @@ function chatScope(o){
   o = chatOptNorm(o);
   return CHAT_SEC.filter(x=> o.sec[x[0]]).map(x=> x[1].toLowerCase()).join(", ")+" · "+(CHAT_PER.find(p=> p[0]===o.per)||[0,"всё время"])[1];
 }
-async function chatSend(q){
+/* Одна переписка — два места: окно с «Итогов» (chatOpen) и встроенная карточка
+   «Спросить ИИ» на «Капитале». У каждого места свой открытый разговор (st.id),
+   ожидание ответа — общее (CHAT.busy). */
+async function chatSend(q, st){
   q = String(q||"").trim();
   if(!q || CHAT.busy) return;
-  if(!aiGetKey()){ toast("Сначала подключите Gemini — кнопка ⚙ в карточке разбора"); return; }
-  let chat = CHAT.id ? chatGet(CHAT.id) : null;
+  if(!aiGetKey()){ toast("Сначала подключите Gemini — кнопка ⚙"); return; }
+  let chat = st.id ? chatGet(st.id) : null;
   if(!chat){
     if(!CHAT_SEC.some(x=> chatOpt.sec[x[0]])){ toast("Отметьте хотя бы один раздел данных"); return; }
     chat = {id:uid(), at:nowTs(), title: q.length>90 ? q.slice(0,88)+"…" : q, opt:chatOptNorm(chatOpt), msgs:[]};
   }
   chat.msgs.push({role:"user", text:q});
-  chat.at = nowTs(); chatPut(chat); CHAT.id = chat.id;
-  CHAT.busy = chat.id; CHAT.err = ""; chatRedraw();
+  chat.at = nowTs(); chatPut(chat); st.id = chat.id;
+  CHAT.busy = chat.id; st.err = ""; st.scroll = true; chatRedraw();
   const contents = [
     {role:"user", parts:[{text:"Данные моего бюджета и капитала:\n\n"+chatContext(chat.opt)}]},
     {role:"model", parts:[{text:"Данные получил, готов отвечать на вопросы."}]}
@@ -4220,105 +4152,148 @@ async function chatSend(q){
     const r = await aiCall(CHAT_SYS, contents);
     const cur = chatGet(chat.id) || chat;
     cur.msgs.push(Object.assign({role:"model", text:r.text}, r.cut ? {cut:true} : {}));
-    cur.at = nowTs(); chatPut(cur);
+    cur.at = nowTs(); chatPut(cur); st.scroll = true;
   }catch(e){
     // вопрос без ответа не храним: возвращаем его в поле, чтобы можно было отправить ещё раз
     const cur = chatGet(chat.id) || chat;
     cur.msgs.pop();
-    if(cur.msgs.length){ cur.at = nowTs(); chatPut(cur); } else { chatDel(cur.id); CHAT.id = null; }
-    CHAT.err = aiErrText(e); CHAT.retry = q; toast(CHAT.err);
+    if(cur.msgs.length){ cur.at = nowTs(); chatPut(cur); } else { chatDel(cur.id); st.id = null; }
+    st.err = aiErrText(e); st.retry = q; toast(st.err);
   }finally{ CHAT.busy = null; chatRedraw(); }
 }
-function chatRedraw(){ if(CHAT.draw) CHAT.draw(); }
-function chatPreview(){
+function chatRedraw(){ CHAT.views.forEach(v=> v(true)); }
+function chatPreview(st){
   aiSheet((box, close)=>{
     box.appendChild(aiEl("h3", "", "Что уйдёт в Gemini"));
     box.appendChild(aiEl("p", "ask-sub", "Эта выжимка, инструкция и сама переписка. Ключи, настройки и разделы, которые не отмечены, не отправляются."));
-    const c = CHAT.id ? chatGet(CHAT.id) : null;
+    const c = st.id ? chatGet(st.id) : null;
     box.appendChild(aiEl("pre", "ai-pre", chatContext(c ? c.opt : chatOpt)));
     const bar = aiEl("div", "ask-bar one"); const ok = aiEl("button", "btn", "Понятно"); ok.onclick = close;
     bar.appendChild(ok); box.appendChild(bar);
   }, true);
 }
+/* Вид переписки внутри box. o.presets — готовые вопросы, o.close — для окна.
+   Возвращает draw(force): без force не перерисовывает, пока человек печатает. */
+function chatView(box, o){
+  const st = {id:null, err:"", retry:"", scroll:false};
+  let q = null;
+  const draw = force=>{
+    // окно закрыто — отписываемся (первая отрисовка идёт до того, как окно попало на страницу)
+    if(o.close && box._live && !box.isConnected){ CHAT.views.delete(draw); return; }
+    box._live = true;
+    if(!force && q && document.activeElement === q) return;
+    const keep = st.retry || (q ? q.value : "");
+    st.retry = "";
+    box.innerHTML = "";
+    const chat = st.id ? chatGet(st.id) : null;
+    if(st.id && !chat) st.id = null;   // разговор удалён на другом устройстве
+    const busy = CHAT.busy && (!chat || CHAT.busy===chat.id);
+    if(!aiGetKey()){
+      box.appendChild(aiEl("p","ai-hint","Задайте Gemini любой вопрос по бюджету и капиталу. Нужен ключ Gemini — тот же, что для разбора месяца."));
+      const bar = aiEl("div", o.close ? "ask-bar" : "tools ai-bar");
+      if(o.close){ const no = aiEl("button","btn ghost","Закрыть"); no.onclick = o.close; bar.appendChild(no); }
+      const set = aiEl("button", o.close ? "btn" : "btn sm","Подключить Gemini"); set.onclick = ()=>{ if(o.close) o.close(); aiSettings(); };
+      bar.appendChild(set); box.appendChild(bar);
+      return;
+    }
+    const h = aiEl(o.close ? "h3" : "div", "chat-h", chat ? chat.title : (o.close ? "Вопрос к ИИ" : ""));
+    if(chat){ const nb = aiEl("button","link-btn","+ Новый вопрос"); nb.onclick = ()=>{ st.id = null; st.err = ""; draw(true); }; h.appendChild(nb); }
+    if(h.textContent || chat) box.appendChild(h);
+    if(chat){
+      const log = aiEl("div","chat-log");
+      chat.msgs.forEach(m=>{
+        if(m.role==="user"){ log.appendChild(aiEl("div","chat-q", m.text)); return; }
+        const a = aiEl("div","chat-a ai-text"); aiRender(a, m.text); log.appendChild(a);
+        if(m.cut) log.appendChild(aiEl("div","ai-hint","Ответ обрезан по длине."));
+      });
+      box.appendChild(log);
+      box.appendChild(aiEl("div","ai-hint","Данные: "+chatScope(chat.opt)));
+    } else {
+      const pr = aiEl("div","chips chat-pre");
+      o.presets.forEach(t=>{ const b = aiEl("button","chip",t); b.type = "button"; b.onclick = ()=>{ q.value = t; q.focus(); }; pr.appendChild(b); });
+      box.appendChild(pr);
+    }
+    if(busy) box.appendChild(aiEl("div","ai-hint ai-wait","Gemini думает… обычно 20–60 секунд."+(o.close ? " Окно можно закрыть — ответ сохранится." : " Можно уйти на другую вкладку — ответ сохранится.")));
+    if(st.err && !busy) box.appendChild(aiEl("div","ai-err",st.err));
+    q = document.createElement("textarea");
+    q.className = "chat-in"; q.rows = 3; q.value = keep; q.disabled = !!busy;
+    q.placeholder = chat ? "Уточняющий вопрос…" : "Свой вопрос — или выберите готовый выше";
+    q.addEventListener("keydown", e=>{ if(e.key==="Enter" && (e.ctrlKey || e.metaKey)){ e.preventDefault(); go(); } });
+    box.appendChild(q);
+    if(!chat){
+      const chipsRow = (label, items, isOn, onPick)=>{
+        const w = aiEl("div","ask-fld chat-opt"); w.appendChild(aiEl("span",null,label));
+        const c = aiEl("div","chips"); w.appendChild(c);
+        const paint = ()=>{ c.innerHTML = ""; items.forEach(([v,t])=>{ const b = aiEl("button","chip",t); b.type = "button"; b.setAttribute("aria-pressed", String(!!isOn(v)));
+          b.onclick = ()=>{ onPick(v); try{ localStorage.setItem(CHAT_OPT_LS, JSON.stringify(chatOpt)); }catch(e){} paint(); }; c.appendChild(b); }); };
+        paint(); box.appendChild(w);
+      };
+      chipsRow("Данные", CHAT_SEC, k=> chatOpt.sec[k], k=>{ chatOpt.sec[k] = !chatOpt.sec[k]; });
+      chipsRow("Период", CHAT_PER, v=> chatOpt.per===v, v=>{ chatOpt.per = v; });
+    }
+    const go = ()=>{ const t = q.value.trim(); if(!t){ q.focus(); return; } q.value = ""; chatSend(t, st); };
+    const bar = aiEl("div", o.close ? "ask-bar three" : "tools ai-bar");
+    const pv = aiEl("button", o.close ? "btn ghost chat-pv" : "btn sm ghost", "Что уйдёт в Gemini"); pv.onclick = ()=> chatPreview(st);
+    const ok = aiEl("button", o.close ? "btn" : "btn sm", busy ? "Жду ответ…" : "Спросить"); ok.disabled = !!busy; ok.onclick = go;
+    if(o.close){ const no = aiEl("button","btn ghost","Закрыть"); no.onclick = o.close; bar.append(pv, no, ok); }
+    else bar.append(ok, pv);
+    box.appendChild(bar);
+    // прошлые разговоры — на экране нового вопроса
+    const hist = chatList();
+    if(!chat && hist.length){
+      const hw = aiEl("div","chat-hist"); hw.appendChild(aiEl("div","chat-hist-h","Прошлые вопросы"));
+      hist.forEach(c=>{
+        const r = aiEl("div","chat-hrow");
+        const open = aiEl("button","chat-ht"); open.type = "button";
+        open.append(aiEl("b",null,c.title), aiEl("span",null, new Date(c.at).toLocaleString("ru-RU",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})+" · "+Math.ceil(c.msgs.length/2)+" вопр."));
+        open.onclick = ()=>{ st.id = c.id; st.err = ""; draw(true); (o.close ? box : box.closest(".card") || box).scrollIntoView({block:"start"}); };
+        const del = aiEl("button","del","×"); del.title = "Удалить разговор"; del.setAttribute("aria-label","Удалить разговор");
+        del.onclick = ()=>{ chatDel(c.id); if(st.id===c.id) st.id = null; draw(true); toast("Разговор удалён"); };
+        r.append(open, del); hw.appendChild(r);
+      });
+      box.appendChild(hw);
+    }
+    if(chat && st.scroll){
+      st.scroll = false;
+      const log = box.querySelector(".chat-log");
+      requestAnimationFrame(()=>{ const qs = log && log.querySelectorAll(".chat-q"); const last = qs && qs[qs.length-1]; if(last) last.scrollIntoView({block:"start", behavior:"smooth"}); });
+    }
+  };
+  return draw;
+}
+const CHAT_PRESETS_CAP = [
+  "Сделай полный разбор капитала: подушка, риски, ипотека, цели и шаги на месяц",
+  "Как быстрее набрать подушку безопасности на 6 месяцев?",
+  "Что делать с вкладом, у которого заканчивается срок?",
+  "Что выгоднее: досрочно гасить ипотеку или класть на вклад?",
+  "Оцени мой крипто-портфель с точки зрения риска",
+  "Сколько я реально могу откладывать в месяц и на какие цели?"
+];
 function chatOpen(){
   aiSheet((box, close)=>{
-    let q = null;
-    const draw = ()=>{
-      const keep = CHAT.retry || (q ? q.value : "");
-      CHAT.retry = "";
-      box.innerHTML = "";
-      const chat = CHAT.id ? chatGet(CHAT.id) : null;
-      const busy = CHAT.busy && (!chat || CHAT.busy===chat.id);
-      const h = aiEl("h3","chat-h", chat ? chat.title : "Вопрос к ИИ");
-      if(chat){ const nb = aiEl("button","link-btn","+ Новый"); nb.onclick = ()=>{ CHAT.id = null; CHAT.err = ""; draw(); }; h.appendChild(nb); }
-      box.appendChild(h);
-      if(!aiGetKey()){
-        box.appendChild(aiEl("p","ai-hint","Нужен ключ Gemini — тот же, что для разборов."));
-        const bar = aiEl("div","ask-bar"); const no = aiEl("button","btn ghost","Закрыть"), set = aiEl("button","btn","Подключить Gemini");
-        no.onclick = close; set.onclick = ()=>{ close(); aiSettings(); }; bar.append(no, set); box.appendChild(bar);
-        return;
-      }
-      if(chat){
-        const log = aiEl("div","chat-log");
-        chat.msgs.forEach(m=>{
-          if(m.role==="user"){ log.appendChild(aiEl("div","chat-q", m.text)); return; }
-          const a = aiEl("div","chat-a ai-text"); aiRender(a, m.text); log.appendChild(a);
-          if(m.cut) log.appendChild(aiEl("div","ai-hint","Ответ обрезан по длине."));
-        });
-        box.appendChild(log);
-        box.appendChild(aiEl("div","ai-hint","Данные: "+chatScope(chat.opt)));
-      } else {
-        const pr = aiEl("div","chips chat-pre");
-        CHAT_PRESETS.forEach(t=>{ const b = aiEl("button","chip",t); b.type = "button"; b.onclick = ()=>{ q.value = t; q.focus(); }; pr.appendChild(b); });
-        box.appendChild(pr);
-      }
-      if(busy) box.appendChild(aiEl("div","ai-hint ai-wait","Gemini думает… обычно 20–60 секунд. Окно можно закрыть — ответ сохранится."));
-      if(CHAT.err && !busy) box.appendChild(aiEl("div","ai-err",CHAT.err));
-      q = document.createElement("textarea");
-      q.className = "chat-in"; q.rows = 3; q.value = keep; q.disabled = !!busy;
-      q.placeholder = chat ? "Уточняющий вопрос…" : "Например: почему в октябре траты в донгах выросли?";
-      q.addEventListener("keydown", e=>{ if(e.key==="Enter" && (e.ctrlKey || e.metaKey)){ e.preventDefault(); go(); } });
-      box.appendChild(q);
-      if(!chat){
-        const sec = aiEl("div","ask-fld"); sec.appendChild(aiEl("span",null,"Данные"));
-        const sc = aiEl("div","chips"); sec.appendChild(sc);
-        const paintS = ()=>{ sc.innerHTML = ""; CHAT_SEC.forEach(([k,t])=>{ const b = aiEl("button","chip",t); b.type = "button"; b.setAttribute("aria-pressed", String(!!chatOpt.sec[k]));
-          b.onclick = ()=>{ chatOpt.sec[k] = !chatOpt.sec[k]; try{ localStorage.setItem(CHAT_OPT_LS, JSON.stringify(chatOpt)); }catch(e){} paintS(); }; sc.appendChild(b); }); };
-        paintS();
-        const per = aiEl("div","ask-fld"); per.appendChild(aiEl("span",null,"Период"));
-        const pc = aiEl("div","chips"); per.appendChild(pc);
-        const paintP = ()=>{ pc.innerHTML = ""; CHAT_PER.forEach(([v,t])=>{ const b = aiEl("button","chip",t); b.type = "button"; b.setAttribute("aria-pressed", String(chatOpt.per===v));
-          b.onclick = ()=>{ chatOpt.per = v; try{ localStorage.setItem(CHAT_OPT_LS, JSON.stringify(chatOpt)); }catch(e){} paintP(); }; pc.appendChild(b); }); };
-        paintP();
-        box.append(sec, per);
-      }
-      const go = ()=>{ const t = q.value.trim(); if(!t) { q.focus(); return; } q.value = ""; chatSend(t); };
-      const bar = aiEl("div","ask-bar three");
-      const pv = aiEl("button","btn ghost chat-pv","Что уйдёт в Gemini"); pv.onclick = chatPreview;
-      const no = aiEl("button","btn ghost","Закрыть"); no.onclick = close;
-      const ok = aiEl("button","btn", busy ? "Жду ответ…" : "Спросить"); ok.disabled = !!busy; ok.onclick = go;
-      bar.append(pv, no, ok); box.appendChild(bar);
-      // прошлые разговоры — только на экране нового вопроса
-      const hist = chatList();
-      if(!chat && hist.length){
-        const hw = aiEl("div","chat-hist"); hw.appendChild(aiEl("div","chat-hist-h","Прошлые вопросы"));
-        hist.forEach(c=>{
-          const r = aiEl("div","chat-hrow");
-          const open = aiEl("button","chat-ht");
-          open.type = "button";
-          open.append(aiEl("b",null,c.title), aiEl("span",null, new Date(c.at).toLocaleString("ru-RU",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})+" · "+Math.ceil(c.msgs.length/2)+" вопр."));
-          open.onclick = ()=>{ CHAT.id = c.id; CHAT.err = ""; draw(); box.scrollTop = 0; };
-          const del = aiEl("button","del","×"); del.title = "Удалить разговор"; del.setAttribute("aria-label","Удалить разговор");
-          del.onclick = ()=>{ chatDel(c.id); if(CHAT.id===c.id) CHAT.id = null; draw(); toast("Разговор удалён"); };
-          r.append(open, del); hw.appendChild(r);
-        });
-        box.appendChild(hw);
-      }
-      if(chat){ const log = box.querySelector(".chat-log"); if(log) requestAnimationFrame(()=>{ const last = log.lastElementChild; if(last) last.scrollIntoView({block:"start"}); }); }
-    };
-    CHAT.draw = ()=>{ if(!box.isConnected){ CHAT.draw = null; return; } draw(); };
-    draw();
+    const v = chatView(box, {presets:CHAT_PRESETS, close});
+    CHAT.views.add(v); v(true);
   }, true);
+}
+/* «Спросить ИИ» на «Капитале» — встроенная переписка вместо отдельного разбора */
+function capAiRenderCard(){
+  const box = capEl("cap-ai-in"); if(!box) return;
+  capAiMigrate();
+  if(!box._view){ box._view = chatView(box, {presets:CHAT_PRESETS_CAP}); CHAT.views.add(box._view); }
+  box._view(false);
+}
+/* Старый «Разбор капитала» (DB._meta.ai.cap) переносим в разговоры один раз.
+   id из времени разбора — если перенос случится на двух устройствах, после
+   синхронизации останется один разговор. */
+function capAiMigrate(){
+  const old = aiSaved("cap"); if(!old) return;
+  const meta = metaNorm(DB[META_KEY]);
+  const id = "cap"+old.at.toString(36);
+  if(!meta.chats.some(c=> c.id===id))
+    meta.chats = chatsNorm(meta.chats.concat({id, at:old.at, title:"Разбор капитала", opt:{per:3, sec:{rub:true, cap:true}},
+      msgs:[{role:"user", text:"Сделай полный разбор капитала: подушка, риски, ипотека, цели и шаги на месяц"}, Object.assign({role:"model", text:old.text}, old.cut ? {cut:true} : {})]}));
+  meta.ai.cap = {at:nowTs(), del:1};
+  DB[META_KEY] = meta; save();
 }
 
 /* ---------- init ---------- */
