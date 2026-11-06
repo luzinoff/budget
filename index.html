@@ -82,6 +82,30 @@ header::before{   /* тонкая полоса цвета раздела */
 .syncdot.on{background:#4FA373}
 .syncdot.busy{background:#E0B24A}
 .syncdot.err{background:#D2604C}
+/* кнопка синхронизации в шапке — как в Медкарте: состояние + обмен по нажатию */
+.hsync{
+  position:relative;flex:0 0 auto;display:flex;align-items:center;gap:6px;
+  height:34px;min-width:36px;padding:0 8px;border:0;border-radius:10px;background:none;
+  color:var(--ink-2);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap;
+}
+.hsync:hover{background:var(--line-2);color:var(--ink)}
+.hsync svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:0 0 auto}
+.hsync .syncdot{margin:0;width:8px;height:8px}
+.hsync.busy svg{animation:hsSpin 1s linear infinite}
+.hsync.err{color:#B23A2B}
+@keyframes hsSpin{to{transform:rotate(360deg)}}
+/* на телефоне — только значок, точка состояния в его углу */
+@media (max-width:639px){
+  .hsync{padding:0;width:36px;justify-content:center}
+  .hsync .t{display:none}
+  .hsync .syncdot{position:absolute;top:6px;right:5px;box-shadow:0 0 0 2px rgba(251,252,251,.94)}
+}
+/* узкий телефон: название не влезает рядом с месяцем и кнопками — убираем его,
+   месяц встаёт слева (имя приложения и так на иконке и в заголовке окна) */
+@media (max-width:420px){
+  .hrow h1{display:none}
+  .hrow .mnav{margin-right:auto}
+}
 
 /* ---------- нижнее меню ---------- */
 .tabs{
@@ -613,7 +637,10 @@ textarea.chat-in{min-height:76px;resize:vertical;margin:8px 0 10px;font:inherit;
       <button id="next" title="Следующий месяц" aria-label="Следующий месяц"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
     </div>
     <button class="hcap" id="cap-btn" title="Капитал: накопления, цели, риск-профиль" aria-label="Капитал" aria-pressed="false"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="7" ry="2.8"/><path d="M5 6v6c0 1.55 3.13 2.8 7 2.8s7-1.25 7-2.8V6"/><path d="M5 12v6c0 1.55 3.13 2.8 7 2.8s7-1.25 7-2.8v-6"/></svg></button>
-    <span class="syncdot" id="sdot" title="Синхронизация выключена"></span>
+    <button class="hsync" id="hsync" title="Синхронизировать с Google Диском" aria-label="Синхронизировать с Google Диском">
+      <svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.3-4.9L4 8"/><path d="M4 4v4h4"/><path d="M4 13a8 8 0 0 0 14.3 4.9L20 16"/><path d="M20 20v-4h-4"/></svg>
+      <span class="syncdot" id="sdot"></span><span class="t" id="hsync-t">Выкл.</span>
+    </button>
   </div>
 </header>
 
@@ -1988,6 +2015,45 @@ function syncUI(){
       : (SYNC.token || auto) ? "Диск подключён, синхронизация автоматическая"
       : "Синхронизация выключена";
   }
+  hsyncUI();
+}
+/* Кнопка в шапке: короткий статус и подсказка с полной причиной */
+function hsyncUI(){
+  const b = document.getElementById("hsync"), t = document.getElementById("hsync-t");
+  if(!b || !t) return;
+  const on = SYNC.token || (SYNC.ever && !SYNC.relogin);
+  const seen = Number(localStorage.getItem(SEEN_KEY)) || 0;
+  let short, tip;
+  if(!httpsOk){ short = "Локально"; tip = "Синхронизация работает только на сайте (https), а не в файле с диска"; }
+  else if(!SYNC.cid){ short = "Не настроено"; tip = "Синхронизация не настроена — нажмите, чтобы указать Client ID"; }
+  else if(SYNC.busy){ short = "Обмен…"; tip = "Идёт синхронизация с Google Диском"; }
+  else if(SYNC.relogin){ short = "Войти"; tip = "Нужен повторный вход в Google — нажмите"; }
+  else if(SYNC.err){ short = "Ошибка"; tip = SYNC.err + " — нажмите, чтобы повторить"; }
+  else if(on){
+    const d = seen ? new Date(seen) : null;
+    short = d ? (d.toDateString()===new Date().toDateString()
+                  ? d.toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"})
+                  : d.toLocaleDateString("ru-RU",{day:"numeric",month:"short"})) : "Диск";
+    tip = (seen ? "Последняя синхронизация: "+new Date(seen).toLocaleString("ru-RU") : "Диск подключён") + ". Нажмите, чтобы синхронизировать сейчас";
+  } else { short = "Войти"; tip = "Синхронизация выключена — нажмите, чтобы войти в Google"; }
+  t.textContent = short;
+  b.title = tip; b.setAttribute("aria-label", tip);
+  b.classList.toggle("busy", !!SYNC.busy);
+  b.classList.toggle("err", !SYNC.busy && !!(SYNC.err || SYNC.relogin));
+}
+/* Нажатие: обмен сразу (окно входа Google — только по этому нажатию, как и
+   у кнопки на «Итогах»). Не настроено — ведём к настройкам. */
+function hsyncClick(){
+  if(SYNC.busy) return;
+  if(!httpsOk){ toast("Синхронизация работает только на сайте https://…, а не в файле с диска"); return; }
+  if(!SYNC.cid){
+    setTab("sum");
+    const c = document.getElementById("sync-stat"), card = c && c.closest(".card");
+    if(card) card.scrollIntoView({block:"start", behavior:"smooth"});
+    toast("Укажите Client ID, чтобы включить синхронизацию");
+    return;
+  }
+  syncNow(true);
 }
 
 function gisLoad(){
@@ -4414,6 +4480,7 @@ function capAiMigrate(){
     cid.focus();
   };
   document.getElementById("sync-now").onclick = ()=> syncNow(true);
+  document.getElementById("hsync").onclick = hsyncClick;
   document.getElementById("sync-off").onclick = ()=>{
     const t = SYNC.token;
     SYNC.token = null; SYNC.exp = 0; SYNC.err = "";
