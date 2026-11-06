@@ -570,6 +570,26 @@ body[data-tab="cap"] .mnav{display:none}
 .tot.sav .lab{color:var(--cap);font-size:13px;font-weight:600}
 .tot.sav .val{color:var(--cap);font-size:14px}
 
+/* вопросы к ИИ */
+.chat-h{display:flex;align-items:center;gap:8px}
+.chat-h .link-btn{flex:0 0 auto}
+.chat-log{margin:4px 0 6px}
+.chat-q{background:var(--acc-soft);border-radius:12px;padding:8px 12px;margin:12px 0 6px;font-weight:550;white-space:pre-wrap;overflow-wrap:anywhere}
+.chat-a{padding:0 2px}
+.chat-pre{margin:2px 0 12px}
+.chat-pre .chip{white-space:normal;text-align:left;font-size:13px;line-height:1.3}
+textarea.chat-in{min-height:76px;resize:vertical;margin:8px 0 10px;font:inherit;font-size:15px}
+.chat-hist{margin-top:16px;border-top:1px solid var(--line);padding-top:8px}
+.chat-hist-h{font-size:12.5px;font-weight:600;color:var(--ink-3);margin:4px 0 4px}
+.chat-hrow{display:flex;align-items:center;gap:6px;border-top:1px solid var(--line-2)}
+.chat-hrow:first-of-type{border-top:0}
+.chat-ht{flex:1;min-width:0;border:0;background:none;text-align:left;padding:8px 2px;font:inherit;cursor:pointer;color:inherit}
+.chat-ht b{display:block;font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chat-ht span{font-size:12px;color:var(--ink-3)}
+.chat-hrow .del{border:0;background:none;color:var(--ink-3);width:30px;height:30px;border-radius:8px;font-size:19px;cursor:pointer}
+.chat-hrow .del:hover{color:var(--danger);background:#FBEAE7}
+.ask-bar.three > .chat-pv{color:var(--rub)}
+
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -1054,7 +1074,7 @@ function mergeDB(a, b){
     if(k === META_KEY){
       const ma = isObj(a) && isObj(a[k]) ? a[k] : {};
       const mb = isObj(b) && isObj(b[k]) ? b[k] : {};
-      out[k] = {bidvImported: mergeBidvImported(ma.bidvImported, mb.bidvImported), ai: aiStoreMerge(ma.ai, mb.ai), cap: capMerge(ma.cap, mb.cap)};
+      out[k] = {bidvImported: mergeBidvImported(ma.bidvImported, mb.bidvImported), ai: aiStoreMerge(ma.ai, mb.ai), cap: capMerge(ma.cap, mb.cap), chats: chatsMerge(ma.chats, mb.chats)};
       return;
     }
     const ma = isObj(a) && isObj(a[k]) ? fix(a[k]) : EMPTY();
@@ -2368,7 +2388,7 @@ function aiStoreMerge(a, b){
   return out;
 }
 /* _meta целиком: метки импорта BIDV + разборы ИИ + капитал */
-function metaNorm(v){ return {bidvImported: bidvImportedList(v), ai: aiStoreNorm(isObj(v) ? v.ai : null), cap: capNorm(isObj(v) ? v.cap : null)}; }
+function metaNorm(v){ return {bidvImported: bidvImportedList(v), ai: aiStoreNorm(isObj(v) ? v.ai : null), cap: capNorm(isObj(v) ? v.cap : null), chats: chatsNorm(isObj(v) ? v.chats : null)}; }
 function aiSaved(key){
   const meta = isObj(DB[META_KEY]) ? DB[META_KEY] : null;
   const x = meta && isObj(meta.ai) ? meta.ai[key] : null;
@@ -2468,7 +2488,7 @@ async function aiCall(system, prompt){
   const model = aiGetModel();
   const body = {
     systemInstruction:{parts:[{text:system}]},
-    contents:[{role:"user", parts:[{text:prompt}]}],
+    contents: Array.isArray(prompt) ? prompt : [{role:"user", parts:[{text:prompt}]}],   // массив — переписка
     /* у Gemini 3 размышления входят в лимит: при 4096 ответ мог прийти пустым */
     generationConfig:{temperature:0.6, maxOutputTokens:16384}
   };
@@ -2614,6 +2634,7 @@ function aiRenderCard(){
     const set = aiEl("button", "btn sm", "Подключить Gemini"); set.onclick = aiSettings; bar.appendChild(set);
   }
   if(hasData){ const pv = aiEl("button", "btn sm ghost", "Что отправится"); pv.onclick = ()=> aiPreview(y, m); bar.appendChild(pv); }
+  if(hasKey){ const qa = aiEl("button", "btn sm ghost", "Задать вопрос"); qa.onclick = chatOpen; bar.appendChild(qa); }
   if(saved && !busy){
     const del = aiEl("button", "btn sm ghost", "Удалить");
     del.onclick = ()=> askConfirm({title:"Удалить разбор?", lines:["Разбор за "+MONTHS[m].toLowerCase()+" "+y+" удалится на всех устройствах."], ok:"Удалить"})
@@ -3955,6 +3976,7 @@ function capAiRenderCard(){
     go.disabled = !!busy || !hasData; go.onclick = capAiRun; bar.appendChild(go);
   } else { const set = aiEl("button", "btn sm", "Подключить Gemini"); set.onclick = aiSettings; bar.appendChild(set); }
   if(hasData){ const pv = aiEl("button", "btn sm ghost", "Что отправится"); pv.onclick = capAiPreview; bar.appendChild(pv); }
+  if(hasKey){ const qa = aiEl("button", "btn sm ghost", "Задать вопрос"); qa.onclick = chatOpen; bar.appendChild(qa); }
   if(saved && !busy){
     const del = aiEl("button", "btn sm ghost", "Удалить");
     del.onclick = ()=> askConfirm({title:"Удалить разбор капитала?", lines:["Разбор удалится на всех устройствах."], ok:"Удалить"})
@@ -3962,6 +3984,244 @@ function capAiRenderCard(){
     bar.appendChild(del);
   }
   box.appendChild(bar);
+}
+
+/* ================= Вопросы к ИИ (переписка) =================
+   Как «Спросить ИИ» в Медкарте: свободный вопрос к Gemini по данным бюджета
+   и капитала, с уточняющими вопросами в той же переписке. Разделы и период
+   выбираются перед первым вопросом и запоминаются в разговоре; выжимка
+   собирается заново при каждом вопросе (chatContext — белый список).
+   Разговоры хранятся в DB._meta.chats и синхронизируются: слияние по id,
+   побеждает больший at, удаление — надгробие {id, at, del:1} на 90 дней. */
+const CHAT_SEC = [["rub","Рубли"],["vnd","Донги"],["rec","Записи с комментариями"],["cap","Капитал"]];
+const CHAT_PER = [[3,"3 мес."],[6,"полгода"],[12,"год"],[0,"всё время"]];
+const CHAT_PRESETS = [
+  "Куда уходит больше всего денег и где можно сэкономить?",
+  "Сколько я реально могу откладывать в месяц?",
+  "Как быстрее набрать подушку безопасности на 6 месяцев?",
+  "Что выгоднее: досрочно гасить ипотеку или класть на вклад?",
+  "Как менялись траты в донгах и что на них влияет?",
+  "Оцени мой крипто-портфель с точки зрения риска"
+];
+const CHAT_OPT_LS = "budget.chat.opt";
+const CHAT_SYS = `Ты — внимательный помощник по личным финансам. Человек живёт во Вьетнаме: доходы в рублях, повседневные траты во вьетнамских донгах; донги он покупает за рубли — в рублёвом бюджете это категория «Покупка иностранной валюты». Тебе присылают выжимку его бюджета и капитала за выбранный период, дальше он задаёт вопросы.
+Правила:
+- Отвечай по-русски, опираясь только на присланные данные; если данных не хватает — так и скажи и подскажи, что стоит записывать.
+- Рубли и донги не смешивай и не пересчитывай по курсу. Донги указаны в тысячах — пиши так же: «4 116 тыс. ₫».
+- Рублёвая категория «В накопления» — не трата, а отложенные деньги.
+- Ссылайся на конкретные месяцы и суммы. Незаконченный текущий месяц сравнивай с прошлыми по темпу, а не по итогу.
+- Можно давать общие советы по бюджету, подушке и распределению накоплений. Нельзя советовать конкретные банки, монеты, акции, фонды и продукты или прогнозировать курсы.
+- Структура: короткий итог в начале, затем разбор по пунктам. Оформление: заголовки ###, списки «- », **жирный**; без таблиц.`;
+const CHAT = {id:null, busy:null, draw:null};
+let chatOpt = {per:6, sec:{rub:true, vnd:true, rec:false, cap:true}};
+try{ const o = JSON.parse(localStorage.getItem(CHAT_OPT_LS)||"null"); if(isObj(o)) chatOpt = chatOptNorm(o); }catch(e){}
+
+function chatOptNorm(o){
+  const sec = {}; CHAT_SEC.forEach(([k])=> sec[k] = !!(isObj(o) && isObj(o.sec) && o.sec[k]));
+  const per = isObj(o) && CHAT_PER.some(p=> p[0]===o.per) ? o.per : 6;
+  return {per, sec};
+}
+function chatsNorm(v){
+  const byId = new Map(), cut = nowTs() - TOMB_TTL;
+  (Array.isArray(v) ? v : []).forEach(x=>{
+    if(!isObj(x) || typeof x.id!=="string" || !x.id) return;
+    const at = num0(x.at); if(!at) return;
+    let o;
+    if(x.del){ if(at < cut) return; o = {id:x.id.slice(0,40), at, del:1}; }
+    else {
+      const msgs = (Array.isArray(x.msgs) ? x.msgs : []).filter(m=> isObj(m) && (m.role==="user" || m.role==="model") && typeof m.text==="string" && m.text)
+        .slice(-60).map(m=>{ const r = {role:m.role, text:m.text.slice(0, 40000)}; if(m.cut) r.cut = true; return r; });
+      if(!msgs.length) return;
+      o = {id:x.id.slice(0,40), at, title:capStr(x.title,120) || "Вопрос", opt:chatOptNorm(x.opt), msgs};
+    }
+    const p = byId.get(o.id);
+    if(!p || o.at > p.at || (o.at === p.at && o.del)) byId.set(o.id, o);
+  });
+  return Array.from(byId.values()).sort((a,b)=> b.at - a.at).slice(0, 100);
+}
+function chatsMerge(a, b){ return chatsNorm([].concat(Array.isArray(a)?a:[], Array.isArray(b)?b:[])); }
+function chatList(){ return chatsNorm(isObj(DB[META_KEY]) ? DB[META_KEY].chats : null).filter(c=> !c.del); }
+function chatGet(id){ return chatList().find(c=> c.id===id) || null; }
+function chatPut(chat){
+  const meta = metaNorm(DB[META_KEY]);
+  meta.chats = chatsNorm(meta.chats.filter(c=> c.id!==chat.id).concat(chat));
+  DB[META_KEY] = meta; save();
+}
+function chatDel(id){
+  const meta = metaNorm(DB[META_KEY]);
+  meta.chats = chatsNorm(meta.chats.filter(c=> c.id!==id).concat({id, at:nowTs(), del:1}));
+  DB[META_KEY] = meta; save();
+}
+
+/* выжимка для Gemini — только перечисленное здесь */
+function chatContext(opt){
+  const o = chatOptNorm(opt), S = o.sec, L = [];
+  const nowK = today.getFullYear()+"-"+String(today.getMonth()+1).padStart(2,"0");
+  let keys = Object.keys(DB).filter(k=> MKEY.test(k) && isObj(DB[k]) && k <= nowK).sort();
+  if(o.per){ const f = new Date(today.getFullYear(), today.getMonth()-o.per+1, 1); const fk = f.getFullYear()+"-"+String(f.getMonth()+1).padStart(2,"0"); keys = keys.filter(k=> k >= fk); }
+  const months = keys.map(k=> aiMonth(+k.slice(0,4), +k.slice(5)-1)).filter(aiHasData);
+  L.push("Сегодня: "+today.getDate()+" "+MONTHS_GEN[today.getMonth()]+" "+today.getFullYear()+". Текущий месяц ещё идёт, прошло "+today.getDate()+" дн.");
+  L.push("Период: "+(o.per ? "последние "+o.per+" мес." : "всё время")+" ("+months.length+" мес. с записями). Донги везде в тысячах.");
+  const nm = d=> MONTHS[d.m]+" "+d.y+(d.k===nowK ? " (идёт)" : "");
+  if(S.rub && months.length){
+    L.push("", "## Рубли по месяцам");
+    months.forEach(d=>{
+      const inc = sum(d.inc), rub = sum(d.rub), sav = sum(d.rub.filter(x=> x.cat===SAV));
+      L.push("### "+nm(d), "Доходы "+aiR(inc)+(d.inc.length ? " ("+aiGroup(d.inc,"cat").map(r=> r.c+" "+aiR(r.v)).join(", ")+")" : "")+
+        ". Расходы "+aiR(rub)+(sav ? ", в т.ч. в накопления "+aiR(sav) : "")+". Разница "+aiR(inc-rub)+".");
+      if(d.rub.length) L.push("Расходы по категориям: "+aiGroup(d.rub,"cat").map(r=> r.c+" "+aiR(r.v)).join("; "));
+    });
+  }
+  if(S.vnd && months.length){
+    L.push("", "## Донги по месяцам");
+    months.forEach(d=>{
+      if(!d.vnd.length && !d.topup.length && !d.cashStart) return;
+      L.push("### "+nm(d), "Расходы "+aiV(sum(d.vnd))+", дней с тратами "+new Set(d.vnd.map(x=>x.day)).size+".");
+      if(d.vnd.length){
+        L.push("По категориям: "+aiGroup(d.vnd,"cat").map(r=> r.c+" "+aiV(r.v)).join("; "));
+        L.push("По оплате: "+aiGroup(d.vnd,"pay").map(r=> r.c+" "+aiV(r.v)).join("; "));
+      }
+      L.push("Наличные: на начало "+aiV(d.cashStart)+", пополнения "+aiV(sum(d.topup))+".");
+    });
+  }
+  if(S.rec && months.length){
+    L.push("", "## Записи (день — категория — оплата — сумма — комментарий)");
+    const line = (x, v)=> x.day+" — "+(x.cat||"без категории")+(v && x.pay ? " — "+x.pay : "")+" — "+(v ? aiV(x.amount) : aiR(x.amount))+(x.note ? " — "+x.note : "");
+    const srt = a=> a.slice().sort((p,q)=> p.day-q.day || itemTime(p)-itemTime(q));
+    months.forEach(d=>{
+      L.push("### "+nm(d));
+      if(d.inc.length) L.push("Доходы ₽:", ...srt(d.inc).map(x=> line(x)));
+      if(d.rub.length) L.push("Расходы ₽:", ...srt(d.rub).map(x=> line(x)));
+      if(d.vnd.length) L.push("Расходы ₫:", ...srt(d.vnd).map(x=> line(x, true)));
+    });
+  }
+  if(S.cap) L.push("", "## Капитал, цели и риск-профиль", capAiPrompt());
+  if(L.length < 4) L.push("", "Данных за период нет.");
+  return L.join("\n");
+}
+function chatScope(o){
+  o = chatOptNorm(o);
+  return CHAT_SEC.filter(x=> o.sec[x[0]]).map(x=> x[1].toLowerCase()).join(", ")+" · "+(CHAT_PER.find(p=> p[0]===o.per)||[0,"всё время"])[1];
+}
+async function chatSend(q){
+  q = String(q||"").trim();
+  if(!q || CHAT.busy) return;
+  if(!aiGetKey()){ toast("Сначала подключите Gemini — кнопка ⚙ в карточке разбора"); return; }
+  let chat = CHAT.id ? chatGet(CHAT.id) : null;
+  if(!chat){
+    if(!CHAT_SEC.some(x=> chatOpt.sec[x[0]])){ toast("Отметьте хотя бы один раздел данных"); return; }
+    chat = {id:uid(), at:nowTs(), title: q.length>90 ? q.slice(0,88)+"…" : q, opt:chatOptNorm(chatOpt), msgs:[]};
+  }
+  chat.msgs.push({role:"user", text:q});
+  chat.at = nowTs(); chatPut(chat); CHAT.id = chat.id;
+  CHAT.busy = chat.id; CHAT.err = ""; chatRedraw();
+  const contents = [
+    {role:"user", parts:[{text:"Данные моего бюджета и капитала:\n\n"+chatContext(chat.opt)}]},
+    {role:"model", parts:[{text:"Данные получил, готов отвечать на вопросы."}]}
+  ].concat(chat.msgs.map(m=> ({role:m.role, parts:[{text:m.text}]})));
+  try{
+    const r = await aiCall(CHAT_SYS, contents);
+    const cur = chatGet(chat.id) || chat;
+    cur.msgs.push(Object.assign({role:"model", text:r.text}, r.cut ? {cut:true} : {}));
+    cur.at = nowTs(); chatPut(cur);
+  }catch(e){
+    // вопрос без ответа не храним: возвращаем его в поле, чтобы можно было отправить ещё раз
+    const cur = chatGet(chat.id) || chat;
+    cur.msgs.pop();
+    if(cur.msgs.length){ cur.at = nowTs(); chatPut(cur); } else { chatDel(cur.id); CHAT.id = null; }
+    CHAT.err = aiErrText(e); CHAT.retry = q; toast(CHAT.err);
+  }finally{ CHAT.busy = null; chatRedraw(); }
+}
+function chatRedraw(){ if(CHAT.draw) CHAT.draw(); }
+function chatPreview(){
+  aiSheet((box, close)=>{
+    box.appendChild(aiEl("h3", "", "Что уйдёт в Gemini"));
+    box.appendChild(aiEl("p", "ask-sub", "Эта выжимка, инструкция и сама переписка. Ключи, настройки и разделы, которые не отмечены, не отправляются."));
+    const c = CHAT.id ? chatGet(CHAT.id) : null;
+    box.appendChild(aiEl("pre", "ai-pre", chatContext(c ? c.opt : chatOpt)));
+    const bar = aiEl("div", "ask-bar one"); const ok = aiEl("button", "btn", "Понятно"); ok.onclick = close;
+    bar.appendChild(ok); box.appendChild(bar);
+  }, true);
+}
+function chatOpen(){
+  aiSheet((box, close)=>{
+    let q = null;
+    const draw = ()=>{
+      const keep = CHAT.retry || (q ? q.value : "");
+      CHAT.retry = "";
+      box.innerHTML = "";
+      const chat = CHAT.id ? chatGet(CHAT.id) : null;
+      const busy = CHAT.busy && (!chat || CHAT.busy===chat.id);
+      const h = aiEl("h3","chat-h", chat ? chat.title : "Вопрос к ИИ");
+      if(chat){ const nb = aiEl("button","link-btn","+ Новый"); nb.onclick = ()=>{ CHAT.id = null; CHAT.err = ""; draw(); }; h.appendChild(nb); }
+      box.appendChild(h);
+      if(!aiGetKey()){
+        box.appendChild(aiEl("p","ai-hint","Нужен ключ Gemini — тот же, что для разборов."));
+        const bar = aiEl("div","ask-bar"); const no = aiEl("button","btn ghost","Закрыть"), set = aiEl("button","btn","Подключить Gemini");
+        no.onclick = close; set.onclick = ()=>{ close(); aiSettings(); }; bar.append(no, set); box.appendChild(bar);
+        return;
+      }
+      if(chat){
+        const log = aiEl("div","chat-log");
+        chat.msgs.forEach(m=>{
+          if(m.role==="user"){ log.appendChild(aiEl("div","chat-q", m.text)); return; }
+          const a = aiEl("div","chat-a ai-text"); aiRender(a, m.text); log.appendChild(a);
+          if(m.cut) log.appendChild(aiEl("div","ai-hint","Ответ обрезан по длине."));
+        });
+        box.appendChild(log);
+        box.appendChild(aiEl("div","ai-hint","Данные: "+chatScope(chat.opt)));
+      } else {
+        const pr = aiEl("div","chips chat-pre");
+        CHAT_PRESETS.forEach(t=>{ const b = aiEl("button","chip",t); b.type = "button"; b.onclick = ()=>{ q.value = t; q.focus(); }; pr.appendChild(b); });
+        box.appendChild(pr);
+      }
+      if(busy) box.appendChild(aiEl("div","ai-hint ai-wait","Gemini думает… обычно 20–60 секунд. Окно можно закрыть — ответ сохранится."));
+      if(CHAT.err && !busy) box.appendChild(aiEl("div","ai-err",CHAT.err));
+      q = document.createElement("textarea");
+      q.className = "chat-in"; q.rows = 3; q.value = keep; q.disabled = !!busy;
+      q.placeholder = chat ? "Уточняющий вопрос…" : "Например: почему в октябре траты в донгах выросли?";
+      q.addEventListener("keydown", e=>{ if(e.key==="Enter" && (e.ctrlKey || e.metaKey)){ e.preventDefault(); go(); } });
+      box.appendChild(q);
+      if(!chat){
+        const sec = aiEl("div","ask-fld"); sec.appendChild(aiEl("span",null,"Данные"));
+        const sc = aiEl("div","chips"); sec.appendChild(sc);
+        const paintS = ()=>{ sc.innerHTML = ""; CHAT_SEC.forEach(([k,t])=>{ const b = aiEl("button","chip",t); b.type = "button"; b.setAttribute("aria-pressed", String(!!chatOpt.sec[k]));
+          b.onclick = ()=>{ chatOpt.sec[k] = !chatOpt.sec[k]; try{ localStorage.setItem(CHAT_OPT_LS, JSON.stringify(chatOpt)); }catch(e){} paintS(); }; sc.appendChild(b); }); };
+        paintS();
+        const per = aiEl("div","ask-fld"); per.appendChild(aiEl("span",null,"Период"));
+        const pc = aiEl("div","chips"); per.appendChild(pc);
+        const paintP = ()=>{ pc.innerHTML = ""; CHAT_PER.forEach(([v,t])=>{ const b = aiEl("button","chip",t); b.type = "button"; b.setAttribute("aria-pressed", String(chatOpt.per===v));
+          b.onclick = ()=>{ chatOpt.per = v; try{ localStorage.setItem(CHAT_OPT_LS, JSON.stringify(chatOpt)); }catch(e){} paintP(); }; pc.appendChild(b); }); };
+        paintP();
+        box.append(sec, per);
+      }
+      const go = ()=>{ const t = q.value.trim(); if(!t) { q.focus(); return; } q.value = ""; chatSend(t); };
+      const bar = aiEl("div","ask-bar three");
+      const pv = aiEl("button","btn ghost chat-pv","Что уйдёт в Gemini"); pv.onclick = chatPreview;
+      const no = aiEl("button","btn ghost","Закрыть"); no.onclick = close;
+      const ok = aiEl("button","btn", busy ? "Жду ответ…" : "Спросить"); ok.disabled = !!busy; ok.onclick = go;
+      bar.append(pv, no, ok); box.appendChild(bar);
+      // прошлые разговоры — только на экране нового вопроса
+      const hist = chatList();
+      if(!chat && hist.length){
+        const hw = aiEl("div","chat-hist"); hw.appendChild(aiEl("div","chat-hist-h","Прошлые вопросы"));
+        hist.forEach(c=>{
+          const r = aiEl("div","chat-hrow");
+          const open = aiEl("button","chat-ht");
+          open.type = "button";
+          open.append(aiEl("b",null,c.title), aiEl("span",null, new Date(c.at).toLocaleString("ru-RU",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})+" · "+Math.ceil(c.msgs.length/2)+" вопр."));
+          open.onclick = ()=>{ CHAT.id = c.id; CHAT.err = ""; draw(); box.scrollTop = 0; };
+          const del = aiEl("button","del","×"); del.title = "Удалить разговор"; del.setAttribute("aria-label","Удалить разговор");
+          del.onclick = ()=>{ chatDel(c.id); if(CHAT.id===c.id) CHAT.id = null; draw(); toast("Разговор удалён"); };
+          r.append(open, del); hw.appendChild(r);
+        });
+        box.appendChild(hw);
+      }
+      if(chat){ const log = box.querySelector(".chat-log"); if(log) requestAnimationFrame(()=>{ const last = log.lastElementChild; if(last) last.scrollIntoView({block:"start"}); }); }
+    };
+    CHAT.draw = ()=>{ if(!box.isConnected){ CHAT.draw = null; return; } draw(); };
+    draw();
+  }, true);
 }
 
 /* ---------- init ---------- */
