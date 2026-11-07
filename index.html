@@ -299,6 +299,10 @@ input:focus,select:focus,textarea:focus,button:focus-visible,.chip:focus-visible
 .ask.wide{max-width:680px}
 .ask{max-height:calc(100vh - 40px);overflow-y:auto}
 .ask-fld{display:block;margin:0 0 10px}
+.ask.edit .chips{gap:5px}
+.ask.edit .f-lab{margin:12px 0 6px}
+.ask.edit .ask-fld{margin-top:12px}
+.edit-amt input{font-size:19px;font-weight:650}
 .ask-fld span{display:block;font-size:12.5px;font-weight:600;color:var(--ink-3);margin-bottom:5px}
 /* «Удалить ключ» — тихой ссылкой под основными кнопками */
 .ask-bar.three > :first-child{grid-column:1 / -1;order:3;background:none;border:0;color:var(--danger);padding:6px;font-size:13.5px}
@@ -938,7 +942,7 @@ const CATS = {
   inc:  ["Зарплата","Аванс","Отпускные","Другое"],
   rub:  ["Ребёнок","Квартира","Покупка иностранной валюты","В накопления","Прочее"],
   vnd:  ["Еда/продукты","Кафе/напитки","Такси/транспорт","Медицина","Жильё","Развлечения","Одежда","Хозтовары","Прочее"],
-  pay:  ["Наличные","Карта BIDV","Карта UnionPay","Русский QR"]
+  pay:  ["Наличные","Карта BIDV","Карта UnionPay","Карта ППМ","Карта Bybit","Русский QR"]
 };
 const MONTHS = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
 const DOW = ["вс","пн","вт","ср","чт","пт","сб"];
@@ -1463,47 +1467,16 @@ function renderList(box, arr, cur, key){
       const r = document.createElement("div"); r.className = "item" + (key==="rub" && it.cat===SAV ? " sav" : "");
       const c = document.createElement("div"); c.className="cat";
       let editBtn = null;
-      if(key === "vnd" || key === "rub" || key === "inc"){   // категорию можно поправить у любой записи, кроме пополнений
+      if(key === "vnd" || key === "rub" || key === "inc"){   // править можно любую запись, кроме пополнений
         const label = document.createElement("span");
         label.textContent = it.cat || "Не указано";
         c.appendChild(label);
-
-        const sel = document.createElement("select");
-        sel.className = "cat-editor";
-        sel.hidden = true;
-        const options = CATS[key].slice();
-        if(it.cat && !options.includes(it.cat)) options.push(it.cat);
-        options.unshift("Не указано");
-        options.forEach(name=>{
-          const o = document.createElement("option");
-          o.value = name === "Не указано" ? "" : name;
-          o.textContent = name;
-          o.selected = o.value === (it.cat || "");
-          sel.appendChild(o);
-        });
-        sel.onchange = ()=>{
-          const m = monW(), rec = m[key].find(x=>x.id===it.id);
-          if(!rec) return;
-          rec.cat = sel.value;
-          if(key==="rub" && rec.cat!==SAV) rec.pay = "";   // привязка к активу — только у «В накопления»
-          rec.ts = nowTs();
-          save();
-          render();
-          toast("Категория изменена");
-        };
-        c.appendChild(sel);
-
         editBtn = document.createElement("button");
         editBtn.className = "edit-cat";
         editBtn.textContent = "✎";
-        editBtn.title = "Изменить категорию";
-        editBtn.setAttribute("aria-label", "Изменить категорию");
-        editBtn.onclick = ()=>{
-          sel.hidden = false;
-          label.hidden = true;
-          editBtn.hidden = true;
-          sel.focus();
-        };
+        editBtn.title = "Изменить запись";
+        editBtn.setAttribute("aria-label", "Изменить запись");
+        editBtn.onclick = ()=> editRecord(key, it.id);
       } else {
         c.textContent = key==="cash" ? (it.cat===FROM_BIDV ? "Снятие с карты" : "Внесение") : (it.cat || "Пополнение");
       }
@@ -1541,6 +1514,104 @@ function renderList(box, arr, cur, key){
       wrap.appendChild(r);
     });
     box.appendChild(wrap);
+  });
+}
+
+/* ---------- окно правки записи (карандаш) ----------
+   День, категория, способ оплаты (у донгов), «куда отложили» (у «В накопления»),
+   сумма и комментарий. Выбор — чипами, руками только сумма и комментарий.
+   Месяц записи запоминаем при открытии: пока окно открыто, шапку не трогают,
+   но сохраняем всё равно в тот месяц, где запись лежит. */
+function editRecord(key, id){
+  const k = mk(), y = Y, mo = M;
+  if(!isObj(DB[k])) return;
+  const src = fix(DB[k])[key].find(x=> x.id===id && !x.del);
+  if(!src) return;
+  const st = {day:src.day, cat:src.cat||"", pay:src.pay||""};
+  const cur = key==="vnd" ? "₫" : "₽";
+  const what = key==="inc" ? "доход" : "расход";
+  aiSheet((box, close)=>{
+    box.classList.add("edit");
+    box.appendChild(aiEl("h3", "", "Изменить "+what));
+    const chips = (list, val, onPick)=>{
+      const w = aiEl("div", "chips");
+      list.forEach(o=>{
+        const b = aiEl("button", "chip", o.t);
+        b.type = "button";
+        b.setAttribute("aria-pressed", String(o.v===val));
+        b.onclick = ()=>{ onPick(o.v); w.querySelectorAll(".chip").forEach(x=> x.setAttribute("aria-pressed", String(x===b))); };
+        w.appendChild(b);
+      });
+      return w;
+    };
+    // день — выпадающим списком с днём недели: 31 чип в окне не помещается
+    const n = new Date(y, mo+1, 0).getDate();
+    const dl = aiEl("label", "ask-fld"); dl.appendChild(aiEl("span", "", "День"));
+    const ds = document.createElement("select");
+    for(let d=1; d<=n; d++){
+      const o = document.createElement("option"); o.value = d;
+      o.textContent = d+" "+MONTHS_GEN[mo]+", "+DOW[new Date(y, mo, d).getDay()];
+      if(d===st.day) o.selected = true;
+      ds.appendChild(o);
+    }
+    ds.onchange = ()=>{ st.day = +ds.value; };
+    dl.appendChild(ds); box.appendChild(dl);
+
+    // категория (с прежней, если её уже нет в списке)
+    const cats = CATS[key].slice();
+    if(st.cat && !cats.includes(st.cat)) cats.push(st.cat);
+    box.appendChild(aiEl("p", "f-lab", key==="inc" ? "Тип" : "Категория"));
+    const destW = aiEl("div", "");
+    const drawDest = ()=>{
+      destW.innerHTML = "";
+      if(key!=="rub" || st.cat!==SAV){ return; }
+      const opts = capLive().filter(a=> CAP_ASSET.includes(a.kind));
+      if(!opts.length) return;
+      if(st.pay && !opts.some(a=> a.id===st.pay)) st.pay = "";
+      destW.appendChild(aiEl("p", "f-lab", "Куда отложили"));
+      destW.appendChild(chips([{v:"", t:"Не указывать"}].concat(opts.map(a=>({v:a.id, t:capLabel(a)}))), st.pay, v=>{ st.pay = v; }));
+    };
+    box.appendChild(chips(cats.map(c=>({v:c, t:c})), st.cat, v=>{ st.cat = v; drawDest(); }));
+    box.appendChild(destW); drawDest();
+
+    // способ оплаты — только у донгов
+    if(key==="vnd"){
+      const pays = CATS.pay.slice();
+      if(st.pay && !pays.includes(st.pay)) pays.push(st.pay);
+      box.appendChild(aiEl("p", "f-lab", "Оплата"));
+      box.appendChild(chips(pays.map(p=>({v:p, t:p})), st.pay, v=>{ st.pay = v; }));
+    }
+
+    const al = aiEl("label", "ask-fld edit-amt"); al.appendChild(aiEl("span", "", "Сумма, "+cur));
+    const ai = document.createElement("input"); ai.type = "text"; ai.inputMode = "decimal"; ai.className = "num";
+    ai.value = String(src.amount).replace(".", ","); al.appendChild(ai); box.appendChild(al);
+    const nl = aiEl("label", "ask-fld"); nl.appendChild(aiEl("span", "", "Комментарий"));
+    const ni = document.createElement("input"); ni.type = "text"; ni.value = src.note || ""; nl.appendChild(ni); box.appendChild(nl);
+
+    const bar = aiEl("div", "ask-bar");
+    const no = aiEl("button", "btn ghost", "Отмена"), ok = aiEl("button", "btn", "Сохранить");
+    bar.append(no, ok); box.appendChild(bar);
+    no.onclick = close;
+    const go = ()=>{
+      const v = parseAmt(ai.value);
+      if(!v || v<=0){ ai.focus(); toast("Введите сумму больше нуля"); return; }
+      if(!isObj(DB[k])){ close(); return; }
+      const rec = fix(DB[k])[key].find(x=> x.id===id && !x.del);
+      if(!rec){ close(); toast("Запись уже удалена"); return; }
+      const note = ni.value.trim();
+      const pay = key==="vnd" ? st.pay : (key==="rub" && st.cat===SAV ? st.pay : "");
+      if(rec.day===st.day && rec.cat===st.cat && rec.pay===pay && rec.amount===v && rec.note===note){ close(); return; }
+      rec.day = st.day; rec.cat = st.cat; rec.pay = pay; rec.amount = v; rec.note = note;
+      rec.ts = nowTs();
+      save(); close(); render(); toast("Запись изменена");
+    };
+    ok.onclick = go;
+    [ai, ni].forEach(i=> i.addEventListener("keydown", e=>{ if(e.key==="Enter"){ e.preventDefault(); go(); } }));
+    // на ПК сразу в сумму; на телефоне не открываем клавиатуру — она закрыла бы чипы
+    setTimeout(()=>{
+      if(matchMedia("(pointer:fine)").matches){ ai.focus(); ai.select(); }
+      else if(document.activeElement && box.contains(document.activeElement)) document.activeElement.blur();
+    }, 0);
   });
 }
 
@@ -1827,6 +1898,8 @@ const V_PAY = [
   ["Наличные",       ["налич","налом","нал ","нал,","нал.","наликом","налик","кэш","кеш","cash"]],
   ["Карта UnionPay", ["юнион","юнэон","union","рсхб","россельхоз","китайск карт"]],
   ["Карта BIDV",     ["бидв","bidv","местн карт","вьетнамск карт","местной картой","вьетнамской картой"]],
+  ["Карта ППМ",      ["ппм","пэпээм","пэ пэ эм","пе пе эм","ppm","карта ппм","картой ппм","карты ппм"]],
+  ["Карта Bybit",    ["байбит","бай бит","байбайт","bybit","by bit"]],
   ["Русский QR",     ["куар","ку ар","qr","кьюар","кью ар","русск qr","русским","по куару","куаром"]],
   ["Карта BIDV",     ["карт"]]   // «картой» без уточнения — самая частая карта
 ];
@@ -1897,7 +1970,8 @@ function vRest(t, used){
   let s = t;
   /* Ключи словарей — основы («налич», «карт»). Вырезаем слово целиком
      вместе с окончанием, иначе от «наличка» остаётся «ка». */
-  used.forEach(k=>{
+  // длинные совпадения первыми: иначе «ппм» вырезается раньше «картой ппм» и «картой» остаётся в комментарии
+  used.slice().sort((a,b)=> String(b).length - String(a).length).forEach(k=>{
     const kk = String(k||"").trim();
     if(!kk) return;
     const pat = kk.replace(/[.*+?^${}()|[\]\\]/g,"\\$&").replace(/\s+/g,"\\s+");
