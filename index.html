@@ -697,7 +697,7 @@ textarea.chat-in{min-height:76px;resize:vertical;margin:8px 0 10px;font:inherit;
     <div class="tot grand"><span class="lab">Всего <i id="cash-sub"></i></span><span class="val num" id="w-all-now">—</span></div>
   </div>
   <div class="card">
-    <h2 class="card-h">Внесение</h2>
+    <h2 class="card-h">Внесение<button class="link-btn" data-bybit-import>Импорт Bybit</button></h2>
     <div class="form" id="f-cash">
       <div class="chips days" data-days></div>
       <p class="f-lab">Куда</p>
@@ -754,7 +754,7 @@ textarea.chat-in{min-height:76px;resize:vertical;margin:8px 0 10px;font:inherit;
 <!-- ============ РАСХОДЫ ₽ ============ -->
 <section id="s-rub" hidden>
   <div class="card">
-    <h2 class="card-h">Новый расход, ₽</h2>
+    <h2 class="card-h">Новый расход, ₽<button class="link-btn" data-bybit-import>Импорт Bybit</button></h2>
     <div class="form" id="f-rub">
       <div class="chips days" data-days></div>
       <p class="f-lab">Категория</p>
@@ -2518,6 +2518,175 @@ function bidvAddSelected(transactions, overlay){
   const parts = [];
   if(added) parts.push(`добавлено: ${added}`);
   if(removed) parts.push(`удалено: ${removed}`);
+  toast(parts.join(", "));
+}
+
+/* ========== Импорт Bybit P2P ==========
+   Файлы bybit/*.json того же репозитория luzinoff/BIDV собирает тот же
+   сборщик. Покупка USDT за рубли → «Траты ₽», «Покупка иностранной валюты».
+   Продажа USDT за донги → внесение на карту BIDV («Кошельки»), в тысячах.
+   Обработанные файлы отмечаются в тех же метках DB._meta.bidvImported:
+   имена «bybit-…json» не пересекаются с «bidv-…json», а слияние, синхронизация
+   и восстановление из копии для меток уже есть. */
+const P2P_FX_CAT = "Покупка иностранной валюты";
+const P2P_BTN_TEXT = "Импорт Bybit";
+
+function p2pButtons(){ return Array.from(document.querySelectorAll("[data-bybit-import]")); }
+function p2pBusy(on){
+  p2pButtons().forEach(b=>{ b.disabled = on; b.textContent = on ? "Загрузка..." : P2P_BTN_TEXT; });
+}
+function p2pCoins(n){ return Number(n).toLocaleString("ru-RU",{maximumFractionDigits:2}); }
+
+/* Запись, похожая на уже внесённую вручную: тот же день и та же сумма. */
+function p2pLooksAdded(o){
+  const k = o.year + "-" + String(o.month + 1).padStart(2, "0");
+  if(!isObj(DB[k])) return false;
+  const m = fix(DB[k]);
+  if(o.side === "buy") return m.rub.some(x=> !x.del && x.day===o.day && Math.abs(x.amount - o.amount) < 0.5);
+  return m.topup.some(x=> !x.del && x.day===o.day && Math.abs(x.amount - o.amount) <= 1);
+}
+
+function p2pImport(){
+  p2pBusy(true);
+  fetch("https://api.github.com/repos/luzinoff/BIDV/contents/bybit")
+    .then(r=>{
+      if(r.status === 404) throw new Error("Ордеров Bybit в репозитории пока нет");
+      if(!r.ok) throw new Error("GitHub не ответил или репозиторий недоступен");
+      return r.json();
+    })
+    .then(files=>{
+      if(!Array.isArray(files)) throw new Error("Папка bybit недоступна");
+      const done = new Set(bidvLoadImported().map(x=> x.ref));
+      const fresh = files.filter(f=> f.name && f.name.endsWith(".json") && f.download_url && !done.has(f.name));
+      if(!fresh.length){ toast("Нет новых ордеров Bybit"); return null; }
+      return Promise.all(fresh.map(f=>
+        fetch(f.download_url).then(r=> r.json()).then(data=> ({file:f.name, data})).catch(()=> null)
+      ));
+    })
+    .then(results=>{
+      if(!results) return;
+      const orders = results.filter(x=>x).map(x=>{
+        const d = x.data;
+        if(!isObj(d) || !d.created_at || !(d.fiat_amount > 0)) return null;
+        // Покупаем только за рубли, продаём только за донги — другое не учитываем.
+        const side = d.side==="buy" && d.fiat_currency==="RUB" ? "buy"
+                   : d.side==="sell" && d.fiat_currency==="VND" ? "sell" : "";
+        if(!side) return null;
+        const t = parseBidvDateTime(d.created_at);   // UTC → дата по времени Вьетнама
+        if(!t) return null;
+        const o = {
+          file: x.file, side, year: t.year, month: t.month, day: t.day, opTs: t.opTs,
+          amount: side==="buy" ? Math.round(d.fiat_amount*100)/100 : Math.round(d.fiat_amount/1000),
+          crypto: (d.crypto || "USDT"), coins: Number(d.crypto_amount) || 0
+        };
+        o.dup = p2pLooksAdded(o);
+        return o;
+      }).filter(x=>x);
+      if(!orders.length){ toast("Не удалось разобрать новые ордера Bybit"); return; }
+      orders.sort((a,b)=> a.opTs - b.opTs || a.file.localeCompare(b.file));
+      p2pShowDialog(orders);
+    })
+    .catch(e=> toast(e.message || "Не удалось загрузить ордера Bybit"))
+    .finally(()=> p2pBusy(false));
+}
+
+function p2pShowDialog(orders){
+  const overlay = document.createElement("div");
+  overlay.className = "bidv-overlay";
+  const dups = orders.filter(o=> o.dup).length;
+  overlay.innerHTML = `
+    <div class="bidv-dialog">
+      <div class="bidv-header"></div>
+      <div class="bidv-body">
+        <div class="bidv-note"></div>
+        <table class="bidv-table">
+          <thead><tr>
+            <th style="width:40px"><input type="checkbox" class="bidv-check-all" checked aria-label="Выбрать все"></th>
+            <th style="width:90px">Дата</th>
+            <th style="width:100px">Сумма</th>
+            <th>Комментарий</th>
+            <th>Ордер</th>
+            <th style="width:190px">Куда</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="bidv-footer">
+        <button class="btn" data-x="cancel">Отмена</button>
+        <button class="btn rub" data-x="add">Добавить выбранные</button>
+      </div>
+    </div>`;
+  overlay.querySelector(".bidv-header").textContent = `Импорт Bybit · ордеров: ${orders.length}`;
+  overlay.querySelector(".bidv-note").textContent =
+    "Покупка USDT за рубли попадёт в «Траты ₽» с категорией «"+P2P_FX_CAT+"», продажа USDT за донги — внесением на карту BIDV (в тысячах). " +
+    (dups ? `Ордеров, для которых уже есть запись с той же суммой в тот же день: ${dups}. Для них заранее выбрано «⊘ Удалить» — проверьте.` : "Снимите галочки с ордеров, которые уже внесены вручную.");
+
+  const tbody = overlay.querySelector("tbody");
+  orders.forEach((o,i)=>{
+    const row = document.createElement("tr");
+    const date = `${o.day} ${MONTHS[o.month].slice(0,3).toLowerCase()} ${o.year}`;
+    const sum = o.side==="buy" ? fR0(o.amount) : fV(o.amount);
+    const addLabel = o.side==="buy" ? "В траты ₽" : "На карту BIDV";
+    row.innerHTML = `
+      <td><input type="checkbox" class="bidv-row-check" data-idx="${i}" checked></td>
+      <td></td>
+      <td class="num"></td>
+      <td><input type="text" class="bidv-in bidv-my" data-idx="${i}" placeholder="Комментарий"></td>
+      <td></td>
+      <td><select class="bidv-cat" data-idx="${i}">
+        <option value="add"></option>
+        <option value="${BIDV_DELETE}">⊘ Удалить</option>
+      </select></td>`;
+    const td = row.querySelectorAll("td");
+    td[1].textContent = date;
+    td[2].textContent = sum;
+    td[4].textContent = (o.side==="buy" ? "Покупка " : "Продажа ") + p2pCoins(o.coins) + " " + o.crypto + (o.dup ? " · уже есть?" : "");
+    row.querySelector("option[value=add]").textContent = addLabel;
+    row.querySelector(".bidv-my").value = "Bybit P2P " + p2pCoins(o.coins) + " " + o.crypto;
+    row.querySelector(".bidv-cat").value = o.dup ? BIDV_DELETE : "add";
+    tbody.appendChild(row);
+  });
+
+  overlay.querySelector("[data-x=cancel]").onclick = ()=> overlay.remove();
+  overlay.querySelector("[data-x=add]").onclick = ()=> p2pAddSelected(orders, overlay);
+  overlay.querySelector(".bidv-check-all").onchange = e=>{
+    overlay.querySelectorAll(".bidv-row-check").forEach(cb=> cb.checked = e.target.checked);
+  };
+  document.body.appendChild(overlay);
+}
+
+function p2pAddSelected(orders, overlay){
+  const picked = Array.from(overlay.querySelectorAll(".bidv-row-check")).filter(cb=> cb.checked).map(cb=>{
+    const i = parseInt(cb.dataset.idx, 10);
+    return {
+      o: orders[i],
+      act: overlay.querySelector(`.bidv-cat[data-idx="${i}"]`).value,
+      note: overlay.querySelector(`.bidv-my[data-idx="${i}"]`).value.trim()
+    };
+  });
+  if(!picked.length){ toast("Не выбрано ни одного ордера"); return; }
+
+  const imported = bidvLoadImported();
+  const now = nowTs();
+  let buys = 0, sells = 0, removed = 0;
+  picked.forEach(({o, act, note})=>{
+    imported.push({ref: o.file, ts: now});
+    if(act === BIDV_DELETE){ removed++; return; }
+    const k = o.year + "-" + String(o.month + 1).padStart(2, "0");
+    if(!isObj(DB[k])) DB[k] = EMPTY();
+    const m = fix(DB[k]);
+    const rec = {id:uid(), day:o.day, amount:o.amount, note, cat:"", pay:"", ts:now, opTs:o.opTs, del:0};
+    if(o.side === "buy"){ rec.cat = P2P_FX_CAT; m.rub.push(rec); buys++; }
+    else { rec.pay = BIDV_PAY; m.topup.push(rec); sells++; }   // cat "" — «Обмен, перевод»
+  });
+
+  bidvSaveImported(imported);
+  render();
+  overlay.remove();
+  const parts = [];
+  if(buys) parts.push(`в «Траты ₽»: ${buys}`);
+  if(sells) parts.push(`на карту BIDV: ${sells}`);
+  if(removed) parts.push(`пропущено: ${removed}`);
   toast(parts.join(", "));
 }
 
@@ -4517,6 +4686,7 @@ function capAiMigrate(){
 
   // BIDV import
   document.getElementById("bidv-import").onclick = bidvImport;
+  p2pButtons().forEach(b=> b.onclick = p2pImport);
 
   /* Подхватываем чужие правки сразу при запуске. Токен в памяти вкладки не
      переживает перезагрузку, поэтому здесь он продлевается заново — молча,
