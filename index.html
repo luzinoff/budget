@@ -633,6 +633,10 @@ textarea.chat-in{min-height:76px;resize:vertical;margin:8px 0 10px;font:inherit;
 .chat-hrow .del:hover{color:var(--danger);background:#FBEAE7}
 .ask-bar.three > .chat-pv{color:var(--rub)}
 
+.memo-res{margin:4px 14px 6px;padding:9px 12px;border-radius:12px;background:var(--cap-soft);font-size:13.5px;line-height:1.5;color:var(--ink)}
+.memo-res b{color:var(--cap)}
+.memo-text{padding:2px 14px 14px;font-size:14px}
+#cap-memo > .ai-hint{padding:4px 14px 0}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -861,6 +865,10 @@ textarea.chat-in{min-height:76px;resize:vertical;margin:8px 0 10px;font:inherit;
     <h2 class="card-h">Риск-профиль</h2>
     <div id="cap-risk"></div>
     <div class="note" style="padding-bottom:12px">Ориентир по простым правилам, а не индивидуальная инвестиционная рекомендация.</div>
+  </div>
+  <div class="card">
+    <h2 class="card-h">Памятка<button class="link-btn" id="cap-memo-edit">Изменить</button></h2>
+    <div id="cap-memo"></div>
   </div>
   <div class="card" id="cap-ai-card">
     <h2 class="card-h">Спросить ИИ<button class="icon-btn" id="cap-ai-set" title="Настройки Gemini" aria-label="Настройки Gemini"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button></h2>
@@ -3390,7 +3398,9 @@ function capNorm(v){
   return {
     items: Array.from(byId.values()),
     rates: {usd:capNum(r.usd), usdTs:num0(r.usdTs), px, pxTs:num0(r.pxTs), byTs:num0(r.byTs)},
-    profile: {a, ts:num0(p.ts)}
+    profile: {a, ts:num0(p.ts)},
+    notes: (()=>{ const n = isObj(v.notes) ? v.notes : {};   // памятка
+      return {text: typeof n.text==="string" ? n.text.slice(0,20000) : "", abroad: /^\d{4}-\d{2}-\d{2}$/.test(n.abroad) ? n.abroad : "", ts: num0(n.ts)}; })()
   };
 }
 function capMerge(a, b){
@@ -3400,6 +3410,7 @@ function capMerge(a, b){
   const p = B.rates.pxTs > A.rates.pxTs ? B.rates : A.rates;
   out.rates = {usd:u.usd, usdTs:u.usdTs, px:p.px, pxTs:p.pxTs, byTs:Math.max(A.rates.byTs, B.rates.byTs)};
   out.profile = B.profile.ts > A.profile.ts ? B.profile : A.profile;
+  out.notes = B.notes.ts > A.notes.ts ? B.notes : A.notes;
   return out;
 }
 function capGet(){ return capNorm(isObj(DB[META_KEY]) ? DB[META_KEY].cap : null); }
@@ -3873,7 +3884,78 @@ function renderCap(){
   const qb = aiEl("button", T ? "btn sm ghost" : "btn sm", T ? "Пройти тест заново" : "Пройти тест");
   qb.onclick = capQuiz; tb.appendChild(qb);
   rk.appendChild(tb);
+  capMemoRender();
   capAiRenderCard();
+}
+
+/* ---------- памятка на «Капитале» ----------
+   Заметка пользователя: текст с разметкой (### заголовки, «- » пункты, **жирный»),
+   плюс дата «за границей с» — по ней считается налоговое резидентство.
+   Хранится в DB._meta.cap.notes {text, abroad, ts}, сливается по ts.
+   Пока заметку не правили, показывается общая памятка ниже — в ней нет
+   личных данных (репозиторий публичный), дата отъезда вводится в приложении. */
+const CAP_MEMO_DEFAULT = `### Налоговое резидентство РФ
+- Резидент — 183 дня и больше в России за 12 месяцев подряд; итоговый статус за год — по календарному году.
+- Статус резидента возвращается за год, в котором в России проведено 183+ дня.
+### Налоги нерезидента (2026)
+- Зарплата по трудовому договору с российской компанией при удалённой работе из-за границы: 13–22%, как у резидента; удерживает работодатель.
+- Проценты по вкладам: 15%, но только сверх необлагаемого лимита (за 2026 год — 160 000 ₽ процентов).
+- Брокерский счёт — фонды денежного рынка, облигации, акции: **30%** с прибыли при продаже.
+- ИИС-3: вычет на взносы и освобождение дохода от налога **не положены**.
+- Вычеты по НДФЛ (стандартный на ребёнка, имущественный по ипотеке) **не положены**.
+- Продажа квартиры раньше минимального срока владения: 30% от всей цены продажи.
+### Что из этого следует для накоплений
+- Пока нерезидент: вклады и накопительные счета выгоднее фондов денежного рынка — у фонда брокер удержит 30% прибыли (из 14% останется около 9,8%).
+- ИИС-3 открывать нет смысла.
+### За чем следить
+- Законопроект № 617-9 (внесён 30.09.2026): 30% вместо 15% на проценты по вкладам и дивиденды для нерезидентов — с 01.01.2027, если примут до начала декабря.
+- Ключевая ставка 14% (решение 23.10.2026), следующее заседание — 18.12.2026.
+Это памятка по открытым источникам, а не налоговая консультация.`;
+function capNotes(c){ const n = (c || capGet()).notes; return n.ts ? n : {text:CAP_MEMO_DEFAULT, abroad:n.abroad, ts:0}; }
+/* резидентство по дате отъезда — без учёта поездок обратно */
+function capResidency(abroad){
+  if(!abroad) return null;
+  const from = capPD(abroad), t0 = capD0(today), y = today.getFullYear();
+  const dayMs = 864e5, ys = new Date(y,0,1), ye = new Date(y,11,31);
+  const out = Math.max(0, Math.round((t0 - from)/dayMs));
+  const inRF = from > ys ? Math.round((Math.min(from, t0) - ys)/dayMs) : 0;   // дней в России с 1 января до отъезда
+  const left = Math.round((ye - t0)/dayMs);                                     // дней до конца года
+  const year = inRF >= 183 ? "резидент" : inRF + left < 183 ? "нерезидент" : "пока не определён";
+  return {out, inRF, year, now: out >= 183 ? "нерезидент" : "резидент", y};
+}
+function capMemoRender(){
+  const box = capEl("cap-memo"); if(!box) return;
+  const n = capNotes();
+  box.innerHTML = "";
+  const r = capResidency(n.abroad);
+  if(r){
+    const s = aiEl("div","memo-res");
+    s.append(aiEl("b",null,"За границей с "+capDate(n.abroad)+" — "+r.out+" "+capPlural(r.out,"день","дня","дней")+"."),
+      document.createTextNode(" Сейчас по последним 12 месяцам — "+r.now+". В России в "+r.y+" году: "+r.inRF+" дн., итог за год — "+r.year+"."));
+    box.appendChild(s);
+  } else box.appendChild(aiEl("div","ai-hint","Укажите дату отъезда — кнопка «Изменить», и здесь будет считаться налоговое резидентство."));
+  const t = aiEl("div","ai-text memo-text"); aiRender(t, n.text); box.appendChild(t);
+}
+function capMemoEdit(){
+  const c = capGet(), n = capNotes(c);
+  aiSheet((box, close)=>{
+    const t = capSheetBase(box, "Памятка");
+    const d = document.createElement("input"); d.type = "date"; d.value = n.abroad || "";
+    t.fld("За границей с (для расчёта резидентства)", d);
+    const ta = document.createElement("textarea"); ta.className = "chat-in"; ta.rows = 14; ta.value = n.text;
+    t.fld("Текст: ### заголовок, «- » пункт, **жирный**", ta);
+    const bar = aiEl("div","ask-bar three");
+    const rs = aiEl("button","btn ghost","Вернуть исходный текст"); rs.disabled = n.text === CAP_MEMO_DEFAULT;
+    rs.onclick = ()=>{ ta.value = CAP_MEMO_DEFAULT; rs.disabled = true; };
+    const no = aiEl("button","btn ghost","Отмена"), ok = aiEl("button","btn","Сохранить");
+    no.onclick = close;
+    ok.onclick = ()=>{
+      const cc = capGet();
+      cc.notes = {text: ta.value.trim() || CAP_MEMO_DEFAULT, abroad: /^\d{4}-\d{2}-\d{2}$/.test(d.value) ? d.value : "", ts: nowTs()};
+      close(); capSave(cc); toast("Памятка сохранена");
+    };
+    bar.append(rs, no, ok); box.appendChild(bar);
+  }, true);
 }
 
 /* ---------- окна ---------- */
@@ -4367,6 +4449,10 @@ function capAiPrompt(){
     L.push("- "+b.join(" — "));
   });
 
+  const memo = capNotes(ctx.c), res = capResidency(memo.abroad);
+  L.push("", "== ПАМЯТКА ПОЛЬЗОВАТЕЛЯ (налоги, резидентство) ==");
+  if(res) L.push("За границей с "+capDate(memo.abroad)+" ("+res.out+" дн.). Налоговый статус сейчас: "+res.now+"; в России в "+res.y+" году "+res.inRF+" дн., итог за год — "+res.year+".");
+  L.push(memo.text);
   L.push("", "== РИСК-ПРОФИЛЬ ==");
   const T = capRiskType(ctx.c);
   if(T){
@@ -4688,6 +4774,7 @@ function capAiMigrate(){
   document.getElementById("next").onclick = ()=>shift(1);
   document.querySelectorAll(".tab").forEach(b=> b.onclick = ()=>setTab(b.dataset.t));
   document.getElementById("cap-ai-set").onclick = aiSettings;
+  document.getElementById("cap-memo-edit").onclick = capMemoEdit;
   document.getElementById("cap-bybit-set").onclick = bybitSettings;
   document.getElementById("cap-btn").onclick = ()=> setTab(tab==="cap" ? lastTab : "cap");
   document.querySelectorAll("[data-cap-add]").forEach(b=> b.onclick = ()=> capEdit(null, b.dataset.capAdd));
