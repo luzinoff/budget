@@ -487,6 +487,8 @@ input.lit{animation:lit 1.8s ease-out}
   padding:16px 20px;border-top:1px solid var(--line);
   display:flex;gap:10px;justify-content:flex-end;
 }
+.bidv-fx{font-size:11px;color:var(--ink-3);margin-top:3px;white-space:nowrap}
+.bidv-amt{width:84px;text-align:right}
 .bidv-note{
   font-size:12px;color:var(--ink-3);margin-bottom:12px;line-height:1.4;
 }
@@ -513,6 +515,11 @@ input.lit{animation:lit 1.8s ease-out}
   .bidv-table tbody td:nth-child(5){grid-column:3 / 5}   /* мерчант справа */
   .bidv-table tbody td:nth-child(6){grid-column:1 / -1}
   .bidv-in,.bidv-table select{font-size:15px;padding:7px 8px}
+  /* валютная оплата: поле суммы — отдельной строкой под датой */
+  .bidv-table tbody tr.fx td:nth-child(2){grid-column:2 / -1}
+  .bidv-table tbody tr.fx td:nth-child(3){grid-column:1 / -1;display:flex;align-items:center;gap:10px;text-align:left}
+  .bidv-table tbody tr.fx .bidv-amt{width:170px;flex:none}
+  .bidv-table tbody tr.fx .bidv-fx{margin-top:0}
 }
 
 /* ---------- капитал ---------- */
@@ -2393,7 +2400,11 @@ function bidvImport(){
 
       const transactions = results.filter(x=>x).map(x=>{
         const d = x.data;
-        if(!d || !d.reference_number || !d.transaction_at || !d.amount_vnd) return null;
+        // Оплата картой в валюте: донги с комиссией придут в выписке позже,
+        // сумму вписывают в окне импорта (amount_vnd в файле = 0).
+        const foreign = d && d.transaction_type === "card_payment_foreign" && d.original_currency
+          ? {amt: String(d.original_amount || ""), cur: String(d.original_currency)} : null;
+        if(!d || !d.reference_number || !d.transaction_at || (!d.amount_vnd && !foreign)) return null;
 
         const parsed = parseBidvDateTime(d.transaction_at);
         if(!parsed) return null;
@@ -2404,7 +2415,8 @@ function bidvImport(){
           year: parsed.year,
           month: parsed.month,
           day: parsed.day,
-          amount: Math.round(d.amount_vnd / 1000),
+          amount: foreign ? 0 : Math.round(d.amount_vnd / 1000),
+          foreign,
           recipient: d.recipient_name || "",
           type: d.transaction_type || "",
           opTs: parsed.opTs
@@ -2450,6 +2462,14 @@ function bidvShowDialog(transactions){
   note.className = "bidv-note";
   note.textContent = "Снимите галочки с операций, которые уже были добавлены вручную. Суммы указаны без трёх нулей (как вы считаете). Комментарий запишется перед мерчантом: «Обед» + «Nguyen» → «Обед Nguyen». Способ оплаты будет «Карта BIDV».";
   body.appendChild(note);
+  const fxCount = transactions.filter(t=> t.foreign).length;
+  if(fxCount){
+    const fxNote = document.createElement("div");
+    fxNote.className = "bidv-note";
+    fxNote.textContent = "Оплат в валюте: " + fxCount + ". В письме нет суммы в донгах — банк спишет её через 1–2 дня двумя строками (сумма и комиссия). " +
+      "Найдите в выписке строки с кодом операции и впишите их сумму: в тысячах (592) или как в выписке, можно через плюс (575031+17079).";
+    body.appendChild(fxNote);
+  }
 
   const table = document.createElement("table");
   table.className = "bidv-table";
@@ -2476,7 +2496,9 @@ function bidvShowDialog(transactions){
     row.innerHTML = `
       <td><input type="checkbox" class="bidv-row-check" data-idx="${i}" checked></td>
       <td>${dateStr}</td>
-      <td class="num">${tr.amount.toLocaleString("ru-RU")}</td>
+      <td class="num">${tr.foreign
+        ? `<input type="text" inputmode="decimal" class="bidv-in bidv-amt num" data-idx="${i}" placeholder="тыс. ₫"><div class="bidv-fx"></div>`
+        : tr.amount.toLocaleString("ru-RU")}</td>
       <td>
         <input type="text" class="bidv-in bidv-my" data-idx="${i}" placeholder="Комментарий">
       </td>
@@ -2493,6 +2515,19 @@ function bidvShowDialog(transactions){
     `;
     // Устанавливаем значение через JavaScript, чтобы избежать проблем с экранированием
     row.querySelector(".bidv-merch").value = tr.recipient;
+    if(tr.foreign){
+      row.classList.add("fx");
+      const fx = tr.foreign.amt.replace(".", ",") + " " + tr.foreign.cur;
+      row.querySelector(".bidv-my").value = fx;
+      row.querySelector(".bidv-fx").textContent = fx + " · код " + tr.ref;
+      const amtIn = row.querySelector(".bidv-amt"), hint = row.querySelector(".bidv-fx");
+      amtIn.title = "Сумма из выписки BIDV вместе с комиссией: найдите строки с кодом "
+        + tr.ref + " и сложите их. Можно ввести «575031+17079» или сразу итог в тысячах.";
+      amtIn.oninput = ()=>{
+        const k = bidvFxAmount(amtIn.value);
+        hint.textContent = k > 0 ? "= " + k.toLocaleString("ru-RU") + " тыс. ₫ · код " + tr.ref : fx + " · код " + tr.ref;
+      };
+    }
     tbody.appendChild(row);
   });
 
@@ -2526,12 +2561,28 @@ function bidvShowDialog(transactions){
   };
 }
 
+/* Сумма валютной оплаты из выписки, в тысячах: «592», «592,11»,
+   «575 031,00» или «575031+17079». Если хоть одно слагаемое от 100 000
+   или вся сумма от 20 000 — это полные донги из выписки (20 000 тыс. =
+   20 млн ₫ за одну валютную оплату не бывает), тогда делим на 1000. */
+function bidvFxAmount(v){
+  const parts = String(v||"").split("+").map(x=> x.trim()).filter(Boolean);
+  if(!parts.length) return 0;
+  const nums = parts.map(parseAmt);
+  if(nums.some(n=> !(n > 0))) return 0;
+  const total = nums.reduce((a,n)=> a+n, 0);
+  const full = nums.some(n=> n >= 100000) || total >= 20000;
+  return Math.round(full ? total/1000 : total);
+}
+
 function bidvAddSelected(transactions, overlay){
   // Ищем только внутри своего окна, а не по всему документу
   const picked = Array.from(overlay.querySelectorAll(".bidv-row-check")).filter(cb=> cb.checked).map(cb=>{
     const idx = parseInt(cb.dataset.idx, 10);
+    const amtIn = overlay.querySelector(`.bidv-amt[data-idx="${idx}"]`);
     return {
       tr: transactions[idx],
+      amount: amtIn ? bidvFxAmount(amtIn.value) : transactions[idx].amount,
       cat: overlay.querySelector(`.bidv-cat[data-idx="${idx}"]`).value,
       // «Обед» + «Nguyen» → «Обед Nguyen»; пустые части пропускаем
       note: [".bidv-my", ".bidv-merch"]
@@ -2550,12 +2601,16 @@ function bidvAddSelected(transactions, overlay){
     toast("Не выбрано ни одной операции");
     return;
   }
+  if(picked.some(x=> x.cat !== BIDV_DELETE && !(x.amount > 0))){
+    toast("Впишите сумму в донгах для оплат в валюте (или выберите «⊘ Удалить»)");
+    return;
+  }
 
   let added = 0, removed = 0;
   const imported = bidvLoadImported();
   const now = nowTs();
 
-  picked.forEach(({tr, cat, note})=>{
+  picked.forEach(({tr, amount, cat, note})=>{
 
     // «Удалить» означает не добавлять расход в бюджет, но считать файл
     // обработанным, чтобы он больше не появлялся в окне импорта.
@@ -2572,7 +2627,7 @@ function bidvAddSelected(transactions, overlay){
     m.vnd.push({
       id: uid(),
       day: tr.day,
-      amount: tr.amount,
+      amount: amount,
       note: note,
       cat: cat,
       pay: "Карта BIDV",
