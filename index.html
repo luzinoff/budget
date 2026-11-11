@@ -1482,9 +1482,9 @@ function renderList(box, arr, cur, key){
       const r = document.createElement("div"); r.className = "item" + (key==="rub" && it.cat===SAV ? " sav" : "");
       const c = document.createElement("div"); c.className="cat";
       let editBtn = null;
-      if(key === "vnd" || key === "rub" || key === "inc"){   // править можно любую запись, кроме пополнений
+      if(key === "vnd" || key === "rub" || key === "inc" || key === "cash"){   // править можно любую запись, внесения тоже
         const label = document.createElement("span");
-        label.textContent = it.cat || "Не указано";
+        label.textContent = key==="cash" ? (it.cat===FROM_BIDV ? "Снятие с карты" : "Внесение") : (it.cat || "Не указано");
         c.appendChild(label);
         editBtn = document.createElement("button");
         editBtn.className = "edit-cat";
@@ -1540,11 +1540,14 @@ function renderList(box, arr, cur, key){
 function editRecord(key, id){
   const k = mk(), y = Y, mo = M;
   if(!isObj(DB[k])) return;
-  const src = fix(DB[k])[key].find(x=> x.id===id && !x.del);
+  const LK = key==="cash" ? "topup" : key;   // внесения лежат в списке topup
+  const src = fix(DB[k])[LK].find(x=> x.id===id && !x.del);
   if(!src) return;
   const st = {day:src.day, cat:src.cat||"", pay:src.pay||""};
-  const cur = key==="vnd" ? "₫" : "₽";
-  const what = key==="inc" ? "доход" : "расход";
+  // внесение: куда (карта/наличные) и, для наличных, откуда — как в форме добавления
+  if(key==="cash"){ st.wallet = topWallet(src); st.src = src.cat===FROM_BIDV ? FROM_BIDV : ""; }
+  const cur = key==="vnd" || key==="cash" ? "₫" : "₽";
+  const what = key==="inc" ? "доход" : key==="cash" ? "внесение" : "расход";
   aiSheet((box, close)=>{
     box.classList.add("edit");
     box.appendChild(aiEl("h3", "", "Изменить "+what));
@@ -1572,7 +1575,21 @@ function editRecord(key, id){
     ds.onchange = ()=>{ st.day = +ds.value; };
     dl.appendChild(ds); box.appendChild(dl);
 
+    if(key==="cash"){
+      box.appendChild(aiEl("p", "f-lab", "Куда"));
+      const srcW = aiEl("div", "");
+      const drawSrc = ()=>{
+        srcW.innerHTML = "";
+        if(st.wallet !== "cash") return;
+        srcW.appendChild(aiEl("p", "f-lab", "Откуда"));
+        srcW.appendChild(chips([{v:"", t:"Обмен, перевод"}, {v:FROM_BIDV, t:"Снял с карты BIDV"}], st.src, v=>{ st.src = v; }));
+      };
+      box.appendChild(chips(WALLETS.map(w=>({v:w.k, t:w.name})), st.wallet, v=>{ st.wallet = v; drawSrc(); }));
+      box.appendChild(srcW); drawSrc();
+    }
+
     // категория (с прежней, если её уже нет в списке)
+    if(key!=="cash"){
     const cats = CATS[key].slice();
     if(st.cat && !cats.includes(st.cat)) cats.push(st.cat);
     box.appendChild(aiEl("p", "f-lab", key==="inc" ? "Тип" : "Категория"));
@@ -1588,6 +1605,7 @@ function editRecord(key, id){
     };
     box.appendChild(chips(cats.map(c=>({v:c, t:c})), st.cat, v=>{ st.cat = v; drawDest(); }));
     box.appendChild(destW); drawDest();
+    }
 
     // способ оплаты — только у донгов
     if(key==="vnd"){
@@ -1611,12 +1629,19 @@ function editRecord(key, id){
       const v = parseAmt(ai.value);
       if(!v || v<=0){ ai.focus(); toast("Введите сумму больше нуля"); return; }
       if(!isObj(DB[k])){ close(); return; }
-      const rec = fix(DB[k])[key].find(x=> x.id===id && !x.del);
+      const rec = fix(DB[k])[LK].find(x=> x.id===id && !x.del);
       if(!rec){ close(); toast("Запись уже удалена"); return; }
       const note = ni.value.trim();
-      const pay = key==="vnd" ? st.pay : (key==="rub" && st.cat===SAV ? st.pay : "");
-      if(rec.day===st.day && rec.cat===st.cat && rec.pay===pay && rec.amount===v && rec.note===note){ close(); return; }
-      rec.day = st.day; rec.cat = st.cat; rec.pay = pay; rec.amount = v; rec.note = note;
+      let pay = key==="vnd" ? st.pay : (key==="rub" && st.cat===SAV ? st.pay : "");
+      let cat = st.cat;
+      if(key==="cash"){
+        // кошелёк — по pay; если кошелёк не меняли, прежнее значение не трогаем (у старых внесений pay пуст)
+        pay = st.wallet===topWallet(rec) ? rec.pay : (st.wallet==="cash" ? "Наличные" : BIDV_PAY);
+        // «Снял с карты BIDV» — пометка в cat; прочие пометки (например, от импорта) сохраняем
+        cat = st.wallet==="cash" && st.src===FROM_BIDV ? FROM_BIDV : (rec.cat===FROM_BIDV ? "" : rec.cat);
+      }
+      if(rec.day===st.day && rec.cat===cat && rec.pay===pay && rec.amount===v && rec.note===note){ close(); return; }
+      rec.day = st.day; rec.cat = cat; rec.pay = pay; rec.amount = v; rec.note = note;
       rec.ts = nowTs();
       save(); close(); render(); toast("Запись изменена");
     };
