@@ -712,12 +712,13 @@ textarea.chat-in{min-height:76px;resize:vertical;margin:8px 0 10px;font:inherit;
     <div class="tot grand"><span class="lab">Всего <i id="cash-sub"></i></span><span class="val num" id="w-all-now">—</span></div>
   </div>
   <div class="card">
-    <h2 class="card-h">Внесение<button class="link-btn" data-bybit-import>Импорт Bybit</button></h2>
+    <h2 class="card-h">Внесение или обмен<button class="link-btn" data-bybit-import>Импорт Bybit</button></h2>
     <div class="form" id="f-cash">
       <div class="chips days" data-days></div>
-      <p class="f-lab">Куда</p>
-      <div class="chips" data-wallet></div>
-      <div data-src-w hidden><p class="f-lab">Откуда</p><div class="chips" data-src></div></div>
+      <p class="f-lab">Операция</p>
+      <div class="chips" data-op></div>
+      <div data-wallet-w><p class="f-lab">Куда</p><div class="chips" data-wallet></div></div>
+      <div data-src-w hidden><p class="f-lab">Направление</p><div class="chips" data-src></div></div>
       <div class="entry">
         <button class="mic" data-mic title="Надиктовать" aria-label="Надиктовать"><svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V22h2v-3.08A7 7 0 0 0 19 12h-2z"/></svg></button>
         <input class="num" type="text" inputmode="decimal" placeholder="Сумма, ₫" data-amt aria-label="Сумма в донгах">
@@ -728,7 +729,7 @@ textarea.chat-in{min-height:76px;resize:vertical;margin:8px 0 10px;font:inherit;
     </div>
   </div>
   <div class="card">
-    <h2 class="card-h">Внесения</h2>
+    <h2 class="card-h">Внесения и обмены</h2>
     <div id="l-topup"></div>
     <div class="tot grand"><span class="lab">Всего за месяц</span><span class="val num" id="t-topup">—</span></div>
     <div class="tot avg"><span class="lab" id="t-topup-sub"></span></div>
@@ -1252,23 +1253,23 @@ function buildForm(key, scroll){
   /* внесение: куда (карта или наличные) и, для наличных, откуда */
   const wbox = root.querySelector("[data-wallet]");
   if(wbox){
-    if(!WALLETS.some(w=> w.k===pick[key].wallet)) pick[key].wallet = "bidv";
+    /* «Внесение» — деньги пришли извне (P2P, перевод, обмен валюты) в один
+       кошелёк. «Обмен» — те же донги переходят между картой и наличными. */
+    const p = pick[key];
+    if(!WALLETS.some(w=> w.k===p.wallet)) p.wallet = "bidv";
+    const xfer = p.src===FROM_BIDV || p.src===FROM_CASH;
+    const chip = (box, t, on, fn)=>{ const b = document.createElement("button"); b.className = "chip"; b.textContent = t; b.setAttribute("aria-pressed", on); b.onclick = fn; box.appendChild(b); };
+    const obox = root.querySelector("[data-op]"); obox.innerHTML = "";
+    chip(obox, "Внесение", !xfer, ()=>{ p.src = ""; buildForm(key); });
+    chip(obox, "Обмен карта ↔ наличные", xfer, ()=>{ if(!xfer){ p.src = FROM_BIDV; p.wallet = "cash"; } buildForm(key); });
+    root.querySelector("[data-wallet-w]").hidden = xfer;
     wbox.innerHTML = "";
-    WALLETS.forEach(w=>{
-      const b = document.createElement("button"); b.className = "chip"; b.textContent = w.name;
-      b.setAttribute("aria-pressed", pick[key].wallet===w.k);
-      b.onclick = ()=>{ pick[key].wallet = w.k; buildForm(key); };
-      wbox.appendChild(b);
-    });
+    WALLETS.forEach(w=> chip(wbox, w.name, p.wallet===w.k, ()=>{ p.wallet = w.k; buildForm(key); }));
     const sw = root.querySelector("[data-src-w]"), sbox = root.querySelector("[data-src]");
-    sw.hidden = pick[key].wallet !== "cash";
+    sw.hidden = !xfer;
     sbox.innerHTML = "";
-    [["","Обмен, перевод"],[FROM_BIDV,"Снял с карты BIDV"]].forEach(([v,t])=>{
-      const b = document.createElement("button"); b.className = "chip"; b.textContent = t;
-      b.setAttribute("aria-pressed", (pick[key].src||"")===v);
-      b.onclick = ()=>{ pick[key].src = v; buildForm(key); };
-      sbox.appendChild(b);
-    });
+    chip(sbox, "Карта BIDV → наличные", p.src===FROM_BIDV, ()=>{ p.src = FROM_BIDV; p.wallet = "cash"; buildForm(key); });
+    chip(sbox, "Наличные → карта BIDV", p.src===FROM_CASH, ()=>{ p.src = FROM_CASH; p.wallet = "bidv"; buildForm(key); });
   }
   const pbox = root.querySelector("[data-pays]");
   if(pbox){
@@ -1293,8 +1294,9 @@ function wireAdd(key){
     const m = monW(), p = pick[key];
     const rec = {id:uid(), day:p.day, amount:v, note:(note.value||"").trim(), cat:"", pay:"", ts:nowTs(), del:0};
     if(key==="cash"){
-      rec.pay = p.wallet==="cash" ? "Наличные" : BIDV_PAY;
-      if(p.wallet==="cash" && p.src===FROM_BIDV) rec.cat = FROM_BIDV;   // снятие: минус карте
+      if(p.src===FROM_BIDV){ rec.pay = "Наличные"; rec.cat = FROM_BIDV; }        // обмен: карта → наличные
+      else if(p.src===FROM_CASH){ rec.pay = BIDV_PAY; rec.cat = FROM_CASH; }     // обмен: наличные → карта
+      else rec.pay = p.wallet==="cash" ? "Наличные" : BIDV_PAY;                  // внесение извне
       m.topup.push(rec);
     }
     else {
@@ -1306,7 +1308,7 @@ function wireAdd(key){
     save(); amt.value=""; note.value="";
     const h = root.querySelector("[data-heard]"); if(h) h.textContent = "";
     render();
-    toast(key==="inc" ? "Доход добавлен" : key==="cash" ? (rec.cat===FROM_BIDV ? "Снятие с карты добавлено" : rec.pay===BIDV_PAY ? "Внесение на карту добавлено" : "Наличные добавлены") : "Расход добавлен");
+    toast(key==="inc" ? "Доход добавлен" : key==="cash" ? (isXfer(rec) ? "Обмен добавлен" : rec.pay===BIDV_PAY ? "Внесение на карту добавлено" : "Наличные добавлены") : "Расход добавлен");
     amt.focus();
   };
   root.querySelector("[data-add]").onclick = go;
@@ -1333,7 +1335,7 @@ function applyVoice(key, text){
   }
   if(p.cat){ pick[key].cat = p.cat; got.push(p.cat.toLowerCase()); }
   if(p.pay){ pick[key].pay = p.pay; got.push(p.pay.toLowerCase()); }
-  if(p.wallet){ pick[key].wallet = p.wallet; pick[key].src = p.src || ""; got.push(p.src ? "снятие с карты" : p.wallet==="bidv" ? "на карту" : "наличные"); }
+  if(p.wallet){ pick[key].wallet = p.wallet; pick[key].src = p.src || ""; got.push(p.src===FROM_BIDV ? "обмен: карта → наличные" : p.src===FROM_CASH ? "обмен: наличные → карта" : p.wallet==="bidv" ? "на карту" : "наличные"); }
   buildForm(key, true);
   if(p.cat || p.pay || p.day){
     root.querySelectorAll('.chip[aria-pressed="true"]').forEach(lit);
@@ -1475,7 +1477,10 @@ function renderList(box, arr, cur, key){
     const h = document.createElement("div"); h.className="dayhead";
     const hb = document.createElement("b"); hb.className="num"; hb.textContent = g.day;
     const hd = document.createElement("span"); hd.className="dow"; hd.textContent = dowOf(g.day);
-    const ht = document.createElement("span"); ht.className="dt num"; ht.textContent = f(sum(g.items));
+    // у внесений обмен в сумму дня не входит: деньги те же, просто переложены
+    const dayItems = key==="cash" ? g.items.filter(x=> !isXfer(x)) : g.items;
+    const ht = document.createElement("span"); ht.className="dt num";
+    ht.textContent = dayItems.length ? f(sum(dayItems)) : "обмен";
     h.append(hb, hd, ht);
     wrap.appendChild(h);
     g.items.forEach(it=>{
@@ -1484,7 +1489,7 @@ function renderList(box, arr, cur, key){
       let editBtn = null;
       if(key === "vnd" || key === "rub" || key === "inc" || key === "cash"){   // править можно любую запись, внесения тоже
         const label = document.createElement("span");
-        label.textContent = key==="cash" ? (it.cat===FROM_BIDV ? "Снятие с карты" : "Внесение") : (it.cat || "Не указано");
+        label.textContent = key==="cash" ? (isXfer(it) ? xferLabel(it) : "Внесение") : (it.cat || "Не указано");
         c.appendChild(label);
         editBtn = document.createElement("button");
         editBtn.className = "edit-cat";
@@ -1493,14 +1498,14 @@ function renderList(box, arr, cur, key){
         editBtn.setAttribute("aria-label", "Изменить запись");
         editBtn.onclick = ()=> editRecord(key, it.id);
       } else {
-        c.textContent = key==="cash" ? (it.cat===FROM_BIDV ? "Снятие с карты" : "Внесение") : (it.cat || "Пополнение");
+        c.textContent = key==="cash" ? (isXfer(it) ? xferLabel(it) : "Внесение") : (it.cat || "Пополнение");
       }
       if(it.note){ const i=document.createElement("i"); i.textContent=it.note; c.appendChild(i); }
       r.appendChild(c);
       if(it.pay || key==="cash"){
         const p = document.createElement("span"); p.className = "pay";
         if(capNames){ p.classList.add("sav"); p.textContent = "→ "+(capNames.get(it.pay) || "актив удалён"); }
-        else if(key==="cash") p.textContent = it.pay===BIDV_PAY ? "→ карта BIDV" : "→ наличные";
+        else if(key==="cash") p.textContent = isXfer(it) ? "↔ обмен" : it.pay===BIDV_PAY ? "→ карта BIDV" : "→ наличные";
         else p.textContent = it.pay;
         r.appendChild(p);
       }
@@ -1510,11 +1515,11 @@ function renderList(box, arr, cur, key){
       d.title="Удалить"; d.setAttribute("aria-label","Удалить запись");
       d.onclick = ()=>{
         const k = mk(), when = it.day+" "+MONTHS_GEN[M];   // месяц запоминаем до вопроса
-        const what = key==="inc" ? "доход" : key==="cash" ? "пополнение" : "расход";
+        const what = key==="inc" ? "доход" : key==="cash" ? (isXfer(it) ? "обмен" : "внесение") : "расход";
         askConfirm({
           title: "Удалить "+what+"?",
           lines: [
-            (it.cat || "Пополнение")+" — "+f(it.amount),
+            (key==="cash" ? (isXfer(it) ? xferLabel(it) : "Внесение") : (it.cat || "Пополнение"))+" — "+f(it.amount),
             [when, it.pay, it.note].filter(Boolean).join(" · ")
           ],
           ok: "Удалить"
@@ -1545,9 +1550,9 @@ function editRecord(key, id){
   if(!src) return;
   const st = {day:src.day, cat:src.cat||"", pay:src.pay||""};
   // внесение: куда (карта/наличные) и, для наличных, откуда — как в форме добавления
-  if(key==="cash"){ st.wallet = topWallet(src); st.src = src.cat===FROM_BIDV ? FROM_BIDV : ""; }
+  if(key==="cash"){ st.wallet = topWallet(src); st.src = isXfer(src) ? src.cat : ""; }
   const cur = key==="vnd" || key==="cash" ? "₫" : "₽";
-  const what = key==="inc" ? "доход" : key==="cash" ? "внесение" : "расход";
+  const what = key==="inc" ? "доход" : key==="cash" ? "внесение или обмен" : "расход";
   aiSheet((box, close)=>{
     box.classList.add("edit");
     box.appendChild(aiEl("h3", "", "Изменить "+what));
@@ -1576,16 +1581,26 @@ function editRecord(key, id){
     dl.appendChild(ds); box.appendChild(dl);
 
     if(key==="cash"){
-      box.appendChild(aiEl("p", "f-lab", "Куда"));
-      const srcW = aiEl("div", "");
-      const drawSrc = ()=>{
-        srcW.innerHTML = "";
-        if(st.wallet !== "cash") return;
-        srcW.appendChild(aiEl("p", "f-lab", "Откуда"));
-        srcW.appendChild(chips([{v:"", t:"Обмен, перевод"}, {v:FROM_BIDV, t:"Снял с карты BIDV"}], st.src, v=>{ st.src = v; }));
+      box.appendChild(aiEl("p", "f-lab", "Операция"));
+      const sub = aiEl("div", "");
+      const draw = ()=>{
+        sub.innerHTML = "";
+        if(st.src){
+          sub.appendChild(aiEl("p", "f-lab", "Направление"));
+          sub.appendChild(chips([{v:FROM_BIDV, t:"Карта BIDV → наличные"}, {v:FROM_CASH, t:"Наличные → карта BIDV"}], st.src,
+            v=>{ st.src = v; st.wallet = v===FROM_BIDV ? "cash" : "bidv"; }));
+        } else {
+          sub.appendChild(aiEl("p", "f-lab", "Куда"));
+          sub.appendChild(chips(WALLETS.map(w=>({v:w.k, t:w.name})), st.wallet, v=>{ st.wallet = v; }));
+        }
       };
-      box.appendChild(chips(WALLETS.map(w=>({v:w.k, t:w.name})), st.wallet, v=>{ st.wallet = v; drawSrc(); }));
-      box.appendChild(srcW); drawSrc();
+      box.appendChild(chips([{v:"in", t:"Внесение"}, {v:"x", t:"Обмен карта ↔ наличные"}], st.src ? "x" : "in", v=>{
+        if(v==="x" && !st.src){ st.src = st.wallet==="bidv" ? FROM_CASH : FROM_BIDV; }
+        if(st.src) st.wallet = st.src===FROM_BIDV ? "cash" : "bidv";   // у обмена кошелёк-получатель задан направлением
+        if(v==="in") st.src = "";
+        draw();
+      }));
+      box.appendChild(sub); draw();
     }
 
     // категория (с прежней, если её уже нет в списке)
@@ -1637,8 +1652,8 @@ function editRecord(key, id){
       if(key==="cash"){
         // кошелёк — по pay; если кошелёк не меняли, прежнее значение не трогаем (у старых внесений pay пуст)
         pay = st.wallet===topWallet(rec) ? rec.pay : (st.wallet==="cash" ? "Наличные" : BIDV_PAY);
-        // «Снял с карты BIDV» — пометка в cat; прочие пометки (например, от импорта) сохраняем
-        cat = st.wallet==="cash" && st.src===FROM_BIDV ? FROM_BIDV : (rec.cat===FROM_BIDV ? "" : rec.cat);
+        // обмен — пометка в cat; прочие пометки (например, от импорта) у внесения сохраняем
+        cat = st.src ? st.src : (rec.cat===FROM_BIDV || rec.cat===FROM_CASH ? "" : rec.cat);
       }
       if(rec.day===st.day && rec.cat===cat && rec.pay===pay && rec.amount===v && rec.note===note){ close(); return; }
       rec.day = st.day; rec.cat = cat; rec.pay = pay; rec.amount = v; rec.note = note;
@@ -1686,9 +1701,14 @@ function renderCats(box, arr, cats, cur, field){
 
 /* ---------- кошельки ₫: карта BIDV и наличные ----------
    Внесение (topup) с pay «Карта BIDV» пополняет карту, остальные — наличные
-   (у старых записей pay пустой). Наличные с cat «С карты BIDV» — снятие с карты:
-   плюс наличным, минус карте. Траты списываются по способу оплаты в «Тратах ₫». */
-const BIDV_PAY = "Карта BIDV", FROM_BIDV = "С карты BIDV";
+   (у старых записей pay пустой). Обмен между кошельками — тоже запись в topup,
+   но не внесение: наличные с cat «С карты BIDV» — снятие (плюс наличным, минус
+   карте), карта с cat «С наличных» — наличные положили на карту (плюс карте,
+   минус наличным). Ни в доходы, ни в расходы, ни во «внесено» обмен не входит.
+   Траты списываются по способу оплаты в «Тратах ₫». */
+const BIDV_PAY = "Карта BIDV", FROM_BIDV = "С карты BIDV", FROM_CASH = "С наличных";
+const isXfer = x=> !!x && ((x.cat===FROM_BIDV && x.pay!==BIDV_PAY) || (x.cat===FROM_CASH && x.pay===BIDV_PAY));
+const xferLabel = x=> x.pay===BIDV_PAY ? "Обмен: наличные → карта" : "Обмен: карта → наличные";
 const WALLETS = [
   {k:"bidv", name:"Карта BIDV", pay:BIDV_PAY,   start:"bidvStart", ts:"bidvStartTs"},
   {k:"cash", name:"Наличные",   pay:"Наличные", start:"cashStart", ts:"cashStartTs"}
@@ -1701,7 +1721,8 @@ function walletRows(k, m, n){
   m.vnd.filter(x=> x.pay===w.pay).forEach(x=> spend[x.day] = (spend[x.day]||0) + x.amount);
   m.topup.forEach(x=>{
     if(topWallet(x)===k) top[x.day] = (top[x.day]||0) + x.amount;
-    if(k==="bidv" && topWallet(x)==="cash" && x.cat===FROM_BIDV) out[x.day] = (out[x.day]||0) + x.amount;
+    // обмен: у кошелька-источника списание
+    if(isXfer(x) && topWallet(x)!==k) out[x.day] = (out[x.day]||0) + x.amount;
   });
   let bal = m[w.start]||0;
   const rows = [];
@@ -1754,10 +1775,14 @@ function render(){
 
   // кошельки: карта BIDV и наличные
   renderList(document.getElementById("l-topup"), m.topup, "V", "cash");
-  document.getElementById("t-topup").textContent = fV(sum(m.topup));
-  const topB = sum(m.topup.filter(x=> topWallet(x)==="bidv")), topC = sum(m.topup.filter(x=> topWallet(x)==="cash")), wd = sum(m.topup.filter(x=> topWallet(x)==="cash" && x.cat===FROM_BIDV));
-  document.getElementById("t-topup-sub").textContent = m.topup.length
-    ? "на карту BIDV "+fV(topB)+" · наличными "+fV(topC)+(wd ? " (в т.ч. снято с карты "+fV(wd)+")" : "") : "";
+  const ext = m.topup.filter(x=> !isXfer(x));   // обмен — не внесение: деньги те же
+  document.getElementById("t-topup").textContent = fV(sum(ext));
+  const topB = sum(ext.filter(x=> topWallet(x)==="bidv")), topC = sum(ext.filter(x=> topWallet(x)==="cash"));
+  const xToCash = sum(m.topup.filter(x=> isXfer(x) && topWallet(x)==="cash")), xToCard = sum(m.topup.filter(x=> isXfer(x) && topWallet(x)==="bidv"));
+  const subs = [];
+  if(ext.length) subs.push("на карту BIDV "+fV(topB)+" · наличными "+fV(topC));
+  if(xToCash || xToCard) subs.push("обмен: "+[xToCash ? "с карты в наличные "+fV(xToCash) : "", xToCard ? "наличные на карту "+fV(xToCard) : ""].filter(Boolean).join(", "));
+  document.getElementById("t-topup-sub").textContent = subs.join(" · ");
   const isNow = (Y===today.getFullYear() && M===today.getMonth());
   const W = {};
   WALLETS.forEach(w=>{
@@ -1778,8 +1803,8 @@ function render(){
     wdc.appendChild(b);
   });
   document.getElementById("wal-note").textContent = walDay==="bidv"
-    ? "Траты — с вкладки «Траты ₫» с оплатой «Карта BIDV» (в том числе импорт BIDV), снятия наличных с карты — из внесений. Дни без движения скрыты."
-    : "Траты — с вкладки «Траты ₫» с оплатой «Наличные». Дни без движения скрыты.";
+    ? "Траты — с вкладки «Траты ₫» с оплатой «Карта BIDV» (в том числе импорт BIDV), обмены с наличными — из «Внесений и обменов». Дни без движения скрыты."
+    : "Траты — с вкладки «Траты ₫» с оплатой «Наличные», обмены с картой — из «Внесений и обменов». Дни без движения скрыты.";
   const lc = document.getElementById("l-cash");
   lc.innerHTML = "";
   /* Считаем по порядку (баланс накопительный), а показываем задом наперёд —
@@ -1796,7 +1821,7 @@ function render(){
       const parts = [];
       if(r.top){ const x=document.createElement("s"); x.textContent="+"+fV(r.top); parts.push(x); }
       if(r.spend){ const x=document.createElement("u"); x.textContent="−"+fV(r.spend); parts.push(x); }
-      if(r.out){ const x=document.createElement("u"); x.textContent="−"+fV(r.out)+" снято"; parts.push(x); }
+      if(r.out){ const x=document.createElement("u"); x.textContent="−"+fV(r.out)+(walDay==="bidv" ? " на наличные" : " на карту"); parts.push(x); }
       parts.forEach((x,i)=>{ if(i) fl.appendChild(document.createTextNode("  ")); fl.appendChild(x); });
       const b = document.createElement("span"); b.className="bal num"; b.textContent = fV(r.bal);
       el.append(d, fl, b);
@@ -2046,6 +2071,7 @@ function vParse(text, key){
   }
   if(key === "cash"){
     if(/снял|сняти|банкомат/.test(t)){ out.wallet = "cash"; out.src = FROM_BIDV; }
+    else if(/(внес|положил|закинул|пополнил)[а-я]* [а-я ]*налич|налич[а-я]* на карт/.test(t)){ out.wallet = "bidv"; out.src = FROM_CASH; }
     else if(/карт|bidv|бидв/.test(t)) out.wallet = "bidv";
     else if(/налич|налик|кэш|кеш/.test(t)) out.wallet = "cash";
   }
@@ -4582,7 +4608,9 @@ function chatContext(opt){
         L.push("По категориям: "+aiGroup(d.vnd,"cat").map(r=> r.c+" "+aiV(r.v)).join("; "));
         L.push("По оплате: "+aiGroup(d.vnd,"pay").map(r=> r.c+" "+aiV(r.v)).join("; "));
       }
-      WALLETS.forEach(w=> L.push(w.name+": на начало "+aiV(d[w.start])+", внесено "+aiV(sum(d.topup.filter(x=> topWallet(x)===w.k)))+", на конец "+aiV(walletEnd(w.k, d))+"."));
+      WALLETS.forEach(w=> L.push(w.name+": на начало "+aiV(d[w.start])+", внесено "+aiV(sum(d.topup.filter(x=> !isXfer(x) && topWallet(x)===w.k)))
+        +", обмен (пришло/ушло) "+aiV(sum(d.topup.filter(x=> isXfer(x) && topWallet(x)===w.k)))+"/"+aiV(sum(d.topup.filter(x=> isXfer(x) && topWallet(x)!==w.k)))
+        +", на конец "+aiV(walletEnd(w.k, d))+"."));
     });
   }
   if(S.rec && months.length){
