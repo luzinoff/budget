@@ -2084,6 +2084,51 @@ function vParse(text, key){
   return out;
 }
 
+/* ===== Общие настройки дневника, бюджета и медкарты (14.11.2026) =====
+   Все три приложения открываются с одного сайта (luzinoff.github.io),
+   поэтому видят одну и ту же память браузера. Client ID Google и ключ
+   с моделью Gemini держим в общей записи luz.shared.v1: ввёл в одном —
+   подхватили остальные, даже в соседней вкладке. Свои настройки у каждого
+   приложения остаются; этот блок одинаковый во всех трёх файлах.
+   aiModel: пустая строка — модель по умолчанию (gemini-3.6-flash). */
+const LUZ_SHARED='luz.shared.v1', LUZ_FIELDS=['clientId','aiKey','aiModel'];
+const luzShared={
+  seen:{},
+  get(){try{return JSON.parse(localStorage.getItem(LUZ_SHARED))||{}}catch(e){return {}}},
+  set(p){try{localStorage.setItem(LUZ_SHARED,JSON.stringify(Object.assign(this.get(),p)))}catch(e){}},
+  /* own — текущие значения приложения. Общее побеждает; поля, которых в
+     общем ещё нет, заполняем своими. Возвращает значения после слияния. */
+  pull(own){
+    const s=this.get(), out={}, seed={};
+    for(const k of LUZ_FIELDS){
+      const mine=String(own[k]||'').trim();
+      if(k in s) out[k]=String(s[k]||''); else { out[k]=mine; if(mine) seed[k]=mine }
+    }
+    if(Object.keys(seed).length) this.set(seed);
+    this.seen={...out}; return out;
+  },
+  /* после сохранения своих настроек: в общее уходит только то, что
+     поменяли здесь, — иначе вкладка со старыми значениями затёрла бы
+     свежие из соседней */
+  push(own){
+    const ch={};
+    for(const k of LUZ_FIELDS){const v=String(own[k]||'').trim(); if(v!==(this.seen[k]||'')) ch[k]=v}
+    if(Object.keys(ch).length){ this.set(ch); Object.assign(this.seen,ch) }
+  }
+};
+/* Бюджет хранит эти настройки отдельными ключами; переводим туда-обратно.
+   Литералы, а не CID_KEY/AI_KEY_LS: часть констант объявлена ниже. */
+function luzBudgetOwn(){
+  const g=k=>{try{return (localStorage.getItem(k)||"").trim()}catch(e){return ""}};
+  const m=g("budget.ai.model");
+  return {clientId:g("budget.cid"), aiKey:g("budget.ai.key"), aiModel:m==="gemini-3.6-flash"?"":m};
+}
+function luzBudgetApply(v){
+  const put=(k,x)=>{try{x?localStorage.setItem(k,x):localStorage.removeItem(k)}catch(e){}};
+  put("budget.cid",v.clientId); put("budget.ai.key",v.aiKey); put("budget.ai.model",v.aiModel);
+}
+luzBudgetApply(luzShared.pull(luzBudgetOwn()));
+
 /* ================= синхронизация с Google Диском ================= */
 const SYNC = {
   cid: (localStorage.getItem(CID_KEY)||"").trim(),
@@ -3098,13 +3143,14 @@ function aiSettings(){
     const ok = aiEl("button", "btn", "Сохранить");
     bar.append(del, no, ok); box.appendChild(bar);
     no.onclick = close;
-    del.onclick = ()=>{ try{ localStorage.removeItem(AI_KEY_LS); }catch(e){} close(); aiRenderCard(); toast("Ключ удалён"); };
+    del.onclick = ()=>{ try{ localStorage.removeItem(AI_KEY_LS); }catch(e){} luzShared.push(luzBudgetOwn()); close(); aiRenderCard(); toast("Ключ удалён"); };
     ok.onclick = ()=>{
       try{
         const k = ki.value.trim(), m = mi.value.trim();
         if(k) localStorage.setItem(AI_KEY_LS, k); else localStorage.removeItem(AI_KEY_LS);
         if(m && m !== AI_DEF_MODEL) localStorage.setItem(AI_MODEL_LS, m); else localStorage.removeItem(AI_MODEL_LS);
       }catch(e){ toast("Не удалось сохранить настройки"); return; }
+      luzShared.push(luzBudgetOwn());
       close(); aiRenderCard(); toast("Настройки Gemini сохранены");
     };
   });
@@ -4909,6 +4955,7 @@ function capAiMigrate(){
     SYNC.cid = v;
     SYNC.editCid = false;
     if(v) localStorage.setItem(CID_KEY, v); else localStorage.removeItem(CID_KEY);
+    luzShared.push(luzBudgetOwn());
     SYNC.err = ""; syncUI();
     toast(v ? "Client ID сохранён" : "Client ID убран");
   };
@@ -4941,6 +4988,15 @@ function capAiMigrate(){
   window.addEventListener("pagehide", flushSync);
   /* Отключение в одной вкладке должно дойти до остальных: иначе соседняя
      вкладка при следующем входе вернёт флаг обратно в хранилище. */
+  /* Общие настройки поменяли в дневнике или медкарте (в соседней вкладке) */
+  window.addEventListener("storage", e=>{
+    if(e.key !== LUZ_SHARED) return;
+    const before = SYNC.cid;
+    luzBudgetApply(luzShared.pull(luzBudgetOwn()));
+    SYNC.cid = (localStorage.getItem(CID_KEY)||"").trim();
+    if(SYNC.cid !== before){ SYNC.token = null; SYNC.exp = 0; }
+    try{ syncUI(); aiRenderCard(); }catch(_){}
+  });
   window.addEventListener("storage", e=>{
     if(e.key !== AUTH_KEY) return;
     if(e.newValue === "1"){ SYNC.ever = true; }
