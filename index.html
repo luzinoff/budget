@@ -677,7 +677,7 @@ textarea.chat-in{min-height:76px;resize:vertical;margin:8px 0 10px;font:inherit;
       <div class="chips" data-pays></div>
       <div class="entry">
         <button class="mic" data-mic title="Надиктовать" aria-label="Надиктовать"><svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V22h2v-3.08A7 7 0 0 0 19 12h-2z"/></svg></button>
-        <input class="num" type="text" inputmode="decimal" placeholder="Сумма, ₫" data-amt aria-label="Сумма в донгах">
+        <input class="num" type="text" inputmode="decimal" placeholder="Сумма, k" data-amt aria-label="Сумма в донгах">
         <button class="btn" data-add>Добавить</button>
         <input type="text" placeholder="Комментарий" data-note aria-label="Комментарий">
       </div>
@@ -703,7 +703,7 @@ textarea.chat-in{min-height:76px;resize:vertical;margin:8px 0 10px;font:inherit;
     </div>
     <div class="cashstart">
       <label for="w-bidv-start">Было на начало месяца</label>
-      <input class="num" type="text" inputmode="decimal" placeholder="0 ₫" id="w-bidv-start">
+      <input class="num" type="text" inputmode="decimal" placeholder="0k" id="w-bidv-start">
     </div>
     <div class="cashbig wal" id="w-cash" style="border-top:1px solid var(--line-2)">
       <div class="lab">Наличные</div>
@@ -711,7 +711,7 @@ textarea.chat-in{min-height:76px;resize:vertical;margin:8px 0 10px;font:inherit;
     </div>
     <div class="cashstart">
       <label for="w-cash-start">Было на начало месяца</label>
-      <input class="num" type="text" inputmode="decimal" placeholder="0 ₫" id="w-cash-start">
+      <input class="num" type="text" inputmode="decimal" placeholder="0k" id="w-cash-start">
     </div>
     <div class="tot grand"><span class="lab">Всего <i id="cash-sub"></i></span><span class="val num" id="w-all-now">—</span></div>
   </div>
@@ -725,7 +725,7 @@ textarea.chat-in{min-height:76px;resize:vertical;margin:8px 0 10px;font:inherit;
       <div data-src-w hidden><p class="f-lab">Направление</p><div class="chips" data-src></div></div>
       <div class="entry">
         <button class="mic" data-mic title="Надиктовать" aria-label="Надиктовать"><svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V22h2v-3.08A7 7 0 0 0 19 12h-2z"/></svg></button>
-        <input class="num" type="text" inputmode="decimal" placeholder="Сумма, ₫" data-amt aria-label="Сумма в донгах">
+        <input class="num" type="text" inputmode="decimal" placeholder="Сумма, k" data-amt aria-label="Сумма в донгах">
         <button class="btn" data-add>Добавить</button>
         <input type="text" placeholder="Комментарий: обмен, перевод, P2P…" data-note aria-label="Комментарий">
       </div>
@@ -967,7 +967,12 @@ const CATS = {
 const MONTHS = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
 const DOW = ["вс","пн","вт","ср","чт","пт","сб"];
 const MONTHS_GEN = ["января","февраля","марта","апреля","мая","июня","июля","августа","сентября","октября","ноября","декабря"];
-const KEY = "budget.v1";
+/* С версии 2 донги хранятся полностью (45 000), раньше — в тысячах (45).
+   Новые ключ и файл на Диске, чтобы старая версия приложения на другом
+   устройстве не смешала единицы: старые budget.v1 читаются только для
+   переноса (×1000) и больше не пишутся. */
+const KEY = "budget.v2", KEY_V1 = "budget.v1";
+
 const CID_KEY = "budget.cid";
 const SEEN_KEY = "budget.synced";
 /* «вход когда-то делался» переживает перезагрузку, в отличие от токена:
@@ -978,7 +983,24 @@ const BIDV_IMPORTED_KEY = "budget.bidv.imported";
 const BIDV_DELETE = "__bidv_delete__";
 const LISTS = ["inc","rub","vnd","topup"];
 const TOMB_TTL = 90*24*60*60*1000;   // тайм-метки удаления живут 90 дней, потом чистятся
-const DRIVE_FILE = "budget.v1.json";
+const DRIVE_FILE = "budget.v2.json", DRIVE_FILE_V1 = "budget.v1.json";
+const MKEY_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
+/* База v1 (донги в тысячах) → v2 (полные донги). Рубли и _meta не трогаем. */
+function dbFromV1(v){
+  const out = {};
+  if(!v || typeof v!=="object" || Array.isArray(v)) return out;
+  const k1000 = x=> Math.round((Number(x)||0)*1000);
+  Object.keys(v).forEach(k=>{
+    const m = v[k];
+    if(!MKEY_RE.test(k) || !m || typeof m!=="object"){ out[k] = m; return; }
+    const c = Object.assign({}, m);
+    ["vnd","topup"].forEach(l=>{ if(Array.isArray(m[l])) c[l] = m[l].map(x=> x && typeof x==="object" ? Object.assign({}, x, {amount:k1000(x.amount)}) : x); });
+    if(m.cashStart) c.cashStart = k1000(m.cashStart);
+    if(m.bidvStart) c.bidvStart = k1000(m.bidvStart);
+    out[k] = c;
+  });
+  return out;
+}
 
 /* ---------- state ---------- */
 let today = new Date();   // не const: PWA живёт в памяти сутками, см. refreshToday()
@@ -1018,8 +1040,14 @@ function parseBidvDateTime(value){
 function load(){
   try{
     const r = localStorage.getItem(KEY);
-    const v = r ? JSON.parse(r) : null;
-    return isObj(v) ? v : {};
+    if(r){ const v = JSON.parse(r); return isObj(v) ? v : {}; }
+    // первый запуск новой версии: переносим старую базу, сам старый ключ оставляем как есть
+    const r1 = localStorage.getItem(KEY_V1);
+    const v1 = r1 ? JSON.parse(r1) : null;
+    if(!isObj(v1)) return {};
+    const v2 = dbFromV1(v1);
+    try{ localStorage.setItem(KEY, JSON.stringify(v2)); }catch(e){}
+    return v2;
   }catch(e){ return {}; }
 }
 function save(){
@@ -1150,7 +1178,8 @@ function mergeDB(a, b){
     if(k === META_KEY){
       const ma = isObj(a) && isObj(a[k]) ? a[k] : {};
       const mb = isObj(b) && isObj(b[k]) ? b[k] : {};
-      out[k] = {bidvImported: mergeBidvImported(ma.bidvImported, mb.bidvImported), ai: aiStoreMerge(ma.ai, mb.ai), cap: capMerge(ma.cap, mb.cap), chats: chatsMerge(ma.chats, mb.chats)};
+      out[k] = {bidvImported: mergeBidvImported(ma.bidvImported, mb.bidvImported), ai: aiStoreMerge(ma.ai, mb.ai), cap: capMerge(ma.cap, mb.cap), chats: chatsMerge(ma.chats, mb.chats),
+                v1: [String(ma.v1||""), String(mb.v1||"")].sort().pop()};
       return;
     }
     const ma = isObj(a) && isObj(a[k]) ? fix(a[k]) : EMPTY();
@@ -1175,7 +1204,13 @@ function mergeDB(a, b){
 
 /* ---------- format ---------- */
 const fR = n => (n||0).toLocaleString("ru-RU",{minimumFractionDigits:2,maximumFractionDigits:2})+" ₽";
-const fV = n => Math.round(n||0).toLocaleString("ru-RU")+" ₫";
+/* Донги храним полностью, показываем в тысячах: 45 000 → «45k», 45 500 → «45,5k». */
+const fK = n => { const k = (n||0)/1000;   // от миллиона — целые k: «1 500k», а не «1 500,3k»
+  return (Math.abs(k) >= 1000 ? Math.round(k) : Math.round(k*10)/10).toLocaleString("ru-RU",{maximumFractionDigits:1})+"k"; };
+const fV = n => fK(n);
+/* Ввод донгов — как раньше, в тысячах: «45» → 45 000; «45k» тоже понимается. */
+const vIn = s => { const v = parseAmt(String(s==null?"":s).replace(/\s*[kк]\s*$/i, "")); return v > 0 ? Math.round(v*1000) : v; };
+const vOut = n => n ? String(Math.round(n)/1000).replace(".", ",") : "";
 const sum = (a,f) => a.reduce((s,x)=>s+(f?f(x):x.amount||0),0);
 
 function toast(t){
@@ -1293,7 +1328,7 @@ function wireAdd(key){
   const cfg = FORMS[key], root = document.getElementById(cfg.el);
   const amt = root.querySelector("[data-amt]"), note = root.querySelector("[data-note]");
   const go = ()=>{
-    const v = parseAmt(amt.value);
+    const v = (key==="vnd" || key==="cash") ? vIn(amt.value) : parseAmt(amt.value);   // донги вводятся в тысячах
     if(!v || v<=0){ amt.focus(); toast("Введите сумму больше нуля"); return; }
     const m = monW(), p = pick[key];
     const rec = {id:uid(), day:p.day, amount:v, note:(note.value||"").trim(), cat:"", pay:"", ts:nowTs(), del:0};
@@ -1347,7 +1382,8 @@ function applyVoice(key, text){
 
   const amt = root.querySelector("[data-amt]"), note = root.querySelector("[data-note]");
   if(p.amount !== null){
-    amt.value = String(p.amount).replace(".", ",");
+    const a = (key==="vnd" || key==="cash") && p.amountFull ? p.amount/1000 : p.amount;
+    amt.value = String(Math.round(a*100)/100).replace(".", ",");
     lit(amt); got.push("сумма");
   }
   if(p.note){ note.value = p.note; lit(note); }
@@ -1634,9 +1670,10 @@ function editRecord(key, id){
       box.appendChild(chips(pays.map(p=>({v:p, t:p})), st.pay, v=>{ st.pay = v; }));
     }
 
-    const al = aiEl("label", "ask-fld edit-amt"); al.appendChild(aiEl("span", "", "Сумма, "+cur));
+    const al = aiEl("label", "ask-fld edit-amt"); al.appendChild(aiEl("span", "", "Сумма, "+(cur==="₫" ? "тыс. ₫" : cur)));
     const ai = document.createElement("input"); ai.type = "text"; ai.inputMode = "decimal"; ai.className = "num";
-    ai.value = String(src.amount).replace(".", ","); al.appendChild(ai); box.appendChild(al);
+    const isV = key==="vnd" || key==="cash";   // донги — в тысячах, как в форме
+    ai.value = isV ? vOut(src.amount) : String(src.amount).replace(".", ","); al.appendChild(ai); box.appendChild(al);
     const nl = aiEl("label", "ask-fld"); nl.appendChild(aiEl("span", "", "Комментарий"));
     const ni = document.createElement("input"); ni.type = "text"; ni.value = src.note || ""; nl.appendChild(ni); box.appendChild(nl);
 
@@ -1693,7 +1730,7 @@ function editRecord(key, id){
     bar.append(no, ok); box.appendChild(bar);
     no.onclick = close;
     const go = ()=>{
-      const v = parseAmt(ai.value);
+      const v = isV ? vIn(ai.value) : parseAmt(ai.value);
       if(!v || v<=0){ ai.focus(); toast("Введите сумму больше нуля"); return; }
       if(!isObj(DB[k])){ close(); return; }
       const rec = fix(DB[k])[LK].find(x=> x.id===id && !x.del);
@@ -1846,7 +1883,7 @@ function render(){
   const W = {};
   WALLETS.forEach(w=>{
     const el = document.getElementById("w-"+w.k+"-start");
-    if(document.activeElement !== el) el.value = m[w.start] ? m[w.start] : "";
+    if(document.activeElement !== el) el.value = vOut(m[w.start]);
     const rows = walletRows(w.k), r = isNow ? rows[today.getDate()-1] : rows[rows.length-1];
     W[w.k] = {rows, bal: r ? r.bal : 0};
     document.getElementById("w-"+w.k+"-now").textContent = fV(W[w.k].bal);
@@ -2119,6 +2156,8 @@ function vParse(text, key){
   const d = vDay(t);
   const tAmt = d ? t.replace(/\s\d{1,2}\s?(?:го|числа|число)\s/," ") : t;
   out.amount = vAmount(tAmt);
+  // «45 тысяч», «1,5 млн» — сказано полностью; для донгов поле ввода в тысячах
+  out.amountFull = /тыс|тыщ|миллион|млн|лям/.test(tAmt);   // \b в JS кириллицу не знает — ищем основу
   if(key !== "cash"){
     const table = V_CAT[key];
     out.cat = vMatch(t, table);
@@ -2350,12 +2389,28 @@ function drvErr(r){
 /* Возвращает все копии файла, старейшая первой. Если два устройства
    синхронизировались впервые одновременно, копий может оказаться две — тогда
    их нужно слить в одну, иначе базы разъедутся навсегда. */
-function drvFind(t){
-  const q = encodeURIComponent("name='"+DRIVE_FILE+"' and trashed=false");
-  return fetch("https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&orderBy=createdTime&fields=files(id)&q="+q,
+function drvFind(t, name){
+  const q = encodeURIComponent("name='"+(name||DRIVE_FILE)+"' and trashed=false");
+  return fetch("https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&orderBy=createdTime&fields=files(id,modifiedTime)&q="+q,
       {headers:{Authorization:"Bearer "+t}})
     .then(r=>{ if(!r.ok) throw drvErr(r); return r.json(); })
-    .then(j=> Array.isArray(j.files) ? j.files.map(f=>f.id) : []);
+    .then(j=> Array.isArray(j.files) ? (name ? j.files : j.files.map(f=>f.id)) : []);
+}
+/* Старый файл (донги в тысячах): переносим, только если он менялся с прошлого
+   переноса — значит, на другом устройстве ещё старая версия и там что-то внесли.
+   Ошибки здесь не срывают обмен: это лишь подхват. */
+function drvPullV1(t){
+  const seen = isObj(DB[META_KEY]) && typeof DB[META_KEY].v1==="string" ? DB[META_KEY].v1 : "";
+  return drvFind(t, DRIVE_FILE_V1).then(files=>{
+    const fresh = files.filter(f=> f.modifiedTime && f.modifiedTime > seen);
+    if(!fresh.length) return {db:null, mark:""};
+    const mark = files.map(f=> f.modifiedTime||"").sort().pop();
+    return Promise.all(fresh.map(f=> drvGet(t, f.id).catch(()=> null))).then(list=>{
+      let db = null;
+      list.forEach(v=>{ if(isObj(v)) db = db ? mergeDB(db, dbFromV1(v)) : dbFromV1(v); });
+      return {db, mark};
+    });
+  }).catch(()=> ({db:null, mark:""}));
 }
 function drvDel(t, id){
   return fetch("https://www.googleapis.com/drive/v3/files/"+id,
@@ -2411,14 +2466,17 @@ function syncNow(interactive){
     .then(ids=>{
       if(stale()) throw new Error(OFF_MSG);   // на Диск после отключения не пишем
       const keep = ids[0] || null, bad = new Set();
-      return Promise.all(ids.map((id,i)=> drvGet(tok, id).catch(e=>{
+      return Promise.all([Promise.all(ids.map((id,i)=> drvGet(tok, id).catch(e=>{
         if(i === 0) throw e;        // основную копию прочитать обязаны
         bad.add(id); return null;   // нечитаемую лишнюю не сливаем — но и не удаляем
-      }))).then(remotes=>{
+      }))), drvPullV1(tok)]).then(([remotes, v1])=>{
+        if(stale()) throw new Error(OFF_MSG);
         const extra = ids.slice(1).filter(id=> !bad.has(id));
         prune();
         remotes.forEach(r=>{ if(isObj(r)) DB = mergeDB(DB, r); });
+        if(v1.db) DB = mergeDB(DB, v1.db);   // правки со старой версии, уже в полных донгах
         prune();
+        if(v1.mark){ const mt = metaNorm(DB[META_KEY]); if(v1.mark > mt.v1){ mt.v1 = v1.mark; DB[META_KEY] = mt; } }
         // не через save(): тот дёрнет autoSync() и обмен пойдёт по кругу
         try{ localStorage.setItem(KEY, JSON.stringify(DB)); }
         catch(e){ throw new Error("Не удалось сохранить: нет места в хранилище"); }
@@ -2578,7 +2636,7 @@ function bidvImport(){
           year: parsed.year,
           month: parsed.month,
           day: parsed.day,
-          amount: foreign ? 0 : Math.round(d.amount_vnd / 1000),
+          amount: foreign ? 0 : Math.round(d.amount_vnd),   // полные донги
           foreign,
           recipient: d.recipient_name || "",
           type: d.transaction_type || "",
@@ -2623,7 +2681,7 @@ function bidvShowDialog(transactions){
 
   const note = document.createElement("div");
   note.className = "bidv-note";
-  note.textContent = "Снимите галочки с операций, которые уже были добавлены вручную. Суммы указаны без трёх нулей (как вы считаете). Комментарий запишется перед мерчантом: «Обед» + «Nguyen» → «Обед Nguyen». Способ оплаты будет «Карта BIDV».";
+  note.textContent = "Снимите галочки с операций, которые уже были добавлены вручную. Суммы — в тысячах: 45k = 45 000 ₫. Комментарий запишется перед мерчантом: «Обед» + «Nguyen» → «Обед Nguyen». Способ оплаты будет «Карта BIDV».";
   body.appendChild(note);
   const fxCount = transactions.filter(t=> t.foreign).length;
   if(fxCount){
@@ -2661,7 +2719,7 @@ function bidvShowDialog(transactions){
       <td>${dateStr}</td>
       <td class="num">${tr.foreign
         ? `<input type="text" inputmode="decimal" class="bidv-in bidv-amt num" data-idx="${i}" placeholder="тыс. ₫"><div class="bidv-fx"></div>`
-        : tr.amount.toLocaleString("ru-RU")}</td>
+        : fV(tr.amount)}</td>
       <td>
         <input type="text" class="bidv-in bidv-my" data-idx="${i}" placeholder="Комментарий">
       </td>
@@ -2688,7 +2746,7 @@ function bidvShowDialog(transactions){
         + tr.ref + " и сложите их. Можно ввести «575031+17079» или сразу итог в тысячах.";
       amtIn.oninput = ()=>{
         const k = bidvFxAmount(amtIn.value);
-        hint.textContent = k > 0 ? "= " + k.toLocaleString("ru-RU") + " тыс. ₫ · код " + tr.ref : fx + " · код " + tr.ref;
+        hint.textContent = k > 0 ? "= " + fV(k) + " · код " + tr.ref : fx + " · код " + tr.ref;
       };
     }
     tbody.appendChild(row);
@@ -2735,7 +2793,7 @@ function bidvFxAmount(v){
   if(nums.some(n=> !(n > 0))) return 0;
   const total = nums.reduce((a,n)=> a+n, 0);
   const full = nums.some(n=> n >= 100000) || total >= 20000;
-  return Math.round(full ? total/1000 : total);
+  return Math.round(full ? total : total*1000);   // храним полные донги
 }
 
 function bidvAddSelected(transactions, overlay){
@@ -2879,7 +2937,7 @@ function p2pLooksAdded(o){
   if(!isObj(DB[k])) return false;
   const m = fix(DB[k]);
   if(o.side === "buy") return m.rub.some(x=> !x.del && x.day===o.day && Math.abs(x.amount - o.amount) < 0.5);
-  return m.topup.some(x=> !x.del && x.day===o.day && Math.abs(x.amount - o.amount) <= 1);
+  return m.topup.some(x=> !x.del && x.day===o.day && Math.abs(x.amount - o.amount) <= 1000);   // ±1k ₫
 }
 
 function p2pImport(){
@@ -2912,7 +2970,7 @@ function p2pImport(){
         if(!t) return null;
         const o = {
           file: x.file, side, year: t.year, month: t.month, day: t.day, opTs: t.opTs,
-          amount: side==="buy" ? Math.round(d.fiat_amount*100)/100 : Math.round(d.fiat_amount/1000),
+          amount: side==="buy" ? Math.round(d.fiat_amount*100)/100 : Math.round(d.fiat_amount),   // донги — полностью
           crypto: (d.crypto || "USDT"), coins: Number(d.crypto_amount) || 0
         };
         o.dup = p2pLooksAdded(o);
@@ -2978,7 +3036,7 @@ function p2pShowDialog(orders){
     </div>`;
   overlay.querySelector(".bidv-header").textContent = `Импорт Bybit · ордеров: ${orders.length}`;
   overlay.querySelector(".bidv-note").textContent =
-    "Покупка USDT за рубли попадёт в «Траты ₽» с категорией «"+P2P_FX_CAT+"», продажа USDT за донги — внесением на карту BIDV (в тысячах). " +
+    "Покупка USDT за рубли попадёт в «Траты ₽» с категорией «"+P2P_FX_CAT+"», продажа USDT за донги — внесением на карту BIDV. " +
     "Если в тот же день была продажа за донги, у покупки сразу подставлено, сколько монет осталось (куплено − продано): эта часть по цене ордера уйдёт в «В накопления», к выбранной монете в «Капитале». Число можно поправить или стереть. " +
     (dups ? `Ордеров, для которых уже есть запись с той же суммой в тот же день: ${dups}. Для них заранее выбрано «⊘ Удалить» — проверьте.` : "Снимите галочки с ордеров, которые уже внесены вручную.");
 
@@ -3118,7 +3176,10 @@ function aiStoreMerge(a, b){
   return out;
 }
 /* _meta целиком: метки импорта BIDV + разборы ИИ + капитал */
-function metaNorm(v){ return {bidvImported: bidvImportedList(v), ai: aiStoreNorm(isObj(v) ? v.ai : null), cap: capNorm(isObj(v) ? v.cap : null), chats: chatsNorm(isObj(v) ? v.chats : null)}; }
+/* v1 — modifiedTime старого файла на Диске (донги в тысячах), уже перенесённого:
+   хранится в базе, а не в браузере, чтобы новое устройство не тянуло его заново. */
+function metaNorm(v){ return {bidvImported: bidvImportedList(v), ai: aiStoreNorm(isObj(v) ? v.ai : null), cap: capNorm(isObj(v) ? v.cap : null), chats: chatsNorm(isObj(v) ? v.chats : null),
+  v1: isObj(v) && typeof v.v1==="string" ? v.v1.slice(0,40) : ""}; }
 function aiSaved(key){
   const meta = isObj(DB[META_KEY]) ? DB[META_KEY] : null;
   const x = meta && isObj(meta.ai) ? meta.ai[key] : null;
@@ -3138,7 +3199,7 @@ function aiMonth(y, m){
   return {k, y, m, inc:live(r.inc), rub:live(r.rub), vnd:live(r.vnd), topup:live(r.topup), cashStart:r.cashStart||0, bidvStart:r.bidvStart||0};
 }
 const aiR = n => (Math.round((n||0)*100)/100).toLocaleString("ru-RU") + " ₽";
-const aiV = n => (Math.round((n||0)*10)/10).toLocaleString("ru-RU") + " тыс. ₫";
+const aiV = n => (Math.round((n||0)/100)/10).toLocaleString("ru-RU") + " тыс. ₫";   // хранится полностью, ИИ видит тысячи
 function aiGroup(arr, field){
   const g = {};
   arr.forEach(x=>{ const c = x[field] || "Не указано"; g[c] = (g[c]||0) + x.amount; });
@@ -3413,7 +3474,7 @@ function dynScale(max){
   return {top: Math.ceil(max/step)*step, step};
 }
 const dynCompR = v => v>=1e6 ? (Math.round(v/1e5)/10).toLocaleString("ru-RU")+" млн" : v>=1000 ? Math.round(v/1000).toLocaleString("ru-RU")+" тыс" : String(Math.round(v));
-const dynCompV = v => Math.round(v).toLocaleString("ru-RU");   // донги уже в тысячах — как во всём приложении
+const dynCompV = v => fK(v);   // донги — в тысячах, как во всём приложении
 const fR0 = n => Math.round(n||0).toLocaleString("ru-RU")+" ₽";   // таблица в узком экране — без копеек
 const svgEl = (tag, attrs)=>{ const e = document.createElementNS("http://www.w3.org/2000/svg", tag); for(const k in attrs) e.setAttribute(k, attrs[k]); return e; };
 
@@ -5045,7 +5106,7 @@ function capAiMigrate(){
   WALLETS.forEach(w=>{
     const cs = document.getElementById("w-"+w.k+"-start");
     const apply = ()=>{
-      const v = parseAmt(cs.value)||0;
+      const v = vIn(cs.value)||0;   // в тысячах, хранится полностью
       /* Без изменения значения не трогаем метку времени: иначе простой заход в поле
          создаст свежую метку с нулём и при слиянии затрёт остаток с другого устройства. */
       if(v === (mon()[w.start]||0)) return;
@@ -5062,7 +5123,8 @@ function capAiMigrate(){
   });
 
   document.getElementById("ex-json").onclick = ()=>{
-    dl("Бюджет-копия-"+new Date().toISOString().slice(0,10)+".json", JSON.stringify(DB,null,1), "application/json");
+    // _v:2 — донги полностью; копии без пометки — старые, в тысячах
+    dl("Бюджет-копия-"+new Date().toISOString().slice(0,10)+".json", JSON.stringify(Object.assign({_v:2}, DB),null,1), "application/json");
     toast("Копия сохранена");
   };
   let impMode = "merge";
@@ -5073,8 +5135,10 @@ function capAiMigrate(){
     const r = new FileReader();
     r.onload = ()=>{
       try{
-        const d = JSON.parse(r.result);
+        let d = JSON.parse(r.result);
         if(!isObj(d)) throw 0;
+        if(d._v !== 2) d = dbFromV1(d);   // старая копия: донги в тысячах
+        delete d._v;
         /* _meta — не месяц: его не чиним через fix(), но и не выбрасываем,
            иначе после восстановления все файлы BIDV снова покажутся новыми. */
         Object.keys(d).forEach(k=>{
