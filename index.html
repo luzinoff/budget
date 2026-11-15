@@ -1667,6 +1667,22 @@ function editRecord(key, id){
           : "В «В накопления» уйдёт "+fR(spl.part)+", в покупке валюты останется "+fR(r2(total - spl.part))+".";
       };
       ii.oninput = calc; ai.addEventListener("input", calc);
+      /* Пара в тот же день: продажи этой монеты за донги, внесённые на карту
+         импортом («Bybit P2P N USDT»). Остаток подставляем, если он плюсовой. */
+      if(nc){
+        let sold = 0;
+        (DB[k] && Array.isArray(DB[k].topup) ? DB[k].topup : []).forEach(x=>{
+          if(x.del || x.day!==src.day || isXfer(x) || !/bybit/i.test(x.note||"")) return;
+          const c = p2pNoteCoins(x.note);
+          if(c && c.coin===nc.coin) sold += c.n;
+        });
+        if(sold > 0){
+          const left = Math.round((nc.n - sold)*100)/100;
+          const p = aiEl("p", "ask-sub", "В тот же день продано за донги "+p2pCoins(sold)+" "+nc.coin+(left > 0 ? " — осталось "+p2pCoins(left)+"." : " — не меньше купленного, отложено ничего."));
+          body.insertBefore(p, il);
+          if(left > 0){ ii.value = String(left).replace(".", ","); calc(); }
+        }
+      }
       btn.onclick = ()=>{ spl.on = !spl.on; body.hidden = !spl.on; btn.setAttribute("aria-pressed", String(spl.on)); if(spl.on) ii.focus(); };
       sw.append(btn, body);
       box.appendChild(sw);
@@ -2910,7 +2926,31 @@ function p2pImport(){
     .finally(()=> p2pBusy(false));
 }
 
+/* Покупка за рубли и продажа части за донги обычно идут парой в один день.
+   По каждому дню и монете: оставлено = куплено − продано. Если плюс — делим
+   его между покупками этого дня пропорционально купленному и подставляем в
+   «Оставил»; если продано столько же или больше — ничего не подставляем. */
+function p2pAutoKeep(orders){
+  const g = new Map();
+  orders.forEach(o=>{
+    const key = o.year+"-"+o.month+"-"+o.day+"|"+String(o.crypto).toUpperCase();
+    const x = g.get(key) || {buy:0, sell:0, buys:[]};
+    if(o.side==="buy"){ x.buy += o.coins; x.buys.push(o); } else x.sell += o.coins;
+    g.set(key, x);
+  });
+  g.forEach(x=>{
+    const kept = x.buy - x.sell;
+    if(!x.buys.length || !x.sell) return;   // без продажи в тот же день — не угадываем
+    x.buys.forEach(o=>{
+      o.pairNote = "в тот же день куплено "+p2pCoins(x.buy)+", продано "+p2pCoins(x.sell)+" "+o.crypto
+        + (kept > 0.000001 ? "" : " — отложено ничего");
+      if(kept > 0.000001) o.autoKeep = Math.round(o.coins * kept / x.buy * 100) / 100;
+    });
+  });
+}
+
 function p2pShowDialog(orders){
+  p2pAutoKeep(orders);
   const overlay = document.createElement("div");
   overlay.className = "bidv-overlay";
   const dups = orders.filter(o=> o.dup).length;
@@ -2939,7 +2979,7 @@ function p2pShowDialog(orders){
   overlay.querySelector(".bidv-header").textContent = `Импорт Bybit · ордеров: ${orders.length}`;
   overlay.querySelector(".bidv-note").textContent =
     "Покупка USDT за рубли попадёт в «Траты ₽» с категорией «"+P2P_FX_CAT+"», продажа USDT за донги — внесением на карту BIDV (в тысячах). " +
-    "Если часть купленного оставили на бирже, впишите у покупки, сколько монет оставили: эта часть по цене ордера уйдёт в «В накопления», к выбранной монете в «Капитале». " +
+    "Если в тот же день была продажа за донги, у покупки сразу подставлено, сколько монет осталось (куплено − продано): эта часть по цене ордера уйдёт в «В накопления», к выбранной монете в «Капитале». Число можно поправить или стереть. " +
     (dups ? `Ордеров, для которых уже есть запись с той же суммой в тот же день: ${dups}. Для них заранее выбрано «⊘ Удалить» — проверьте.` : "Снимите галочки с ордеров, которые уже внесены вручную.");
 
   const tbody = overlay.querySelector("tbody");
@@ -2981,9 +3021,12 @@ function p2pShowDialog(orders){
       kn.oninput = ()=>{
         const k = parseAmt(kn.value);
         ks.hidden = !(k > 0) || !opts.length;
-        hint.textContent = k > 0 ? "в накопления ≈ "+fR0(o.amount*Math.min(k, o.coins)/o.coins)+(k >= o.coins ? " (всё)" : "") : "";
+        hint.textContent = (k > 0 ? "в накопления ≈ "+fR0(o.amount*Math.min(k, o.coins)/o.coins)+(k >= o.coins ? " (всё)" : "") : "")
+          + (o.pairNote ? (k > 0 ? " · " : "")+o.pairNote : "");
       };
+      if(o.autoKeep > 0) kn.value = String(o.autoKeep).replace(".", ",");
       w.append(kn, ks, hint);
+      kn.oninput();
       td[5].appendChild(w);
     }
     tbody.appendChild(row);
