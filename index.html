@@ -303,6 +303,10 @@ input:focus,select:focus,textarea:focus,button:focus-visible,.chip:focus-visible
 .ask.edit .f-lab{margin:12px 0 6px}
 .ask.edit .ask-fld{margin-top:12px}
 .edit-amt input{font-size:19px;font-weight:650}
+.split-w{margin-top:14px;padding-top:12px;border-top:1px solid var(--line-2)}
+.split-w > .btn[aria-pressed="true"]{border-color:var(--cap);color:var(--cap)}
+.p2p-keep{display:flex;flex-direction:column;gap:4px;margin-top:6px}
+.p2p-keep-h{font-size:11.5px;color:var(--ink-3)}
 .ask-fld span{display:block;font-size:12.5px;font-weight:600;color:var(--ink-3);margin-bottom:5px}
 /* «Удалить ключ» — тихой ссылкой под основными кнопками */
 .ask-bar.three > :first-child{grid-column:1 / -1;order:3;background:none;border:0;color:var(--danger);padding:6px;font-size:13.5px}
@@ -1636,6 +1640,38 @@ function editRecord(key, id){
     const nl = aiEl("label", "ask-fld"); nl.appendChild(aiEl("span", "", "Комментарий"));
     const ni = document.createElement("input"); ni.type = "text"; ni.value = src.note || ""; nl.appendChild(ni); box.appendChild(nl);
 
+    /* Покупка валюты: часть купленного оставили — отделяем её в «В накопления» */
+    const spl = {on:false, part:0, asset:"", note:""};
+    if(key==="rub" && src.cat===P2P_FX_CAT){
+      const nc = p2pNoteCoins(src.note);
+      const sw = aiEl("div", "split-w");
+      const btn = aiEl("button", "btn sm ghost", "Разделить: часть оставил в накоплениях"); btn.type = "button";
+      const body = aiEl("div", ""); body.hidden = true;
+      const il = aiEl("label", "ask-fld"); il.appendChild(aiEl("span", "", nc ? "Сколько оставили, "+nc.coin+" (куплено "+p2pCoins(nc.n)+")" : "Сколько из суммы оставили в накоплениях, ₽"));
+      const ii = document.createElement("input"); ii.type = "text"; ii.inputMode = "decimal"; ii.className = "num"; il.appendChild(ii);
+      const hint = aiEl("p", "ask-sub", "");
+      const opts = p2pKeepOpts(nc ? nc.coin : "USDT");
+      spl.asset = opts.length && nc && String(opts[0].coin||"").toUpperCase()===nc.coin ? opts[0].id : "";
+      body.append(il, hint);
+      if(opts.length){
+        body.appendChild(aiEl("p", "f-lab", "Куда отложили"));
+        body.appendChild(chips([{v:"", t:"Не указывать"}].concat(opts.map(a=>({v:a.id, t:capLabel(a)+(a.acct ? " ("+a.acct+")" : "")}))), spl.asset, v=>{ spl.asset = v; }));
+      }
+      const calc = ()=>{
+        const total = parseAmt(ai.value) || 0, x = parseAmt(ii.value) || 0;
+        if(!(x > 0) || !(total > 0)){ spl.part = 0; hint.textContent = ""; return; }
+        if(nc){ const k2 = Math.min(x, nc.n); spl.part = r2(total * k2 / nc.n); spl.note = "оставил "+p2pCoins(k2)+" "+nc.coin; spl.left = nc.n - k2; }
+        else { spl.part = r2(Math.min(x, total)); spl.note = "оставил"; spl.left = 0; }
+        hint.textContent = spl.part >= total - 0.005
+          ? "Вся запись станет «В накопления»: "+fR(total)+"."
+          : "В «В накопления» уйдёт "+fR(spl.part)+", в покупке валюты останется "+fR(r2(total - spl.part))+".";
+      };
+      ii.oninput = calc; ai.addEventListener("input", calc);
+      btn.onclick = ()=>{ spl.on = !spl.on; body.hidden = !spl.on; btn.setAttribute("aria-pressed", String(spl.on)); if(spl.on) ii.focus(); };
+      sw.append(btn, body);
+      box.appendChild(sw);
+    }
+
     const bar = aiEl("div", "ask-bar");
     const no = aiEl("button", "btn ghost", "Отмена"), ok = aiEl("button", "btn", "Сохранить");
     bar.append(no, ok); box.appendChild(bar);
@@ -1655,10 +1691,17 @@ function editRecord(key, id){
         // обмен — пометка в cat; прочие пометки (например, от импорта) у внесения сохраняем
         cat = st.src ? st.src : (rec.cat===FROM_BIDV || rec.cat===FROM_CASH ? "" : rec.cat);
       }
-      if(rec.day===st.day && rec.cat===cat && rec.pay===pay && rec.amount===v && rec.note===note){ close(); return; }
+      const doSplit = spl.on && spl.part > 0 && cat===P2P_FX_CAT;
+      if(!doSplit && rec.day===st.day && rec.cat===cat && rec.pay===pay && rec.amount===v && rec.note===note){ close(); return; }
       rec.day = st.day; rec.cat = cat; rec.pay = pay; rec.amount = v; rec.note = note;
       rec.ts = nowTs();
-      save(); close(); render(); toast("Запись изменена");
+      // DB[k] уже приведён fix() выше; повторный fix() пересоздал бы записи, и rec «отвалился» бы от базы
+      if(doSplit){
+        const left = rec.note;
+        p2pSplit(DB[k], rec, Math.min(spl.part, v), spl.asset, spl.note);
+        if(rec.cat===P2P_FX_CAT && spl.left > 0) rec.note = p2pNoteSetCoins(left, spl.left);
+      }
+      save(); close(); render(); toast(doSplit ? "Покупка разделена: часть — в накопления" : "Запись изменена");
     };
     ok.onclick = go;
     [ai, ni].forEach(i=> i.addEventListener("keydown", e=>{ if(e.key==="Enter"){ e.preventDefault(); go(); } }));
@@ -2764,6 +2807,50 @@ function bidvAddSelected(transactions, overlay){
 const P2P_FX_CAT = "Покупка иностранной валюты";
 const P2P_BTN_TEXT = "Импорт Bybit";
 
+/* Купил крипту за рубли, часть оставил: эта часть — не трата, а сбережение.
+   Покупка делится на две записи «Трат ₽»: «Покупка иностранной валюты» на то,
+   что ушло на донги, и «В накопления» с привязкой к крипте в «Капитале» —
+   тогда рублёвые траты честные, а у монеты видно «вложено из бюджета». */
+const r2 = n=> Math.round(n*100)/100;
+/* Куда положить оставленное: сначала активы той же монеты, среди них —
+   счёт Funding (туда приходят P2P-покупки), потом остальная крипта. */
+function p2pKeepOpts(coin){
+  const all = capLive().filter(a=> a.kind==="crypto");
+  const c = String(coin||"").toUpperCase();
+  const same = all.filter(a=> String(a.coin||"").toUpperCase()===c)
+    .sort((a,b)=> (b.acct==="Funding") - (a.acct==="Funding"));
+  return same.concat(all.filter(a=> !same.includes(a)));
+}
+/* Монеты из комментария импорта: «Bybit P2P 411,16 USDT» → {n:411.16, coin:"USDT"} */
+function p2pNoteCoins(note){
+  const m = /(\d(?:[\d\s\u00a0]*\d)?(?:[.,]\d+)?)\s*(USDT|USDC|FDUSD|BTC|ETH|TON|SOL)\b/i.exec(String(note||""));
+  if(!m) return null;
+  const n = parseAmt(m[1]);
+  return n > 0 ? {n, coin:m[2].toUpperCase()} : null;
+}
+/* После разделения в комментарии покупки — сколько монет за ней осталось,
+   иначе повторное разделение считало бы долю от всего ордера. */
+function p2pNoteSetCoins(note, n){
+  return String(note||"").replace(/(\d(?:[\d\s\u00a0]*\d)?(?:[.,]\d+)?)(\s*(?:USDT|USDC|FDUSD|BTC|ETH|TON|SOL)\b)/i, (m0, a, b)=> p2pCoins(n)+b);
+}
+/* Разделить рублёвую запись: part ₽ уходят в «В накопления» (asset — id актива или "").
+   Если part покрывает всю сумму — запись целиком становится «В накопления». */
+function p2pSplit(m, rec, part, asset, keptNote){
+  part = r2(part);
+  if(!(part > 0)) return null;
+  const now = nowTs();
+  if(part >= rec.amount - 0.005){
+    rec.cat = SAV; rec.pay = asset || ""; rec.ts = now;
+    if(keptNote) rec.note = rec.note ? rec.note+" · "+keptNote : keptNote;
+    return rec;
+  }
+  rec.amount = r2(rec.amount - part); rec.ts = now;
+  const sav = {id:uid(), day:rec.day, amount:part, note:(rec.note ? rec.note+" · " : "")+(keptNote||"оставил"),
+               cat:SAV, pay:asset||"", ts:now, opTs:rec.opTs||0, del:0};
+  m.rub.push(sav);
+  return sav;
+}
+
 function p2pButtons(){ return Array.from(document.querySelectorAll("[data-bybit-import]")); }
 function p2pBusy(on){
   p2pButtons().forEach(b=>{ b.disabled = on; b.textContent = on ? "Загрузка..." : P2P_BTN_TEXT; });
@@ -2852,6 +2939,7 @@ function p2pShowDialog(orders){
   overlay.querySelector(".bidv-header").textContent = `Импорт Bybit · ордеров: ${orders.length}`;
   overlay.querySelector(".bidv-note").textContent =
     "Покупка USDT за рубли попадёт в «Траты ₽» с категорией «"+P2P_FX_CAT+"», продажа USDT за донги — внесением на карту BIDV (в тысячах). " +
+    "Если часть купленного оставили на бирже, впишите у покупки, сколько монет оставили: эта часть по цене ордера уйдёт в «В накопления», к выбранной монете в «Капитале». " +
     (dups ? `Ордеров, для которых уже есть запись с той же суммой в тот же день: ${dups}. Для них заранее выбрано «⊘ Удалить» — проверьте.` : "Снимите галочки с ордеров, которые уже внесены вручную.");
 
   const tbody = overlay.querySelector("tbody");
@@ -2877,6 +2965,27 @@ function p2pShowDialog(orders){
     row.querySelector("option[value=add]").textContent = addLabel;
     row.querySelector(".bidv-my").value = "Bybit P2P " + p2pCoins(o.coins) + " " + o.crypto;
     row.querySelector(".bidv-cat").value = o.dup ? BIDV_DELETE : "add";
+    if(o.side === "buy"){
+      const w = document.createElement("div"); w.className = "p2p-keep";
+      const kn = document.createElement("input"); kn.type = "text"; kn.inputMode = "decimal";
+      kn.className = "bidv-in p2p-keep-n"; kn.dataset.idx = i; kn.placeholder = "Оставил, "+o.crypto;
+      kn.title = "Сколько "+o.crypto+" из "+p2pCoins(o.coins)+" осталось на бирже";
+      const hint = document.createElement("div"); hint.className = "p2p-keep-h";
+      const opts = p2pKeepOpts(o.crypto);
+      const ks = document.createElement("select"); ks.className = "p2p-keep-a"; ks.dataset.idx = i;
+      [{id:"", t:"Монета не указана"}].concat(opts.map(a=>({id:a.id, t:capLabel(a)+(a.acct ? " ("+a.acct+")" : "")}))).forEach(x=>{
+        const op = document.createElement("option"); op.value = x.id; op.textContent = x.t; ks.appendChild(op);
+      });
+      if(opts.length && String(opts[0].coin||"").toUpperCase()===o.crypto.toUpperCase()) ks.value = opts[0].id;
+      ks.hidden = true;
+      kn.oninput = ()=>{
+        const k = parseAmt(kn.value);
+        ks.hidden = !(k > 0) || !opts.length;
+        hint.textContent = k > 0 ? "в накопления ≈ "+fR0(o.amount*Math.min(k, o.coins)/o.coins)+(k >= o.coins ? " (всё)" : "") : "";
+      };
+      w.append(kn, ks, hint);
+      td[5].appendChild(w);
+    }
     tbody.appendChild(row);
   });
 
@@ -2894,22 +3003,33 @@ function p2pAddSelected(orders, overlay){
     return {
       o: orders[i],
       act: overlay.querySelector(`.bidv-cat[data-idx="${i}"]`).value,
-      note: overlay.querySelector(`.bidv-my[data-idx="${i}"]`).value.trim()
+      note: overlay.querySelector(`.bidv-my[data-idx="${i}"]`).value.trim(),
+      keep: (()=>{ const e = overlay.querySelector(`.p2p-keep-n[data-idx="${i}"]`); const v = e ? parseAmt(e.value) : 0; return v > 0 ? v : 0; })(),
+      asset: (()=>{ const e = overlay.querySelector(`.p2p-keep-a[data-idx="${i}"]`); return e ? e.value : ""; })()
     };
   });
   if(!picked.length){ toast("Не выбрано ни одного ордера"); return; }
 
   const imported = bidvLoadImported();
   const now = nowTs();
-  let buys = 0, sells = 0, removed = 0;
-  picked.forEach(({o, act, note})=>{
+  let buys = 0, sells = 0, removed = 0, kept = 0;
+  picked.forEach(({o, act, note, keep, asset})=>{
     imported.push({ref: o.file, ts: now});
     if(act === BIDV_DELETE){ removed++; return; }
     const k = o.year + "-" + String(o.month + 1).padStart(2, "0");
     if(!isObj(DB[k])) DB[k] = EMPTY();
     const m = fix(DB[k]);
     const rec = {id:uid(), day:o.day, amount:o.amount, note, cat:"", pay:"", ts:now, opTs:o.opTs, del:0};
-    if(o.side === "buy"){ rec.cat = P2P_FX_CAT; m.rub.push(rec); buys++; }
+    if(o.side === "buy"){
+      rec.cat = P2P_FX_CAT; m.rub.push(rec); buys++;
+      if(keep > 0 && o.coins > 0){   // оставленная часть — в накопления, по цене этого ордера
+        const k2 = Math.min(keep, o.coins);
+        const left = rec.note;
+        p2pSplit(m, rec, o.amount * k2 / o.coins, asset, "оставил "+p2pCoins(k2)+" "+o.crypto);
+        if(rec.cat===P2P_FX_CAT && o.coins > k2) rec.note = p2pNoteSetCoins(left, o.coins - k2);
+        kept++;
+      }
+    }
     else { rec.pay = BIDV_PAY; m.topup.push(rec); sells++; }   // cat "" — «Обмен, перевод»
   });
 
@@ -2917,7 +3037,7 @@ function p2pAddSelected(orders, overlay){
   render();
   overlay.remove();
   const parts = [];
-  if(buys) parts.push(`в «Траты ₽»: ${buys}`);
+  if(buys) parts.push(`в «Траты ₽»: ${buys}`+(kept ? ` (с накоплениями: ${kept})` : ""));
   if(sells) parts.push(`на карту BIDV: ${sells}`);
   if(removed) parts.push(`пропущено: ${removed}`);
   toast(parts.join(", "));
