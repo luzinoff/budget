@@ -299,6 +299,7 @@ input:focus,select:focus,textarea:focus,button:focus-visible,.chip:focus-visible
 .ask.wide{max-width:680px}
 .ask{max-height:calc(100vh - 40px);overflow-y:auto}
 .ask-fld{display:block;margin:0 0 10px}
+.ai-prov{margin:0 0 12px}
 .ask.edit .chips{gap:5px}
 .ask.edit .f-lab{margin:12px 0 6px}
 .ask.edit .ask-fld{margin-top:12px}
@@ -876,9 +877,9 @@ textarea.chat-in{min-height:76px;resize:vertical;margin:8px 0 10px;font:inherit;
     <div id="cap-memo"></div>
   </div>
   <div class="card" id="cap-ai-card">
-    <h2 class="card-h">Спросить ИИ<button class="icon-btn" id="cap-ai-set" title="Настройки Gemini" aria-label="Настройки Gemini"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button></h2>
+    <h2 class="card-h">Спросить ИИ<button class="icon-btn" id="cap-ai-set" title="Настройки ИИ" aria-label="Настройки ИИ"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button></h2>
     <div id="cap-ai-in"></div>
-    <div class="note" style="padding:0 14px 12px">Ответы Gemini — ориентир, а не индивидуальная инвестиционная рекомендация.</div>
+    <div class="note" style="padding:0 14px 12px">Ответы ИИ — ориентир, а не индивидуальная инвестиционная рекомендация.</div>
   </div>
 </section>
 
@@ -907,7 +908,7 @@ textarea.chat-in{min-height:76px;resize:vertical;margin:8px 0 10px;font:inherit;
   </div>
 
   <div class="card" id="ai-card">
-    <h2 class="card-h">Разбор месяца от ИИ<button class="icon-btn" id="ai-set" title="Настройки Gemini" aria-label="Настройки Gemini"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button></h2>
+    <h2 class="card-h">Разбор месяца от ИИ<button class="icon-btn" id="ai-set" title="Настройки ИИ" aria-label="Настройки ИИ"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button></h2>
     <div id="ai-in"></div>
   </div>
 
@@ -2188,8 +2189,9 @@ function vParse(text, key){
    с моделью Gemini держим в общей записи luz.shared.v1: ввёл в одном —
    подхватили остальные, даже в соседней вкладке. Свои настройки у каждого
    приложения остаются; этот блок одинаковый во всех трёх файлах.
-   aiModel: пустая строка — модель по умолчанию (gemini-3.6-flash). */
-const LUZ_SHARED='luz.shared.v1', LUZ_FIELDS=['clientId','aiKey','aiModel'];
+   aiModel: пустая строка — модель по умолчанию (gemini-3.6-flash).
+   С 18.11.2026 тут же выбор ИИ и ключ с моделью DeepSeek — см. блок ниже. */
+const LUZ_SHARED='luz.shared.v1', LUZ_FIELDS=['clientId','aiKey','aiModel','aiProvider','dsKey','dsModel'];
 const luzShared={
   seen:{},
   get(){try{return JSON.parse(localStorage.getItem(LUZ_SHARED))||{}}catch(e){return {}}},
@@ -2214,16 +2216,106 @@ const luzShared={
     if(Object.keys(ch).length){ this.set(ch); Object.assign(this.seen,ch) }
   }
 };
+/* ===== Выбор ИИ: Gemini или DeepSeek (18.11.2026) =====
+   Переключатель общий для всех трёх приложений: luz.shared.v1 → aiProvider
+   ('' или 'gemini' — Gemini, 'deepseek' — DeepSeek). Ключи и модели у каждого
+   ИИ свои: aiKey/aiModel — Gemini, dsKey/dsModel — DeepSeek; пустая модель —
+   модель по умолчанию. Распознавание PDF и фото в медкарте всегда идёт через
+   Gemini, переключатель на него не влияет.
+   luzAi() принимает переписку в формате Gemini (role user/model, parts[{text}])
+   и для DeepSeek сам переводит её в OpenAI-совместимый формат. Ответ —
+   {text, model, cut, provider}. Коды ошибок прежние: NO_KEY, TIMEOUT, NETWORK,
+   EMPTY[:причина], иначе текст ошибки от сервиса и e.status.
+   Этот блок одинаковый во всех трёх файлах. */
+const LUZ_AI={
+  gemini:{name:'Gemini',def:'gemini-3.6-flash',keyHint:'ключ из Google AI Studio'},
+  deepseek:{name:'DeepSeek',def:'deepseek-flash',keyHint:'ключ с platform.deepseek.com'}
+};
+const luzAiProv=p=>p==='deepseek'?'deepseek':'gemini';
+async function luzAi(o){
+  const provider=luzAiProv(o.provider), key=String(o.key||'').trim();
+  if(!key) throw new Error('NO_KEY');
+  const model=String(o.model||'').trim()||LUZ_AI[provider].def;
+  const contents=Array.isArray(o.contents)?o.contents:[{role:'user',parts:[{text:String(o.contents||'')}]}];
+  const temperature=o.temperature??0.7, maxTokens=o.maxTokens||16384;
+  let url, headers, body;
+  if(provider==='gemini'){
+    url='https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(model)+':generateContent';
+    headers={'Content-Type':'application/json','x-goog-api-key':key};
+    /* у Gemini 3 размышления входят в лимит: при 4096 ответ мог прийти пустым */
+    body={contents,generationConfig:{temperature,maxOutputTokens:maxTokens}};
+    if(o.system) body.systemInstruction={parts:[{text:o.system}]};
+    if(o.json) body.generationConfig.responseMimeType='application/json';
+  } else {
+    url='https://api.deepseek.com/chat/completions';
+    headers={'Content-Type':'application/json','Authorization':'Bearer '+key};
+    const messages=o.system?[{role:'system',content:o.system}]:[];
+    for(const c of contents){
+      const parts=c.parts||[];
+      if(parts.some(p=>p.inline_data||p.inlineData)) throw new Error('NO_FILES');
+      messages.push({role:c.role==='model'?'assistant':'user',content:parts.map(p=>p.text||'').join('')});
+    }
+    body={model,messages,temperature,max_tokens:maxTokens,stream:false};
+    if(o.json) body.response_format={type:'json_object'};
+  }
+  const ctl=new AbortController(), t=setTimeout(()=>ctl.abort(),180000);
+  let r;
+  try{ r=await fetch(url,{method:'POST',headers,body:JSON.stringify(body),signal:ctl.signal}) }
+  catch(e){ throw new Error(e&&e.name==='AbortError'?'TIMEOUT':'NETWORK') }
+  finally{ clearTimeout(t) }
+  let j=null; try{ j=await r.json() }catch(e){}
+  if(!r.ok){
+    const er=j&&j.error, e=new Error((er&&(er.message||(typeof er==='string'?er:'')))||('HTTP '+r.status));
+    e.status=r.status; throw e;
+  }
+  let text='', reason='';
+  if(provider==='gemini'){
+    const c=j&&j.candidates&&j.candidates[0];
+    text=((c&&c.content&&c.content.parts)||[]).filter(p=>!p.thought).map(p=>p.text||'').join('').trim();
+    reason=(c&&c.finishReason)||'';
+  } else {
+    /* ход размышлений DeepSeek приходит отдельно (reasoning_content) — его не берём */
+    const c=j&&j.choices&&j.choices[0];
+    text=String((c&&c.message&&c.message.content)||'').trim();
+    reason=(c&&c.finish_reason)||'';
+  }
+  const cut=reason==='MAX_TOKENS'||reason==='length';
+  if(!text) throw new Error(reason?'EMPTY:'+reason:'EMPTY');
+  return {text,model,cut,provider};
+}
+/* Понятный текст ошибки; where — где поменять настройки («в настройках (⚙)»). */
+function luzAiErr(e,provider,model,where){
+  provider=luzAiProv(provider);
+  const n=LUZ_AI[provider].name, m=String(e&&e.message||e), s=e&&e.status;
+  model=String(model||'').trim()||LUZ_AI[provider].def;
+  if(m==='NO_KEY') return `Сначала вставьте ключ ${n} ${where}.`;
+  if(m==='NO_FILES') return `${n} не принимает файлы — их читает только Gemini.`;
+  if(m==='TIMEOUT') return `${n} не ответил за три минуты. Попробуйте ещё раз.`;
+  if(m==='NETWORK') return provider==='deepseek'
+    ? `Нет связи с DeepSeek. Если интернет есть, DeepSeek мог не пустить запрос из браузера (CORS) — тогда переключитесь на Gemini ${where}.`
+    : 'Нет связи с Gemini — проверьте интернет.';
+  if(/location is not supported/i.test(m)) return 'Gemini API недоступен из вашей страны (так ответил Google).';
+  if(s===401||/API key not valid|API_KEY_INVALID|Authentication Fails|invalid api key/i.test(m)) return `Ключ ${n} не подошёл. Проверьте его ${where}.`;
+  if(s===402||/Insufficient Balance/i.test(m)) return 'На счёте DeepSeek закончились деньги — пополните баланс на platform.deepseek.com.';
+  if(s===429||/quota|RESOURCE_EXHAUSTED|rate limit/i.test(m)) return provider==='deepseek'
+    ? 'DeepSeek просит подождать: слишком много запросов. Попробуйте через минуту.'
+    : 'Исчерпан лимит запросов Gemini. Подождите немного или проверьте тариф в Google AI Studio.';
+  if(s===404||/not found|Model Not Exist/i.test(m)) return `Модель «${model}» не найдена. Проверьте название ${where}.`;
+  if(/^EMPTY/.test(m)) return `${n} вернул пустой ответ`+(m.includes(':')?' ('+m.split(':')[1]+')':'')+'. Попробуйте ещё раз.';
+  return `Ошибка ${n}: ${m}`;
+}
 /* Бюджет хранит эти настройки отдельными ключами; переводим туда-обратно.
    Литералы, а не CID_KEY/AI_KEY_LS: часть констант объявлена ниже. */
 function luzBudgetOwn(){
   const g=k=>{try{return (localStorage.getItem(k)||"").trim()}catch(e){return ""}};
-  const m=g("budget.ai.model");
-  return {clientId:g("budget.cid"), aiKey:g("budget.ai.key"), aiModel:m==="gemini-3.6-flash"?"":m};
+  const m=g("budget.ai.model"), dm=g("budget.ds.model");
+  return {clientId:g("budget.cid"), aiKey:g("budget.ai.key"), aiModel:m==="gemini-3.6-flash"?"":m,
+    aiProvider:g("budget.ai.provider")==="deepseek"?"deepseek":"", dsKey:g("budget.ds.key"), dsModel:dm==="deepseek-flash"?"":dm};
 }
 function luzBudgetApply(v){
   const put=(k,x)=>{try{x?localStorage.setItem(k,x):localStorage.removeItem(k)}catch(e){}};
   put("budget.cid",v.clientId); put("budget.ai.key",v.aiKey); put("budget.ai.model",v.aiModel);
+  put("budget.ai.provider",v.aiProvider==="deepseek"?"deepseek":""); put("budget.ds.key",v.dsKey); put("budget.ds.model",v.dsModel);
 }
 luzBudgetApply(luzShared.pull(luzBudgetOwn()));
 
@@ -3151,8 +3243,16 @@ function p2pAddSelected(orders, overlay){
 const AI_KEY_LS = "budget.ai.key", AI_MODEL_LS = "budget.ai.model";
 const AI_DEF_MODEL = "gemini-3.6-flash";
 const AI = { busy:{}, err:{} };   // состояние запросов — только в памяти
-function aiGetKey(){ try{ return (localStorage.getItem(AI_KEY_LS)||"").trim(); }catch(e){ return ""; } }
-function aiGetModel(){ try{ return (localStorage.getItem(AI_MODEL_LS)||"").trim() || AI_DEF_MODEL; }catch(e){ return AI_DEF_MODEL; } }
+/* Выбор ИИ — общий с Дневником и Медкартой (luz.shared.v1, см. luzAi).
+   У Gemini и DeepSeek свои ключ и модель; aiGetKey/aiGetModel — для выбранного. */
+const AI_PROV_LS = "budget.ai.provider", DS_KEY_LS = "budget.ds.key", DS_MODEL_LS = "budget.ds.model";
+function aiLs(k){ try{ return (localStorage.getItem(k)||"").trim(); }catch(e){ return ""; } }
+function aiProv(){ return luzAiProv(aiLs(AI_PROV_LS)); }
+function aiName(p){ return LUZ_AI[luzAiProv(p||aiProv())].name; }
+function aiKeyOf(p){ return aiLs(luzAiProv(p)==="deepseek" ? DS_KEY_LS : AI_KEY_LS); }
+function aiModelOf(p){ p = luzAiProv(p); return aiLs(p==="deepseek" ? DS_MODEL_LS : AI_MODEL_LS) || LUZ_AI[p].def; }
+function aiGetKey(){ return aiKeyOf(aiProv()); }
+function aiGetModel(){ return aiModelOf(aiProv()); }
 
 /* Хранилище ответов: {"2026-09": {text, at, model, cut?}} или надгробие
    {at, del:1} — иначе удалённый разбор вернулся бы с другого устройства. */
@@ -3275,45 +3375,11 @@ const AI_SYSTEM = `Ты — внимательный помощник по ли�
 **Советы на следующий месяц** — 2–4 конкретных, выполнимых шага.
 Пункты начинай с «- ». Без инвестиционных советов и без рекомендаций конкретных банков и финансовых продуктов.`;
 
-/* Один запрос к Gemini — как aiCall() в Дневнике */
-async function aiCall(system, prompt){
-  const key = aiGetKey();
-  if(!key) throw new Error("NO_KEY");
-  const model = aiGetModel();
-  const body = {
-    systemInstruction:{parts:[{text:system}]},
-    contents: Array.isArray(prompt) ? prompt : [{role:"user", parts:[{text:prompt}]}],   // массив — переписка
-    /* у Gemini 3 размышления входят в лимит: при 4096 ответ мог прийти пустым */
-    generationConfig:{temperature:0.6, maxOutputTokens:16384}
-  };
-  const ctl = new AbortController(), t = setTimeout(()=>ctl.abort(), 180000);
-  let r;
-  try{
-    r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+encodeURIComponent(model)+":generateContent",
-      {method:"POST", headers:{"Content-Type":"application/json", "x-goog-api-key":key}, body:JSON.stringify(body), signal:ctl.signal});
-  }catch(e){ throw new Error(e && e.name==="AbortError" ? "TIMEOUT" : "NETWORK"); }
-  finally{ clearTimeout(t); }
-  let j = null; try{ j = await r.json(); }catch(e){}
-  if(!r.ok){
-    const e = new Error((j && j.error && j.error.message) || ("HTTP "+r.status)); e.status = r.status; throw e;
-  }
-  const c = j && j.candidates && j.candidates[0];
-  const text = ((c && c.content && c.content.parts) || []).filter(p=> !p.thought).map(p=> p.text||"").join("").trim();
-  if(!text) throw new Error(c && c.finishReason ? "EMPTY:"+c.finishReason : "EMPTY");
-  return {text, model, cut: !!(c && c.finishReason==="MAX_TOKENS")};
+/* Один запрос к выбранному ИИ (Gemini или DeepSeek) — как aiCall() в Дневнике */
+async function aiCall(system, prompt){   // prompt: строка или массив contents — переписка
+  return luzAi({provider:aiProv(), key:aiGetKey(), model:aiGetModel(), system, contents:prompt, temperature:0.6});
 }
-function aiErrText(e){
-  const m = String(e && e.message || e), s = e && e.status;
-  if(m==="NO_KEY") return "Сначала вставьте ключ Gemini — кнопка ⚙.";
-  if(m==="TIMEOUT") return "Gemini не ответил за три минуты. Попробуйте ещё раз.";
-  if(m==="NETWORK") return "Нет связи с Gemini — проверьте интернет.";
-  if(/location is not supported/i.test(m)) return "Gemini API недоступен из вашей страны (так ответил Google).";
-  if(/API key not valid|API_KEY_INVALID/i.test(m) || s===401) return "Ключ Gemini не подошёл. Проверьте его — кнопка ⚙.";
-  if(s===429 || /quota|RESOURCE_EXHAUSTED/i.test(m)) return "Исчерпан лимит запросов Gemini. Подождите или проверьте тариф в Google AI Studio.";
-  if(s===404 || /not found/i.test(m)) return "Модель «"+aiGetModel()+"» не найдена. Проверьте название — кнопка ⚙.";
-  if(/^EMPTY/.test(m)) return "Gemini вернул пустой ответ"+(m.includes(":") ? " ("+m.split(":")[1]+")" : "")+". Попробуйте ещё раз.";
-  return "Ошибка Gemini: "+m;
-}
+function aiErrText(e){ return luzAiErr(e, aiProv(), aiGetModel(), "— кнопка ⚙"); }
 
 /* **жирный**, заголовки и пункты «- » — всё через textContent, без чужого HTML */
 function aiRender(box, t){
@@ -3354,35 +3420,65 @@ function aiEl(tag, cls, text){ const e = document.createElement(tag); if(cls) e.
 
 function aiSettings(){
   aiSheet((box, close)=>{
-    box.appendChild(aiEl("h3", "", "Разбор от ИИ — Gemini"));
-    const kl = aiEl("label", "ask-fld"); kl.appendChild(aiEl("span", "", "Ключ Gemini API"));
-    const ki = document.createElement("input"); ki.type = "password"; ki.autocomplete = "off"; ki.spellcheck = false;
-    ki.placeholder = "ключ из Google AI Studio"; ki.value = aiGetKey(); kl.appendChild(ki);
-    const ml = aiEl("label", "ask-fld"); ml.appendChild(aiEl("span", "", "Модель"));
-    const mi = document.createElement("input"); mi.type = "text"; mi.spellcheck = false; mi.value = aiGetModel(); ml.appendChild(mi);
-    box.append(kl, ml, aiEl("p", "ask-sub", "Ключ хранится только в этом браузере: на Google Диск и в резервные копии он не попадает. На каждом устройстве его вводят отдельно. Тот же ключ, что в Дневнике, подходит."));
+    const PS = ["gemini","deepseek"], fld = {};
+    let prov = aiProv();
+    box.appendChild(aiEl("h3", "", "ИИ для разборов и вопросов"));
+    const chips = aiEl("div", "chips ai-prov");
+    PS.forEach(p=>{
+      const b = aiEl("button", "chip", LUZ_AI[p].name); b.type = "button";
+      b.onclick = ()=>{ prov = p; sync(); };
+      chips.appendChild(b); fld[p] = {b};
+    });
+    box.appendChild(chips);
+    PS.forEach(p=>{
+      const wrap = aiEl("div", "");
+      const kl = aiEl("label", "ask-fld"); kl.appendChild(aiEl("span", "", "Ключ "+LUZ_AI[p].name+" API"));
+      const ki = document.createElement("input"); ki.type = "password"; ki.autocomplete = "off"; ki.spellcheck = false;
+      ki.placeholder = LUZ_AI[p].keyHint; ki.value = aiKeyOf(p); kl.appendChild(ki);
+      const ml = aiEl("label", "ask-fld"); ml.appendChild(aiEl("span", "", "Модель"));
+      const mi = document.createElement("input"); mi.type = "text"; mi.spellcheck = false; mi.value = aiModelOf(p); ml.appendChild(mi);
+      wrap.append(kl, ml); box.appendChild(wrap);
+      Object.assign(fld[p], {wrap, ki, mi});
+    });
+    const note = aiEl("p", "ask-sub", ""); box.appendChild(note);
     const bar = aiEl("div", "ask-bar three");
-    const del = aiEl("button", "btn ghost", "Удалить ключ"); del.disabled = !aiGetKey();
+    const del = aiEl("button", "btn ghost", "Удалить ключ");
     const no = aiEl("button", "btn ghost", "Отмена");
     const ok = aiEl("button", "btn", "Сохранить");
     bar.append(del, no, ok); box.appendChild(bar);
+    function sync(){
+      PS.forEach(p=>{ fld[p].b.setAttribute("aria-pressed", p===prov ? "true" : "false"); fld[p].wrap.hidden = p!==prov; });
+      del.disabled = !aiKeyOf(prov);
+      note.textContent = (prov==="deepseek"
+        ? "DeepSeek дешевле Gemini, но хранит запросы в Китае и по умолчанию может учиться на них. "
+        : "")
+        + "Ключ хранится только в этом браузере: на Google Диск и в резервные копии он не попадает, на каждом устройстве его вводят отдельно. "
+        + "Выбор ИИ общий для Бюджета, Дневника и Медкарты; PDF и фото в Медкарте всегда читает Gemini.";
+    }
+    sync();
     no.onclick = close;
-    del.onclick = ()=>{ try{ localStorage.removeItem(AI_KEY_LS); }catch(e){} luzShared.push(luzBudgetOwn()); close(); aiRenderCard(); toast("Ключ удалён"); };
+    del.onclick = ()=>{
+      try{ localStorage.removeItem(prov==="deepseek" ? DS_KEY_LS : AI_KEY_LS); }catch(e){}
+      luzShared.push(luzBudgetOwn()); close(); aiRenderCard(); toast("Ключ "+LUZ_AI[prov].name+" удалён");
+    };
     ok.onclick = ()=>{
       try{
-        const k = ki.value.trim(), m = mi.value.trim();
-        if(k) localStorage.setItem(AI_KEY_LS, k); else localStorage.removeItem(AI_KEY_LS);
-        if(m && m !== AI_DEF_MODEL) localStorage.setItem(AI_MODEL_LS, m); else localStorage.removeItem(AI_MODEL_LS);
+        [["gemini", AI_KEY_LS, AI_MODEL_LS], ["deepseek", DS_KEY_LS, DS_MODEL_LS]].forEach(([p, kk, mk])=>{
+          const k = fld[p].ki.value.trim(), m = fld[p].mi.value.trim();
+          if(k) localStorage.setItem(kk, k); else localStorage.removeItem(kk);
+          if(m && m !== LUZ_AI[p].def) localStorage.setItem(mk, m); else localStorage.removeItem(mk);
+        });
+        if(prov==="deepseek") localStorage.setItem(AI_PROV_LS, "deepseek"); else localStorage.removeItem(AI_PROV_LS);
       }catch(e){ toast("Не удалось сохранить настройки"); return; }
       luzShared.push(luzBudgetOwn());
-      close(); aiRenderCard(); toast("Настройки Gemini сохранены");
+      close(); aiRenderCard(); toast("Настройки сохранены: работает "+aiName());
     };
   });
 }
 function aiPreview(y, m){
   aiSheet((box, close)=>{
-    box.appendChild(aiEl("h3", "", "Что отправится в Gemini"));
-    box.appendChild(aiEl("p", "ask-sub", "Ровно этот текст и инструкция, как отвечать. Ключ Gemini, Client ID, настройки и другие месяцы, кроме двух предыдущих для сравнения, не отправляются."));
+    box.appendChild(aiEl("h3", "", "Что отправится в "+aiName()));
+    box.appendChild(aiEl("p", "ask-sub", "Ровно этот текст и инструкция, как отвечать. Ключи ИИ, Client ID, настройки и другие месяцы, кроме двух предыдущих для сравнения, не отправляются."));
     box.appendChild(aiEl("pre", "ai-pre", aiPrompt(y, m)));
     const bar = aiEl("div", "ask-bar one"); const ok = aiEl("button", "btn", "Понятно"); ok.onclick = close;
     bar.appendChild(ok); box.appendChild(bar);
@@ -3411,13 +3507,13 @@ function aiRenderCard(){
   const hasData = aiHasData(aiMonth(y, m));
   box.innerHTML = "";
   if(err && !busy) box.appendChild(aiEl("div", "ai-err", err));
-  if(busy) box.appendChild(aiEl("div", "ai-hint ai-wait", "Gemini думает над разбором… Можно переключать вкладки — ответ сохранится сам."));
+  if(busy) box.appendChild(aiEl("div", "ai-hint ai-wait", aiName()+" думает над разбором… Можно переключать вкладки — ответ сохранится сам."));
   else if(saved){
     const t = aiEl("div", "ai-text"); aiRender(t, saved.text); box.appendChild(t);
     const when = new Date(saved.at).toLocaleString("ru-RU", {day:"numeric", month:"short", hour:"2-digit", minute:"2-digit"});
     box.appendChild(aiEl("div", "ai-hint", when + (saved.model ? " · "+saved.model : "") + (saved.cut ? " · ответ обрезан по длине" : "")));
   } else if(!hasData) box.appendChild(aiEl("div", "ai-hint", "За "+MONTHS_GEN[m]+" нет записей — разбирать пока нечего."));
-  else box.appendChild(aiEl("div", "ai-hint", "Gemini разберёт "+MONTHS[m].toLowerCase()+": доходы и расходы в рублях, траты в донгах по категориям, дням и способам оплаты, наличные — и сравнит с двумя предыдущими месяцами."));
+  else box.appendChild(aiEl("div", "ai-hint", aiName()+" разберёт "+MONTHS[m].toLowerCase()+": доходы и расходы в рублях, траты в донгах по категориям, дням и способам оплаты, наличные — и сравнит с двумя предыдущими месяцами."));
 
   const bar = aiEl("div", "tools ai-bar");
   if(hasKey){
@@ -3426,7 +3522,7 @@ function aiRenderCard(){
     go.onclick = ()=> aiRun(y, m);
     bar.appendChild(go);
   } else {
-    const set = aiEl("button", "btn sm", "Подключить Gemini"); set.onclick = aiSettings; bar.appendChild(set);
+    const set = aiEl("button", "btn sm", "Подключить "+aiName()); set.onclick = aiSettings; bar.appendChild(set);
   }
   if(hasData){ const pv = aiEl("button", "btn sm ghost", "Что отправится"); pv.onclick = ()=> aiPreview(y, m); bar.appendChild(pv); }
   if(hasKey){ const qa = aiEl("button", "btn sm ghost", "Задать вопрос"); qa.onclick = chatOpen; bar.appendChild(qa); }
@@ -3437,7 +3533,7 @@ function aiRenderCard(){
     bar.appendChild(del);
   }
   box.appendChild(bar);
-  capAiRenderCard();   // настройки Gemini общие — обновляем и карточку капитала
+  capAiRenderCard();   // настройки ИИ общие — обновляем и карточку капитала
 }
 
 /* ================= Динамика: сравнение месяцев =================
@@ -4908,7 +5004,7 @@ function chatScope(o){
 async function chatSend(q, st){
   q = String(q||"").trim();
   if(!q || CHAT.busy) return;
-  if(!aiGetKey()){ toast("Сначала подключите Gemini — кнопка ⚙"); return; }
+  if(!aiGetKey()){ toast("Сначала подключите "+aiName()+" — кнопка ⚙"); return; }
   let chat = st.id ? chatGet(st.id) : null;
   if(!chat){
     if(!CHAT_SEC.some(x=> chatOpt.sec[x[0]])){ toast("Отметьте хотя бы один раздел данных"); return; }
@@ -4937,7 +5033,7 @@ async function chatSend(q, st){
 function chatRedraw(){ CHAT.views.forEach(v=> v(true)); }
 function chatPreview(st){
   aiSheet((box, close)=>{
-    box.appendChild(aiEl("h3", "", "Что уйдёт в Gemini"));
+    box.appendChild(aiEl("h3", "", "Что уйдёт в "+aiName()));
     box.appendChild(aiEl("p", "ask-sub", "Эта выжимка, инструкция и сама переписка. Ключи, настройки и разделы, которые не отмечены, не отправляются."));
     const c = st.id ? chatGet(st.id) : null;
     box.appendChild(aiEl("pre", "ai-pre", chatContext(c ? c.opt : chatOpt)));
@@ -4962,10 +5058,10 @@ function chatView(box, o){
     if(st.id && !chat) st.id = null;   // разговор удалён на другом устройстве
     const busy = CHAT.busy && (!chat || CHAT.busy===chat.id);
     if(!aiGetKey()){
-      box.appendChild(aiEl("p","ai-hint","Задайте Gemini любой вопрос по бюджету и капиталу. Нужен ключ Gemini — тот же, что для разбора месяца."));
+      box.appendChild(aiEl("p","ai-hint","Задайте "+aiName()+" любой вопрос по бюджету и капиталу. Нужен ключ "+aiName()+" — тот же, что для разбора месяца."));
       const bar = aiEl("div", o.close ? "ask-bar" : "tools ai-bar");
       if(o.close){ const no = aiEl("button","btn ghost","Закрыть"); no.onclick = o.close; bar.appendChild(no); }
-      const set = aiEl("button", o.close ? "btn" : "btn sm","Подключить Gemini"); set.onclick = ()=>{ if(o.close) o.close(); aiSettings(); };
+      const set = aiEl("button", o.close ? "btn" : "btn sm","Подключить "+aiName()); set.onclick = ()=>{ if(o.close) o.close(); aiSettings(); };
       bar.appendChild(set); box.appendChild(bar);
       return;
     }
@@ -4986,7 +5082,7 @@ function chatView(box, o){
       o.presets.forEach(t=>{ const b = aiEl("button","chip",t); b.type = "button"; b.onclick = ()=>{ q.value = t; q.focus(); }; pr.appendChild(b); });
       box.appendChild(pr);
     }
-    if(busy) box.appendChild(aiEl("div","ai-hint ai-wait","Gemini думает… обычно 20–60 секунд."+(o.close ? " Окно можно закрыть — ответ сохранится." : " Можно уйти на другую вкладку — ответ сохранится.")));
+    if(busy) box.appendChild(aiEl("div","ai-hint ai-wait",aiName()+" думает… обычно 20–60 секунд."+(o.close ? " Окно можно закрыть — ответ сохранится." : " Можно уйти на другую вкладку — ответ сохранится.")));
     if(st.err && !busy) box.appendChild(aiEl("div","ai-err",st.err));
     q = document.createElement("textarea");
     q.className = "chat-in"; q.rows = 3; q.value = keep; q.disabled = !!busy;
@@ -5006,7 +5102,7 @@ function chatView(box, o){
     }
     const go = ()=>{ const t = q.value.trim(); if(!t){ q.focus(); return; } q.value = ""; chatSend(t, st); };
     const bar = aiEl("div", o.close ? "ask-bar three" : "tools ai-bar");
-    const pv = aiEl("button", o.close ? "btn ghost chat-pv" : "btn sm ghost", "Что уйдёт в Gemini"); pv.onclick = ()=> chatPreview(st);
+    const pv = aiEl("button", o.close ? "btn ghost chat-pv" : "btn sm ghost", "Что уйдёт в "+aiName()); pv.onclick = ()=> chatPreview(st);
     const ok = aiEl("button", o.close ? "btn" : "btn sm", busy ? "Жду ответ…" : "Спросить"); ok.disabled = !!busy; ok.onclick = go;
     if(o.close){ const no = aiEl("button","btn ghost","Закрыть"); no.onclick = o.close; bar.append(pv, no, ok); }
     else bar.append(ok, pv);
