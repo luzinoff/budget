@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#f6f5f1" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#17181a" media="(prefers-color-scheme: dark)">
 <meta name="robots" content="noindex">
-<title>Настройки ИИ</title>
+<title>Общие настройки — ИИ и Google Диск</title>
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <style>
 :root{--bg:#f6f5f1;--card:#fff;--ink:#1d1e20;--ink-2:#4a4c50;--ink-3:#7a7d82;--line:#e3e1db;--acc:#2D62B8;--ok:#22985E;--bad:#c2412d;--warn:#9a6a00;--seg:#ecebe6;--sh:0 1px 2px rgba(0,0,0,.06)}
@@ -50,7 +50,7 @@ ul.apps{margin:6px 0 0;padding-left:18px}
 </head>
 <body>
 <main>
-<header><a class="back" id="back" href="./">← Назад</a><h1>Настройки ИИ</h1></header>
+<header><a class="back" id="back" href="./">← Назад</a><h1>Общие настройки</h1></header>
 
 <div class="card">
   <h2>Какой ИИ отвечает</h2>
@@ -78,8 +78,23 @@ ul.apps{margin:6px 0 0;padding-left:18px}
 </div>
 
 <div class="card">
+  <h2>Google Диск</h2>
+  <p class="lead">Client ID — один на Бюджет, Дневник и Медкарту: через него каждое приложение входит в Google и хранит данные в скрытой папке вашего Диска. Секретом не является.</p>
+  <label class="fld"><span>OAuth Client ID</span><input type="text" id="cid" autocomplete="off" spellcheck="false" placeholder="123456789-xxxx.apps.googleusercontent.com"></label>
+  <p class="hint" id="cidHint"></p>
+  <details class="hint"><summary>Как получить Client ID</summary>
+    <ol style="margin:8px 0 0;padding-left:20px;line-height:1.7">
+      <li><a href="https://console.cloud.google.com/" target="_blank" rel="noopener">console.cloud.google.com</a> → создайте проект (любое имя).</li>
+      <li>APIs &amp; Services → Library → <b>Google Drive API</b> → Enable.</li>
+      <li>OAuth consent screen → тип <b>External</b>, название и своя почта; в <b>Audience</b> добавьте себя в <b>Test users</b>.</li>
+      <li>Credentials → Create credentials → <b>OAuth client ID</b> → тип <b>Web application</b>; в <b>Authorized JavaScript origins</b> — <code>https://luzinoff.github.io</code>.</li>
+      <li>Скопируйте Client ID сюда, затем в любом приложении нажмите «Войти и синхронизировать».</li>
+    </ol></details>
+</div>
+
+<div class="card">
   <h2>Где хранятся ключи</h2>
-  <p class="lead" style="margin:0">Изменения сохраняются сразу. Ключи лежат в памяти этого браузера и копией — в скрытой папке приложений на вашем Google Диске (файл <code>luz-settings.json</code>, его видят только эти три приложения). На другом устройстве достаточно один раз войти в Google в любом приложении — ключи и выбор ИИ подтянутся сами. В облачные копии данных и выгрузки ключи не попадают.</p>
+  <p class="lead" style="margin:0">Изменения сохраняются сразу. Ключи ИИ лежат в памяти этого браузера и копией — в скрытой папке приложений на вашем Google Диске (файл <code>luz-settings.json</code>, его видят только эти три приложения). На другом устройстве достаточно один раз войти в Google в любом приложении — ключи и выбор ИИ подтянутся сами. В облачные копии данных и выгрузки ключи не попадают.</p>
   <p class="hint" id="driveHint"></p>
   <p class="hint">Приложения: <a href="/budget/">Бюджет</a> · <a href="/dnevnik/">Дневник</a> · <a href="/medcard/">Медкарта</a></p>
 </div>
@@ -210,6 +225,10 @@ function render(){
   if(!s[F[prov].key]){h.className='hint warn';h.textContent='Ключа '+LUZ_AI[prov].name+' нет — вставьте его ниже, иначе ИИ в приложениях не заработает.'}
   else if(prov==='deepseek'&&!s.aiKey){h.className='hint warn';h.textContent='Для чтения PDF и фото в Медкарте всё равно нужен ключ Gemini.'}
   else {h.className='hint';h.textContent='Отвечает '+LUZ_AI[prov].name+'.'+(prov==='deepseek'?' PDF и фото в Медкарте по-прежнему читает Gemini.':'')}
+  const ci=$('#cid'); if(document.activeElement!==ci) ci.value=String(s.clientId||'');
+  const ch=$('#cidHint');
+  if(!s.clientId){ch.className='hint warn';ch.textContent='Не указан — синхронизация с Google Диском во всех трёх приложениях выключена.'}
+  else {ch.className='hint';ch.textContent='После смены Client ID в каждом приложении нужно один раз войти в Google заново.'}
   const ts=+s._ts||0;
   $('#driveHint').textContent=ts?'Последнее изменение: '+new Date(ts).toLocaleString('ru-RU',{day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'})+'.':'';
 }
@@ -238,6 +257,14 @@ PS.forEach(p=>{
     }catch(er){res.className='res bad'; res.textContent=luzAiErr(er,p,model,'на этой странице')}
     finally{btn.disabled=false}
   };
+});
+/* Client ID: без метки _ts — на Диск он не уходит (без него до Диска не достучаться) */
+$('#cid').addEventListener('change',()=>{
+  const ci=$('#cid'), v=ci.value.trim(); ci.value=v;
+  if(v===String(getS().clientId||'')) return;
+  if(v&&!/\.apps\.googleusercontent\.com$/.test(v)){toast('Client ID должен заканчиваться на .apps.googleusercontent.com');return}
+  try{localStorage.setItem(LUZ_SHARED,JSON.stringify(Object.assign(getS(),{clientId:v})))}catch(e){toast('Не удалось сохранить');return}
+  render(); toast(v?'Client ID сохранён':'Client ID убран');
 });
 /* правка в соседней вкладке */
 window.addEventListener('storage',e=>{if(e.key===LUZ_SHARED) render()});

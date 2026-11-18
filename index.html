@@ -915,16 +915,13 @@ textarea.chat-in{min-height:76px;resize:vertical;margin:8px 0 10px;font:inherit;
     <h2 class="card-h">Google Диск</h2>
     <div class="syncstat" id="sync-stat">Выключена</div>
     <div class="form" id="sync-setup" hidden>
-      <p class="f-lab">Client ID из Google Cloud Console</p>
-      <div class="row">
-        <input type="text" id="cid" placeholder="…apps.googleusercontent.com" autocomplete="off" spellcheck="false">
-        <button class="btn sm ghost" id="cid-save">Сохранить</button>
-      </div>
+      <p class="f-lab">Client ID из Google Cloud Console вводится на общей странице настроек — один на Бюджет, Дневник и Медкарту.</p>
+      <div class="row"><button class="btn sm" id="cid-open">Указать Client ID</button></div>
     </div>
     <div class="tools">
       <button class="btn sm" id="sync-now">Синхронизировать</button>
       <button class="btn sm ghost" id="sync-off" hidden>Отключить</button>
-      <button class="btn sm ghost" id="cid-edit" hidden>Изменить Client ID</button>
+      <button class="btn sm ghost" id="cid-edit" hidden>Client ID — в настройках</button>
     </div>
     <div class="note" id="sync-hint">Данные хранятся в скрытой папке вашего Диска: приложение видит только свой файл. Записи с разных устройств объединяются, ничего не затирается.</div>
   </div>
@@ -2431,7 +2428,7 @@ function syncUI(){
   if(!httpsOk){
     txt = "Недоступна: страница открыта как файл. Google разрешает вход только с адреса https://…";
   } else if(!SYNC.cid){
-    txt = "Укажите Client ID — он выдаётся один раз в Google Cloud Console.";
+    txt = "Укажите Client ID на странице настроек — он выдаётся один раз в Google Cloud Console.";
   } else if(SYNC.busy){
     cls = ""; txt = "Синхронизация…"; dot.className = "syncdot busy";
   } else if(SYNC.err){
@@ -2483,13 +2480,7 @@ function hsyncUI(){
 function hsyncClick(){
   if(SYNC.busy) return;
   if(!httpsOk){ toast("Синхронизация работает только на сайте https://…, а не в файле с диска"); return; }
-  if(!SYNC.cid){
-    setTab("sum");
-    const c = document.getElementById("sync-stat"), card = c && c.closest(".card");
-    if(card) card.scrollIntoView({block:"start", behavior:"smooth"});
-    toast("Укажите Client ID, чтобы включить синхронизацию");
-    return;
-  }
+  if(!SYNC.cid){ luzOpenSettings(); return; }   // Client ID — на общей странице настроек
   syncNow(true);
 }
 
@@ -5276,26 +5267,9 @@ function capAiMigrate(){
   document.getElementById("ex-csv").onclick = exportCsv;
 
   // синхронизация
-  const cid = document.getElementById("cid");
-  cid.value = SYNC.cid;
-  document.getElementById("cid-save").onclick = ()=>{
-    const v = (cid.value||"").trim();
-    if(v && !/\.apps\.googleusercontent\.com$/.test(v)){ toast("Client ID должен заканчиваться на .apps.googleusercontent.com"); return; }
-    /* Другой Client ID — другое приложение в глазах Google: старое разрешение
-       к нему не относится, молча продлевать нечего. */
-    if(v !== SYNC.cid){ SYNC.token = null; SYNC.exp = 0; authOff(); }
-    SYNC.cid = v;
-    SYNC.editCid = false;
-    if(v) localStorage.setItem(CID_KEY, v); else localStorage.removeItem(CID_KEY);
-    luzShared.push(luzBudgetOwn());
-    SYNC.err = ""; syncUI();
-    toast(v ? "Client ID сохранён" : "Client ID убран");
-  };
-  document.getElementById("cid-edit").onclick = ()=>{
-    SYNC.editCid = true;
-    document.getElementById("sync-setup").hidden = false;
-    cid.focus();
-  };
+  /* Client ID вводится на общей странице настроек (luzOpenSettings), здесь только кнопки туда */
+  document.getElementById("cid-open").onclick = luzOpenSettings;
+  document.getElementById("cid-edit").onclick = luzOpenSettings;
   document.getElementById("sync-now").onclick = ()=> syncNow(true);
   document.getElementById("hsync").onclick = hsyncClick;
   document.getElementById("sync-off").onclick = ()=>{
