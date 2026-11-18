@@ -54,7 +54,7 @@ ul.apps{margin:6px 0 0;padding-left:18px}
 
 <div class="card">
   <h2>Какой ИИ отвечает</h2>
-  <p class="lead">Один выбор для Бюджета, Дневника и Медкарты: разборы, советы, вопросы, пояснения анализов.</p>
+  <p class="lead">Один выбор для Бюджета, Дневника, Медкарты и Поездки в США: разборы, советы, вопросы, пояснения анализов.</p>
   <div class="seg" id="seg"><button type="button" data-p="gemini">Gemini</button><button type="button" data-p="deepseek">DeepSeek</button></div>
   <p class="hint" id="segHint"></p>
 </div>
@@ -79,7 +79,7 @@ ul.apps{margin:6px 0 0;padding-left:18px}
 
 <div class="card">
   <h2>Google Диск</h2>
-  <p class="lead">Client ID — один на Бюджет, Дневник и Медкарту: через него каждое приложение входит в Google и хранит данные в скрытой папке вашего Диска. Секретом не является.</p>
+  <p class="lead">Client ID — один на Бюджет, Дневник, Медкарту и Поездку в США: через него каждое приложение входит в Google и хранит данные в скрытой папке вашего Диска. Секретом не является.</p>
   <label class="fld"><span>OAuth Client ID</span><input type="text" id="cid" autocomplete="off" spellcheck="false" placeholder="123456789-xxxx.apps.googleusercontent.com"></label>
   <p class="hint" id="cidHint"></p>
   <details class="hint"><summary>Как получить Client ID</summary>
@@ -94,9 +94,9 @@ ul.apps{margin:6px 0 0;padding-left:18px}
 
 <div class="card">
   <h2>Где хранятся ключи</h2>
-  <p class="lead" style="margin:0">Изменения сохраняются сразу. Ключи ИИ лежат в памяти этого браузера и копией — в скрытой папке приложений на вашем Google Диске (файл <code>luz-settings.json</code>, его видят только эти три приложения). На другом устройстве достаточно один раз войти в Google в любом приложении — ключи и выбор ИИ подтянутся сами. В облачные копии данных и выгрузки ключи не попадают.</p>
+  <p class="lead" style="margin:0">Изменения сохраняются сразу. Ключи ИИ лежат в памяти этого браузера и копией — в скрытой папке приложений на вашем Google Диске (файл <code>luz-settings.json</code>, его видят только эти приложения). На другом устройстве достаточно один раз войти в Google в любом приложении — ключи и выбор ИИ подтянутся сами. В облачные копии данных и выгрузки ключи не попадают.</p>
   <p class="hint" id="driveHint"></p>
-  <p class="hint">Приложения: <a href="/budget/">Бюджет</a> · <a href="/dnevnik/">Дневник</a> · <a href="/medcard/">Медкарта</a></p>
+  <p class="hint">Приложения: <a href="/budget/">Бюджет</a> · <a href="/dnevnik/">Дневник</a> · <a href="/medcard/">Медкарта</a> · <a href="/usa/">Поездка в США</a></p>
 </div>
 </main>
 <div id="toast" role="status" aria-live="polite"></div>
@@ -192,7 +192,7 @@ function luzAiErr(e,provider,model,where){
 }
 
 /* ===== Страница общих настроек ИИ (18.11.2026) =====
-   Одна на Бюджет, Дневник и Медкарту: все три живут на luzinoff.github.io и
+   Одна на Бюджет, Дневник, Медкарту и Поездку в США (с 18.11.2026): все живут на luzinoff.github.io и
    читают общую запись localStorage luz.shared.v1. Здесь пишем в неё ключи,
    модели и выбор ИИ с меткой времени _ts — по ней приложения сливают эти
    настройки с файлом luz-settings.json на Google Диске (luzSettingsSync).
@@ -227,7 +227,7 @@ function render(){
   else {h.className='hint';h.textContent='Отвечает '+LUZ_AI[prov].name+'.'+(prov==='deepseek'?' PDF и фото в Медкарте по-прежнему читает Gemini.':'')}
   const ci=$('#cid'); if(document.activeElement!==ci) ci.value=String(s.clientId||'');
   const ch=$('#cidHint');
-  if(!s.clientId){ch.className='hint warn';ch.textContent='Не указан — синхронизация с Google Диском во всех трёх приложениях выключена.'}
+  if(!s.clientId){ch.className='hint warn';ch.textContent='Не указан — синхронизация с Google Диском во всех приложениях выключена.'}
   else {ch.className='hint';ch.textContent='После смены Client ID в каждом приложении нужно один раз войти в Google заново.'}
   const ts=+s._ts||0;
   $('#driveHint').textContent=ts?'Последнее изменение: '+new Date(ts).toLocaleString('ru-RU',{day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'})+'.':'';
