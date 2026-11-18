@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f6f5f1" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#17181a" media="(prefers-color-scheme: dark)">
+<meta name="robots" content="noindex">
+<title>Настройки ИИ</title>
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<style>
+:root{--bg:#f6f5f1;--card:#fff;--ink:#1d1e20;--ink-2:#4a4c50;--ink-3:#7a7d82;--line:#e3e1db;--acc:#2D62B8;--ok:#22985E;--bad:#c2412d;--warn:#9a6a00;--seg:#ecebe6;--sh:0 1px 2px rgba(0,0,0,.06)}
+@media (prefers-color-scheme: dark){:root{--bg:#17181a;--card:#222326;--ink:#ececee;--ink-2:#c3c4c8;--ink-3:#8d9096;--line:#34363a;--acc:#6b9ae6;--ok:#4cc38a;--bad:#ef7a66;--warn:#e0b44c;--seg:#2b2c30;--sh:none}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-text-size-adjust:100%}
+main{max-width:620px;margin:0 auto;padding:max(16px,env(safe-area-inset-top)) 16px 40px}
+header{display:flex;align-items:center;gap:10px;margin:4px 0 18px}
+header h1{font-size:21px;margin:0;flex:1;letter-spacing:-.01em}
+a{color:var(--acc)}
+.back{text-decoration:none;font-weight:600;padding:6px 10px;margin-left:-10px;border-radius:9px}
+.back:hover{background:var(--seg)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin:0 0 14px;box-shadow:var(--sh)}
+.card h2{font-size:16px;margin:0 0 4px;display:flex;align-items:center;gap:8px}
+.lead{color:var(--ink-2);margin:0 0 12px;font-size:14px}
+.seg{display:flex;background:var(--seg);border-radius:11px;padding:3px;gap:3px}
+.seg button{flex:1;border:0;background:none;border-radius:8px;padding:9px 6px;font:inherit;font-size:14.5px;color:var(--ink-2);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--card);color:var(--ink);font-weight:650;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.badge{font-size:11.5px;font-weight:650;color:#fff;background:var(--acc);border-radius:6px;padding:1px 7px}
+.badge[hidden]{display:none}
+label.fld{display:block;margin:12px 0 0}
+label.fld>span{display:block;font-size:12.5px;font-weight:600;color:var(--ink-3);margin-bottom:5px}
+.inrow{display:flex;gap:6px}
+input{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:9px 11px;width:100%;min-width:0}
+input:focus{outline:2px solid color-mix(in srgb,var(--acc) 35%,transparent);border-color:var(--acc)}
+button.btn{font:inherit;font-size:14px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:9px;padding:8px 13px;cursor:pointer;white-space:nowrap}
+button.btn.pri{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+button.btn.ghost{border-color:transparent;background:none;color:var(--bad);padding:8px 6px}
+button.btn:disabled{opacity:.45;cursor:default}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px}
+.sp{flex:1}
+.hint{font-size:13px;color:var(--ink-3);margin:8px 0 0}
+.res{font-size:13.5px;margin-top:10px;padding:9px 11px;border-radius:9px;background:var(--seg)}
+.res[hidden]{display:none}
+.res.ok{color:var(--ok)}.res.bad{color:var(--bad)}
+.warn{color:var(--warn)}
+ul.apps{margin:6px 0 0;padding-left:18px}
+#toast{position:fixed;left:50%;bottom:max(20px,env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--bg);padding:9px 15px;border-radius:10px;font-size:14px;opacity:0;transition:.2s;pointer-events:none;max-width:90vw}
+#toast.on{opacity:1;transform:translateX(-50%)}
+</style>
+</head>
+<body>
+<main>
+<header><a class="back" id="back" href="./">← Назад</a><h1>Настройки ИИ</h1></header>
+
+<div class="card">
+  <h2>Какой ИИ отвечает</h2>
+  <p class="lead">Один выбор для Бюджета, Дневника и Медкарты: разборы, советы, вопросы, пояснения анализов.</p>
+  <div class="seg" id="seg"><button type="button" data-p="gemini">Gemini</button><button type="button" data-p="deepseek">DeepSeek</button></div>
+  <p class="hint" id="segHint"></p>
+</div>
+
+<div class="card" data-card="gemini">
+  <h2>Gemini <span class="badge" hidden>сейчас отвечает</span></h2>
+  <p class="lead">Нужен в любом случае: PDF и фото документов в Медкарте читает только Gemini. Ключ — в <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a>. На платном тарифе Google не учится на ваших запросах.</p>
+  <label class="fld"><span>Ключ Gemini API</span><div class="inrow"><input type="password" data-f="key" autocomplete="off" spellcheck="false" placeholder="вставьте ключ"><button type="button" class="btn" data-a="eye" aria-label="Показать ключ">👁</button></div></label>
+  <label class="fld"><span>Модель</span><input type="text" data-f="model" spellcheck="false"></label>
+  <div class="bar"><button type="button" class="btn" data-a="test">Проверить</button><span class="sp"></span><button type="button" class="btn ghost" data-a="del">Удалить ключ</button></div>
+  <div class="res" hidden></div>
+</div>
+
+<div class="card" data-card="deepseek">
+  <h2>DeepSeek <span class="badge" hidden>сейчас отвечает</span></h2>
+  <p class="lead">Дешевле Gemini в 3–6 раз, но хранит запросы в Китае и по умолчанию может учиться на них — а туда уйдут тексты дневника, финансы и выжимка медкарты. Ключ — на <a href="https://platform.deepseek.com/api_keys" target="_blank" rel="noopener">platform.deepseek.com</a>, счёт пополняется заранее.</p>
+  <label class="fld"><span>Ключ DeepSeek API</span><div class="inrow"><input type="password" data-f="key" autocomplete="off" spellcheck="false" placeholder="вставьте ключ"><button type="button" class="btn" data-a="eye" aria-label="Показать ключ">👁</button></div></label>
+  <label class="fld"><span>Модель</span><input type="text" data-f="model" spellcheck="false"></label>
+  <div class="bar"><button type="button" class="btn" data-a="test">Проверить</button><span class="sp"></span><button type="button" class="btn ghost" data-a="del">Удалить ключ</button></div>
+  <div class="res" hidden></div>
+</div>
+
+<div class="card">
+  <h2>Где хранятся ключи</h2>
+  <p class="lead" style="margin:0">Изменения сохраняются сразу. Ключи лежат в памяти этого браузера и копией — в скрытой папке приложений на вашем Google Диске (файл <code>luz-settings.json</code>, его видят только эти три приложения). На другом устройстве достаточно один раз войти в Google в любом приложении — ключи и выбор ИИ подтянутся сами. В облачные копии данных и выгрузки ключи не попадают.</p>
+  <p class="hint" id="driveHint"></p>
+  <p class="hint">Приложения: <a href="/budget/">Бюджет</a> · <a href="/dnevnik/">Дневник</a> · <a href="/medcard/">Медкарта</a></p>
+</div>
+</main>
+<div id="toast" role="status" aria-live="polite"></div>
+<script>
+"use strict";
+/* ===== Выбор ИИ: Gemini или DeepSeek (18.11.2026) =====
+   Переключатель общий для всех трёх приложений: luz.shared.v1 → aiProvider
+   ('' или 'gemini' — Gemini, 'deepseek' — DeepSeek). Ключи и модели у каждого
+   ИИ свои: aiKey/aiModel — Gemini, dsKey/dsModel — DeepSeek; пустая модель —
+   модель по умолчанию. Распознавание PDF и фото в медкарте всегда идёт через
+   Gemini, переключатель на него не влияет.
+   luzAi() принимает переписку в формате Gemini (role user/model, parts[{text}])
+   и для DeepSeek сам переводит её в OpenAI-совместимый формат. Ответ —
+   {text, model, cut, provider}. Коды ошибок прежние: NO_KEY, TIMEOUT, NETWORK,
+   EMPTY[:причина], иначе текст ошибки от сервиса и e.status.
+   Этот блок одинаковый во всех трёх файлах. */
+const LUZ_AI={
+  gemini:{name:'Gemini',def:'gemini-3.6-flash',keyHint:'ключ из Google AI Studio'},
+  deepseek:{name:'DeepSeek',def:'deepseek-flash',keyHint:'ключ с platform.deepseek.com'}
+};
+const luzAiProv=p=>p==='deepseek'?'deepseek':'gemini';
+async function luzAi(o){
+  const provider=luzAiProv(o.provider), key=String(o.key||'').trim();
+  if(!key) throw new Error('NO_KEY');
+  const model=String(o.model||'').trim()||LUZ_AI[provider].def;
+  const contents=Array.isArray(o.contents)?o.contents:[{role:'user',parts:[{text:String(o.contents||'')}]}];
+  const temperature=o.temperature??0.7, maxTokens=o.maxTokens||16384;
+  let url, headers, body;
+  if(provider==='gemini'){
+    url='https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(model)+':generateContent';
+    headers={'Content-Type':'application/json','x-goog-api-key':key};
+    /* у Gemini 3 размышления входят в лимит: при 4096 ответ мог прийти пустым */
+    body={contents,generationConfig:{temperature,maxOutputTokens:maxTokens}};
+    if(o.system) body.systemInstruction={parts:[{text:o.system}]};
+    if(o.json) body.generationConfig.responseMimeType='application/json';
+  } else {
+    url='https://api.deepseek.com/chat/completions';
+    headers={'Content-Type':'application/json','Authorization':'Bearer '+key};
+    const messages=o.system?[{role:'system',content:o.system}]:[];
+    for(const c of contents){
+      const parts=c.parts||[];
+      if(parts.some(p=>p.inline_data||p.inlineData)) throw new Error('NO_FILES');
+      messages.push({role:c.role==='model'?'assistant':'user',content:parts.map(p=>p.text||'').join('')});
+    }
+    body={model,messages,temperature,max_tokens:maxTokens,stream:false};
+    if(o.json) body.response_format={type:'json_object'};
+  }
+  const ctl=new AbortController(), t=setTimeout(()=>ctl.abort(),180000);
+  let r;
+  try{ r=await fetch(url,{method:'POST',headers,body:JSON.stringify(body),signal:ctl.signal}) }
+  catch(e){ throw new Error(e&&e.name==='AbortError'?'TIMEOUT':'NETWORK') }
+  finally{ clearTimeout(t) }
+  let j=null; try{ j=await r.json() }catch(e){}
+  if(!r.ok){
+    const er=j&&j.error, e=new Error((er&&(er.message||(typeof er==='string'?er:'')))||('HTTP '+r.status));
+    e.status=r.status; throw e;
+  }
+  let text='', reason='';
+  if(provider==='gemini'){
+    const c=j&&j.candidates&&j.candidates[0];
+    text=((c&&c.content&&c.content.parts)||[]).filter(p=>!p.thought).map(p=>p.text||'').join('').trim();
+    reason=(c&&c.finishReason)||'';
+  } else {
+    /* ход размышлений DeepSeek приходит отдельно (reasoning_content) — его не берём */
+    const c=j&&j.choices&&j.choices[0];
+    text=String((c&&c.message&&c.message.content)||'').trim();
+    reason=(c&&c.finish_reason)||'';
+  }
+  const cut=reason==='MAX_TOKENS'||reason==='length';
+  if(!text) throw new Error(reason?'EMPTY:'+reason:'EMPTY');
+  return {text,model,cut,provider};
+}
+/* Понятный текст ошибки; where — где поменять настройки («в настройках (⚙)»). */
+function luzAiErr(e,provider,model,where){
+  provider=luzAiProv(provider);
+  const n=LUZ_AI[provider].name, m=String(e&&e.message||e), s=e&&e.status;
+  model=String(model||'').trim()||LUZ_AI[provider].def;
+  if(m==='NO_KEY') return `Сначала вставьте ключ ${n} ${where}.`;
+  if(m==='NO_FILES') return `${n} не принимает файлы — их читает только Gemini.`;
+  if(m==='TIMEOUT') return `${n} не ответил за три минуты. Попробуйте ещё раз.`;
+  if(m==='NETWORK') return provider==='deepseek'
+    ? `Нет связи с DeepSeek. Если интернет есть, DeepSeek мог не пустить запрос из браузера (CORS) — тогда переключитесь на Gemini ${where}.`
+    : 'Нет связи с Gemini — проверьте интернет.';
+  if(/location is not supported/i.test(m)) return 'Gemini API недоступен из вашей страны (так ответил Google).';
+  if(s===401||/API key not valid|API_KEY_INVALID|Authentication Fails|invalid api key/i.test(m)) return `Ключ ${n} не подошёл. Проверьте его ${where}.`;
+  if(s===402||/Insufficient Balance/i.test(m)) return 'На счёте DeepSeek закончились деньги — пополните баланс на platform.deepseek.com.';
+  if(s===429||/quota|RESOURCE_EXHAUSTED|rate limit/i.test(m)) return provider==='deepseek'
+    ? 'DeepSeek просит подождать: слишком много запросов. Попробуйте через минуту.'
+    : 'Исчерпан лимит запросов Gemini. Подождите немного или проверьте тариф в Google AI Studio.';
+  if(s===404||/not found|Model Not Exist/i.test(m)) return `Модель «${model}» не найдена. Проверьте название ${where}.`;
+  if(/^EMPTY/.test(m)) return `${n} вернул пустой ответ`+(m.includes(':')?' ('+m.split(':')[1]+')':'')+'. Попробуйте ещё раз.';
+  return `Ошибка ${n}: ${m}`;
+}
+
+/* ===== Страница общих настроек ИИ (18.11.2026) =====
+   Одна на Бюджет, Дневник и Медкарту: все три живут на luzinoff.github.io и
+   читают общую запись localStorage luz.shared.v1. Здесь пишем в неё ключи,
+   модели и выбор ИИ с меткой времени _ts — по ней приложения сливают эти
+   настройки с файлом luz-settings.json на Google Диске (luzSettingsSync).
+   Пустая модель — модель по умолчанию. Client ID тут не трогаем. */
+const LUZ_SHARED='luz.shared.v1';
+const F={gemini:{key:'aiKey',model:'aiModel'},deepseek:{key:'dsKey',model:'dsModel'}};
+const PS=['gemini','deepseek'];
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+function getS(){try{return JSON.parse(localStorage.getItem(LUZ_SHARED))||{}}catch(e){return {}}}
+function setS(p){
+  try{localStorage.setItem(LUZ_SHARED,JSON.stringify(Object.assign(getS(),p,{_ts:Date.now()})));return true}
+  catch(e){toast('Не удалось сохранить: браузер не даёт писать в память');return false}
+}
+let tt=null;
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),2200)}
+const card=p=>$(`[data-card="${p}"]`);
+
+function render(){
+  const s=getS(), prov=luzAiProv(s.aiProvider);
+  $$('#seg button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.p===prov?'true':'false'));
+  PS.forEach(p=>{
+    const c=card(p), k=$('[data-f="key"]',c), m=$('[data-f="model"]',c);
+    if(document.activeElement!==k) k.value=String(s[F[p].key]||'');
+    if(document.activeElement!==m) m.value=String(s[F[p].model]||'')||LUZ_AI[p].def;
+    m.placeholder=LUZ_AI[p].def;
+    $('.badge',c).hidden=p!==prov;
+    $('[data-a="del"]',c).disabled=!s[F[p].key];
+  });
+  const h=$('#segHint');
+  if(!s[F[prov].key]){h.className='hint warn';h.textContent='Ключа '+LUZ_AI[prov].name+' нет — вставьте его ниже, иначе ИИ в приложениях не заработает.'}
+  else if(prov==='deepseek'&&!s.aiKey){h.className='hint warn';h.textContent='Для чтения PDF и фото в Медкарте всё равно нужен ключ Gemini.'}
+  else {h.className='hint';h.textContent='Отвечает '+LUZ_AI[prov].name+'.'+(prov==='deepseek'?' PDF и фото в Медкарте по-прежнему читает Gemini.':'')}
+  const ts=+s._ts||0;
+  $('#driveHint').textContent=ts?'Последнее изменение: '+new Date(ts).toLocaleString('ru-RU',{day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'})+'.':'';
+}
+
+$$('#seg button').forEach(b=>b.onclick=()=>{
+  const p=b.dataset.p; if(luzAiProv(getS().aiProvider)===p) return;
+  if(setS({aiProvider:p==='deepseek'?'deepseek':''})){render();toast('Теперь отвечает '+LUZ_AI[p].name)}
+});
+PS.forEach(p=>{
+  const c=card(p), k=$('[data-f="key"]',c), m=$('[data-f="model"]',c), res=$('.res',c);
+  k.addEventListener('change',()=>{const v=k.value.trim(); k.value=v; if(v===String(getS()[F[p].key]||'')) return;
+    if(setS({[F[p].key]:v})){render();toast(v?'Ключ '+LUZ_AI[p].name+' сохранён':'Ключ '+LUZ_AI[p].name+' удалён')}});
+  m.addEventListener('change',()=>{let v=m.value.trim(); if(v===LUZ_AI[p].def) v=''; if(v===String(getS()[F[p].model]||'')){render();return}
+    if(setS({[F[p].model]:v})){render();toast('Модель: '+(v||LUZ_AI[p].def))}});
+  $('[data-a="eye"]',c).onclick=()=>{k.type=k.type==='password'?'text':'password'};
+  $('[data-a="del"]',c).onclick=()=>{
+    if(!confirm('Удалить ключ '+LUZ_AI[p].name+'? Он удалится и на других устройствах.')) return;
+    if(setS({[F[p].key]:''})){render();toast('Ключ '+LUZ_AI[p].name+' удалён')}
+  };
+  $('[data-a="test"]',c).onclick=async e=>{
+    const btn=e.currentTarget, key=k.value.trim(), model=m.value.trim()||LUZ_AI[p].def;
+    res.hidden=false; res.className='res'; res.textContent='Спрашиваю '+LUZ_AI[p].name+'…'; btn.disabled=true;
+    try{
+      const r=await luzAi({provider:p,key,model,contents:'Ответь одним словом: работает',temperature:0,maxTokens:2048});
+      res.className='res ok'; res.textContent='✓ '+LUZ_AI[p].name+' ответил: «'+r.text.slice(0,60)+'» · модель '+r.model;
+    }catch(er){res.className='res bad'; res.textContent=luzAiErr(er,p,model,'на этой странице')}
+    finally{btn.disabled=false}
+  };
+});
+/* правка в соседней вкладке */
+window.addEventListener('storage',e=>{if(e.key===LUZ_SHARED) render()});
+
+/* «Назад» — туда, откуда пришли (только свой сайт или свой файл) */
+(()=>{
+  const from=new URLSearchParams(location.search).get('from')||'', b=$('#back');
+  const ok=(/^\/(?!\/)/.test(from)&&location.protocol!=='file:')||(location.protocol==='file:'&&/^file:/.test(from));
+  if(ok) b.href=from;
+  else if(document.referrer&&new URL(document.referrer).origin===location.origin) b.href=document.referrer;
+  else b.href='/budget/';
+})();
+render();
+</script>
+</body>
+</html>

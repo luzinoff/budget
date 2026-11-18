@@ -299,7 +299,6 @@ input:focus,select:focus,textarea:focus,button:focus-visible,.chip:focus-visible
 .ask.wide{max-width:680px}
 .ask{max-height:calc(100vh - 40px);overflow-y:auto}
 .ask-fld{display:block;margin:0 0 10px}
-.ai-prov{margin:0 0 12px}
 .ask.edit .chips{gap:5px}
 .ask.edit .f-lab{margin:12px 0 6px}
 .ask.edit .ask-fld{margin-top:12px}
@@ -2213,7 +2212,11 @@ const luzShared={
   push(own){
     const ch={};
     for(const k of LUZ_FIELDS){const v=String(own[k]||'').trim(); if(v!==(this.seen[k]||'')) ch[k]=v}
-    if(Object.keys(ch).length){ this.set(ch); Object.assign(this.seen,ch) }
+    if(Object.keys(ch).length){
+      /* правка ключей или выбора ИИ — метка времени для слияния через Диск (luzSettingsSync) */
+      if(Object.keys(ch).some(k=>k!=='clientId')) ch._ts=Date.now();
+      this.set(ch); Object.assign(this.seen,ch)
+    }
   }
 };
 /* ===== Выбор ИИ: Gemini или DeepSeek (18.11.2026) =====
@@ -2304,6 +2307,57 @@ function luzAiErr(e,provider,model,where){
   if(/^EMPTY/.test(m)) return `${n} вернул пустой ответ`+(m.includes(':')?' ('+m.split(':')[1]+')':'')+'. Попробуйте ещё раз.';
   return `Ошибка ${n}: ${m}`;
 }
+/* ===== Общие настройки ИИ на Google Диске и общая страница настроек (18.11.2026) =====
+   Ключи, модели и выбор ИИ (без Client ID — без него до Диска не достучаться)
+   лежат ещё и в файле luz-settings.json в скрытой папке приложений на Диске
+   (appDataFolder). Client ID у трёх приложений один, поэтому и папка одна:
+   ввели ключ на одном устройстве — после входа в Google он появится на всех.
+   Слияние целиком по времени правки luz.shared.v1._ts: новее — побеждает.
+   _ts ставят luzShared.push() и страница настроек; у старых записей _ts нет
+   (0), тогда побеждает Диск, а если там пусто — уходит здешнее.
+   Менять ключи и модели — только на странице LUZ_SETTINGS_URL (одна на три
+   приложения); кнопки ⚙ в приложениях ведут туда. Этот блок одинаковый во всех
+   трёх файлах. */
+const LUZ_SYNC_FIELDS=['aiKey','aiModel','aiProvider','dsKey','dsModel'], LUZ_FILE='luz-settings.json';
+const LUZ_SETTINGS_URL='/budget/settings.html';
+function luzOpenSettings(){
+  /* с диска (file://) — соседняя папка Budget, на сайте — общий адрес */
+  const file=location.protocol==='file:';
+  location.href=(file?'../Budget/settings.html':LUZ_SETTINGS_URL)+'?from='+encodeURIComponent(file?location.href:location.pathname+location.search+location.hash);
+}
+/* tok — токен Google с доступом drive.appdata. true — пришли настройки с Диска
+   (luz.shared.v1 обновлён, приложению надо подхватить их у себя). */
+async function luzSettingsSync(tok){
+  if(!tok) return false;
+  const H={Authorization:'Bearer '+tok};
+  const q=encodeURIComponent("name='"+LUZ_FILE+"' and trashed=false");
+  const lr=await fetch('https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&orderBy=createdTime&fields=files(id)&q='+q,{headers:H});
+  if(!lr.ok) throw new Error('luz-settings: Диск ответил '+lr.status);
+  const files=((await lr.json()).files)||[], id=files[0]&&files[0].id||null;
+  let remote=null;
+  if(id){
+    const r=await fetch('https://www.googleapis.com/drive/v3/files/'+id+'?alt=media',{headers:H});
+    if(r.ok){ try{ const j=await r.json(); if(j&&typeof j==='object') remote=j }catch(e){} }
+  }
+  const local=luzShared.get(), lts=+local._ts||0, rts=remote?(+remote._ts||0):0;
+  if(remote&&rts>lts){
+    const p={_ts:rts}; for(const k of LUZ_SYNC_FIELDS) p[k]=String(remote[k]||'');
+    luzShared.set(p); return true;
+  }
+  if(remote&&rts===lts) return false;
+  if(!remote&&!LUZ_SYNC_FIELDS.some(k=>local[k])) return false;
+  const data={_ts:lts||Date.now()}; for(const k of LUZ_SYNC_FIELDS) data[k]=String(local[k]||'');
+  if(!lts) luzShared.set({_ts:data._ts});
+  const meta=id?{}:{name:LUZ_FILE,parents:['appDataFolder']}, b='luz'+Date.now().toString(36);
+  const body='--'+b+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+JSON.stringify(meta)+
+    '\r\n--'+b+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+JSON.stringify(data)+'\r\n--'+b+'--';
+  const w=await fetch('https://www.googleapis.com/upload/drive/v3/files'+(id?'/'+id:'')+'?uploadType=multipart',
+    {method:id?'PATCH':'POST',headers:{...H,'Content-Type':'multipart/related; boundary='+b},body});
+  if(!w.ok) throw new Error('luz-settings: Диск ответил '+w.status);
+  /* лишние копии (два устройства создали файл одновременно) убираем */
+  await Promise.all(files.slice(1).map(f=>fetch('https://www.googleapis.com/drive/v3/files/'+f.id,{method:'DELETE',headers:H}).catch(()=>{})));
+  return false;
+}
 /* Бюджет хранит эти настройки отдельными ключами; переводим туда-обратно.
    Литералы, а не CID_KEY/AI_KEY_LS: часть констант объявлена ниже. */
 function luzBudgetOwn(){
@@ -2318,6 +2372,14 @@ function luzBudgetApply(v){
   put("budget.ai.provider",v.aiProvider==="deepseek"?"deepseek":""); put("budget.ds.key",v.dsKey); put("budget.ds.model",v.dsModel);
 }
 luzBudgetApply(luzShared.pull(luzBudgetOwn()));
+/* общие настройки поменялись: в соседней вкладке или пришли с Диска */
+function luzBudgetOnShared(){
+  const before = SYNC.cid;
+  luzBudgetApply(luzShared.pull(luzBudgetOwn()));
+  SYNC.cid = (localStorage.getItem(CID_KEY)||"").trim();
+  if(SYNC.cid !== before){ SYNC.token = null; SYNC.exp = 0; }
+  try{ syncUI(); aiRenderCard(); }catch(_){}
+}
 
 /* ================= синхронизация с Google Диском ================= */
 const SYNC = {
@@ -2578,6 +2640,8 @@ function syncNow(interactive){
     })
     .then(()=>{
       if(stale()){ SYNC.busy = false; SYNC.pending = false; syncUI(); return; }
+      /* общие ключи и выбор ИИ — отдельным файлом на том же Диске; сбой тут обмен не срывает */
+      luzSettingsSync(tok).then(c=>{ if(c) luzBudgetOnShared(); }).catch(()=>{});
       try{ localStorage.setItem(SEEN_KEY, String(nowTs())); }catch(e){}
       SYNC.busy = false; SYNC.fails = 0;
       /* Перерисовываем только если данные и правда изменились: render()
@@ -3418,63 +3482,8 @@ function aiSheet(build, wide){
 }
 function aiEl(tag, cls, text){ const e = document.createElement(tag); if(cls) e.className = cls; if(text!=null) e.textContent = text; return e; }
 
-function aiSettings(){
-  aiSheet((box, close)=>{
-    const PS = ["gemini","deepseek"], fld = {};
-    let prov = aiProv();
-    box.appendChild(aiEl("h3", "", "ИИ для разборов и вопросов"));
-    const chips = aiEl("div", "chips ai-prov");
-    PS.forEach(p=>{
-      const b = aiEl("button", "chip", LUZ_AI[p].name); b.type = "button";
-      b.onclick = ()=>{ prov = p; sync(); };
-      chips.appendChild(b); fld[p] = {b};
-    });
-    box.appendChild(chips);
-    PS.forEach(p=>{
-      const wrap = aiEl("div", "");
-      const kl = aiEl("label", "ask-fld"); kl.appendChild(aiEl("span", "", "Ключ "+LUZ_AI[p].name+" API"));
-      const ki = document.createElement("input"); ki.type = "password"; ki.autocomplete = "off"; ki.spellcheck = false;
-      ki.placeholder = LUZ_AI[p].keyHint; ki.value = aiKeyOf(p); kl.appendChild(ki);
-      const ml = aiEl("label", "ask-fld"); ml.appendChild(aiEl("span", "", "Модель"));
-      const mi = document.createElement("input"); mi.type = "text"; mi.spellcheck = false; mi.value = aiModelOf(p); ml.appendChild(mi);
-      wrap.append(kl, ml); box.appendChild(wrap);
-      Object.assign(fld[p], {wrap, ki, mi});
-    });
-    const note = aiEl("p", "ask-sub", ""); box.appendChild(note);
-    const bar = aiEl("div", "ask-bar three");
-    const del = aiEl("button", "btn ghost", "Удалить ключ");
-    const no = aiEl("button", "btn ghost", "Отмена");
-    const ok = aiEl("button", "btn", "Сохранить");
-    bar.append(del, no, ok); box.appendChild(bar);
-    function sync(){
-      PS.forEach(p=>{ fld[p].b.setAttribute("aria-pressed", p===prov ? "true" : "false"); fld[p].wrap.hidden = p!==prov; });
-      del.disabled = !aiKeyOf(prov);
-      note.textContent = (prov==="deepseek"
-        ? "DeepSeek дешевле Gemini, но хранит запросы в Китае и по умолчанию может учиться на них. "
-        : "")
-        + "Ключ хранится только в этом браузере: на Google Диск и в резервные копии он не попадает, на каждом устройстве его вводят отдельно. "
-        + "Выбор ИИ общий для Бюджета, Дневника и Медкарты; PDF и фото в Медкарте всегда читает Gemini.";
-    }
-    sync();
-    no.onclick = close;
-    del.onclick = ()=>{
-      try{ localStorage.removeItem(prov==="deepseek" ? DS_KEY_LS : AI_KEY_LS); }catch(e){}
-      luzShared.push(luzBudgetOwn()); close(); aiRenderCard(); toast("Ключ "+LUZ_AI[prov].name+" удалён");
-    };
-    ok.onclick = ()=>{
-      try{
-        [["gemini", AI_KEY_LS, AI_MODEL_LS], ["deepseek", DS_KEY_LS, DS_MODEL_LS]].forEach(([p, kk, mk])=>{
-          const k = fld[p].ki.value.trim(), m = fld[p].mi.value.trim();
-          if(k) localStorage.setItem(kk, k); else localStorage.removeItem(kk);
-          if(m && m !== LUZ_AI[p].def) localStorage.setItem(mk, m); else localStorage.removeItem(mk);
-        });
-        if(prov==="deepseek") localStorage.setItem(AI_PROV_LS, "deepseek"); else localStorage.removeItem(AI_PROV_LS);
-      }catch(e){ toast("Не удалось сохранить настройки"); return; }
-      luzShared.push(luzBudgetOwn());
-      close(); aiRenderCard(); toast("Настройки сохранены: работает "+aiName());
-    };
-  });
-}
+/* Ключи, модели и выбор ИИ — на общей странице настроек трёх приложений */
+function aiSettings(){ luzOpenSettings(); }
 function aiPreview(y, m){
   aiSheet((box, close)=>{
     box.appendChild(aiEl("h3", "", "Что отправится в "+aiName()));
@@ -5314,11 +5323,7 @@ function capAiMigrate(){
   /* Общие настройки поменяли в дневнике или медкарте (в соседней вкладке) */
   window.addEventListener("storage", e=>{
     if(e.key !== LUZ_SHARED) return;
-    const before = SYNC.cid;
-    luzBudgetApply(luzShared.pull(luzBudgetOwn()));
-    SYNC.cid = (localStorage.getItem(CID_KEY)||"").trim();
-    if(SYNC.cid !== before){ SYNC.token = null; SYNC.exp = 0; }
-    try{ syncUI(); aiRenderCard(); }catch(_){}
+    luzBudgetOnShared();
   });
   window.addEventListener("storage", e=>{
     if(e.key !== AUTH_KEY) return;

@@ -2,10 +2,11 @@
    Меняйте CACHE при выкладке новой версии — старый кэш будет удалён. */
 "use strict";
 
-const CACHE = "budget-v44";
+const CACHE = "budget-v45";
 const ASSETS = [
   "./",
   "./index.html",
+  "./settings.html",
   "./manifest.webmanifest",
   "./icon.svg",
   "./icon-maskable.svg"
@@ -42,11 +43,14 @@ self.addEventListener("fetch", e=>{
           // кэшируем только удачный ответ — иначе страница ошибки затрёт рабочую копию
           if(r && r.ok && r.type === "basic"){
             const copy = r.clone();
-            caches.open(CACHE).then(c=> c.put("./index.html", copy));
+            /* страница настроек ИИ кэшируется под своим адресом — иначе затёрла бы index.html */
+            const key = /\/settings\.html$/.test(url.pathname) ? "./settings.html" : "./index.html";
+            caches.open(CACHE).then(c=> c.put(key, copy));
           }
           return r;
         })
-        .catch(()=> caches.match("./index.html").then(r=> r || caches.match("./")))
+        .catch(()=> (/\/settings\.html$/.test(url.pathname) ? caches.match("./settings.html") : Promise.resolve(null))
+          .then(r=> r || caches.match("./index.html")).then(r=> r || caches.match("./")))
     );
     return;
   }
