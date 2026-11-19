@@ -500,6 +500,47 @@ input.lit{animation:lit 1.8s ease-out}
   width:100%;padding:4px 6px;border:1px solid var(--line);border-radius:5px;
   font-size:13px;background:var(--paper);color:var(--ink);
 }
+/* ---------- сверка с выпиской BIDV ---------- */
+.bidv-dialog.recon{max-width:880px;max-height:92vh}
+.rc-head{display:flex;align-items:center;gap:10px}
+.rc-head .rc-title{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.rc-head small{font-size:12.5px;font-weight:500;color:var(--ink-3)}
+.rc-x{border:0;background:var(--paper);color:var(--ink-2);width:34px;height:34px;border-radius:50%;font-size:20px;line-height:1;cursor:pointer;flex:0 0 auto}
+.rc-sum{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.rc-pill{font-size:13px;font-weight:600;padding:5px 10px;border-radius:999px;background:var(--paper);color:var(--ink-2)}
+.rc-pill.bad{background:#FBEDEB;color:var(--danger)} .rc-pill.good{background:#E6F2EA;color:var(--ok)}
+.rc-sec{border:1px solid var(--line);border-radius:12px;margin:10px 0;overflow:hidden}
+.rc-sec > summary{padding:11px 12px;font-weight:650;font-size:14.5px;cursor:pointer;display:flex;gap:8px;align-items:center;color:var(--ink)}
+.rc-sec > summary .rc-n{margin-left:auto;font-variant-numeric:tabular-nums;color:var(--ink-3);font-weight:600}
+.rc-sec.hot > summary .rc-n{color:var(--danger)}
+.rc-hint{font-size:12.5px;color:var(--ink-3);padding:0 12px 10px;line-height:1.45}
+.rc-row{padding:9px 12px;border-top:1px solid var(--line);font-size:13.5px}
+.rc-line{display:flex;gap:8px;align-items:baseline;min-width:0}
+.rc-line + .rc-line{margin-top:3px}
+.rc-tag{font-size:10.5px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.03em;width:50px;flex:0 0 auto}
+.rc-w{color:var(--ink-3);font-variant-numeric:tabular-nums;flex:0 0 auto;white-space:nowrap}
+.rc-nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink)}
+.rc-a{font-weight:650;font-variant-numeric:tabular-nums;white-space:nowrap}
+.rc-a.in{color:var(--ok)}
+.rc-why{color:var(--danger);font-size:12.5px;margin-top:5px;line-height:1.4}
+.rc-act,.rc-form{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;align-items:center}
+.rc-act .btn,.rc-form .btn{padding:6px 11px;font-size:13px;border-radius:9px}
+.rc-form select,.rc-form input{width:auto;flex:1 1 170px;padding:7px 9px;font-size:14px;border-radius:9px}
+.rc-cand{border-left:3px solid var(--line);padding:6px 0 6px 9px;margin-top:6px}
+.rc-bal{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+.rc-bal th{text-align:right;font-weight:600;color:var(--ink-3);padding:6px 8px;border-bottom:1px solid var(--line)}
+.rc-bal td{text-align:right;padding:6px 8px;border-bottom:1px solid var(--line)}
+.rc-bal th:first-child,.rc-bal td:first-child{text-align:left}
+.rc-bal td.neg{color:var(--danger);font-weight:650} .rc-bal td.pos{color:var(--ok);font-weight:650}
+.rc-start{padding:8px 12px;border-top:1px solid var(--line);font-size:13.5px}
+@media (max-width:600px){
+  .rc-tag{display:none}
+  .rc-line{flex-wrap:wrap;row-gap:0}
+  .rc-nm{flex-basis:100%;order:3;white-space:normal}
+  .rc-a{margin-left:auto}
+  .rc-bal th:nth-child(5),.rc-bal td:nth-child(5){display:none}
+  .rc-bal th,.rc-bal td{padding:6px 4px}
+}
 /* На телефоне таблица превращается в карточки: чекбокс, дата и сумма в строку,
    комментарий и категория — под ними во всю ширину. */
 @media (max-width:600px){
@@ -743,6 +784,14 @@ textarea.chat-in{min-height:76px;resize:vertical;margin:8px 0 10px;font:inherit;
     <div class="chips" id="wal-day" style="padding:4px 14px 6px"></div>
     <div id="l-cash"></div>
     <div class="note" id="wal-note"></div>
+  </div>
+  <div class="card">
+    <h2 class="card-h">Сверка с банком<button class="link-btn" id="recon-again" hidden>Открыть сверку</button></h2>
+    <div class="form">
+      <div class="note" style="padding:0 0 10px">Загрузите выписку BIDV (файл .xlsx из приложения банка) — будет видно, где записи расходятся с банком. Записи меняются только по вашей кнопке.</div>
+      <button class="btn ghost sm" id="recon-load">Загрузить выписку BIDV</button>
+      <input type="file" id="recon-file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
+    </div>
   </div>
 </section>
 
@@ -1074,6 +1123,19 @@ function bidvImportedList(v){
 function mergeBidvImported(a, b){
   return bidvImportedList({bidvImported:[].concat(a||[], b||[])});
 }
+/* Операции выписки, которые при сверке велели не учитывать (проценты и т. п.).
+   Возврат в сверку — та же запись с del: побеждает более свежая метка. */
+function reconSkipList(v){
+  const by = new Map();
+  (isObj(v) && Array.isArray(v.reconSkip) ? v.reconSkip : []).forEach(x=>{
+    const ref = x && typeof x.ref==="string" ? x.ref.slice(0,120) : "";
+    const ts = num0(x && x.ts);
+    if(!ref || !ts) return;
+    const p = by.get(ref);
+    if(!p || ts > p.ts) by.set(ref, {ref, ts, del: x.del ? 1 : 0});
+  });
+  return Array.from(by.values());
+}
 
 function fix(m){
   if(!isObj(m)) return EMPTY();
@@ -1099,7 +1161,9 @@ function fix(m){
             ts: oldBidvTs ? rawTs*1000 : rawTs, // время последнего изменения
             // время операции; мусор < 1e11 (наследие той ошибки) обнуляем
             opTs: (rawOp >= 1e11 ? rawOp : 0) || (oldBidvTs ? rawTs*1000 : 0),
-            del: num0(x.del)          // 0 = живая, иначе момент удаления
+            del: num0(x.del),         // 0 = живая, иначе момент удаления
+            // связь с операцией выписки BIDV (сверка): код операции, «код!» — разница принята, «-» — в банке нет
+            ...(x.bref ? {bref: String(x.bref).slice(0,120)} : {})
           };
         })
       : [];
@@ -1175,7 +1239,8 @@ function mergeDB(a, b){
     if(k === META_KEY){
       const ma = isObj(a) && isObj(a[k]) ? a[k] : {};
       const mb = isObj(b) && isObj(b[k]) ? b[k] : {};
-      out[k] = {bidvImported: mergeBidvImported(ma.bidvImported, mb.bidvImported), ai: aiStoreMerge(ma.ai, mb.ai), cap: capMerge(ma.cap, mb.cap), chats: chatsMerge(ma.chats, mb.chats),
+      out[k] = {bidvImported: mergeBidvImported(ma.bidvImported, mb.bidvImported),
+                reconSkip: reconSkipList({reconSkip:[].concat(ma.reconSkip||[], mb.reconSkip||[])}), ai: aiStoreMerge(ma.ai, mb.ai), cap: capMerge(ma.cap, mb.cap), chats: chatsMerge(ma.chats, mb.chats),
                 v1: [String(ma.v1||""), String(mb.v1||"")].sort().pop()};
       return;
     }
@@ -2856,6 +2921,12 @@ function bidvShowDialog(transactions){
   `;
 
   const tbody = table.querySelector("tbody");
+  const known = new Set();   // коды операций, уже связанных с записями (сверка, прежний импорт)
+  Object.keys(DB).forEach(k=>{
+    if(MKEY_RE.test(k) && isObj(DB[k])) ["vnd","topup"].forEach(l=> (Array.isArray(DB[k][l]) ? DB[k][l] : []).forEach(x=>{
+      if(x && !x.del && x.bref && x.bref!==RECON_KEEP) known.add(String(x.bref).replace(/!$/, ""));
+    }));
+  });
   transactions.forEach((tr,i)=>{
     const row = document.createElement("tr");
     const monthName = MONTHS[tr.month];
@@ -2883,6 +2954,12 @@ function bidvShowDialog(transactions){
     `;
     // Устанавливаем значение через JavaScript, чтобы избежать проблем с экранированием
     row.querySelector(".bidv-merch").value = tr.recipient;
+    // уже добавлена из выписки при сверке — по умолчанию не отмечаем, чтобы не задвоить
+    if(known.has(tr.ref)){
+      row.querySelector(".bidv-row-check").checked = false;
+      row.style.opacity = ".55";
+      row.title = "Эта операция уже есть в бюджете — добавлена при сверке с выпиской";
+    }
     if(tr.foreign){
       row.classList.add("fx");
       const fx = tr.foreign.amt.replace(".", ",") + " " + tr.foreign.cur;
@@ -3001,7 +3078,8 @@ function bidvAddSelected(transactions, overlay){
       pay: "Карта BIDV",
       ts: now, // время изменения записи для синхронизации
       opTs: tr.opTs, // фактическое время операции из JSON
-      del: 0
+      del: 0,
+      bref: tr.ref   // код операции: по нему сверка с выпиской найдёт пару сразу
     });
 
     imported.push({ref: tr.file, ts: now});
@@ -3070,6 +3148,622 @@ function p2pSplit(m, rec, part, asset, keptNote){
                cat:SAV, pay:asset||"", ts:now, opTs:rec.opTs||0, del:0};
   m.rub.push(sav);
   return sav;
+}
+
+/* ========== Сверка с выпиской BIDV (xlsx) ==========
+   Выписка читается в браузере, никуда не отправляется и хранится только в
+   памяти вкладки (RECON). Сопоставление ничего не меняет: любая правка
+   записи — только по нажатию кнопки в окне сверки.
+   Связь записи с операцией банка — поле bref записи:
+     «КОД»  — связана вручную (или при импорте из письма: код письма = код выписки);
+     «КОД!» — связана, расхождение суммы принято;
+     «-»    — операции в банке нет, и так и должно быть.
+   Операции банка, которые велели не учитывать, — DB._meta.reconSkip. */
+const RECON_KEEP = "-";
+let RECON = null;
+
+/* Минимальный разбор zip (xlsx — это zip с XML внутри) без библиотек:
+   deflate распаковывает сам браузер через DecompressionStream. */
+async function reconUnzip(buf, want){
+  const u8 = new Uint8Array(buf), dv = new DataView(buf), dec = new TextDecoder();
+  let e = -1;
+  for(let i = u8.length-22; i >= Math.max(0, u8.length-65557); i--){
+    if(dv.getUint32(i, true)===0x06054b50){ e = i; break; }
+  }
+  if(e < 0) throw new Error("Это не файл .xlsx");
+  const n = dv.getUint16(e+10, true);
+  let p = dv.getUint32(e+16, true);
+  const out = {};
+  for(let i=0; i<n; i++){
+    if(dv.getUint32(p, true)!==0x02014b50) break;
+    const method = dv.getUint16(p+10, true), csize = dv.getUint32(p+20, true);
+    const nl = dv.getUint16(p+28, true), xl = dv.getUint16(p+30, true), cl = dv.getUint16(p+32, true);
+    const off = dv.getUint32(p+42, true);
+    const name = dec.decode(u8.subarray(p+46, p+46+nl));
+    p += 46 + nl + xl + cl;
+    if(!want(name)) continue;
+    const start = off + 30 + dv.getUint16(off+26, true) + dv.getUint16(off+28, true);
+    const raw = u8.subarray(start, start + csize);
+    let data;
+    if(method===0) data = raw;
+    else if(method===8){
+      if(typeof DecompressionStream==="undefined") throw new Error("Браузер не умеет открывать .xlsx — обновите его");
+      data = new Uint8Array(await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream("deflate-raw"))).arrayBuffer());
+    } else continue;
+    out[name] = dec.decode(data);
+  }
+  return out;
+}
+/* Первый лист: массив строк {A:…, B:…}; строки — уже текстом */
+function reconSheet(files){
+  const P = new DOMParser();
+  const ss = [];
+  if(files["xl/sharedStrings.xml"]){
+    const d = P.parseFromString(files["xl/sharedStrings.xml"], "application/xml");
+    Array.from(d.getElementsByTagName("si")).forEach(si=>{
+      // фонетические подсказки (rPh) пропускаем
+      ss.push(Array.from(si.getElementsByTagName("t")).filter(t=> !t.parentNode || t.parentNode.nodeName!=="rPh").map(t=> t.textContent).join(""));
+    });
+  }
+  const name = Object.keys(files).filter(n=> /^xl\/worksheets\/sheet\d+\.xml$/.test(n))
+    .sort((a,b)=> parseInt(a.replace(/\D/g,""),10) - parseInt(b.replace(/\D/g,""),10))[0];
+  if(!name) throw new Error("В файле нет листа с данными");
+  const d = P.parseFromString(files[name], "application/xml");
+  return Array.from(d.getElementsByTagName("row")).map(r=>{
+    const o = {};
+    Array.from(r.getElementsByTagName("c")).forEach(c=>{
+      const col = (c.getAttribute("r")||"").replace(/\d+/g, "");
+      const t = c.getAttribute("t"), v = c.getElementsByTagName("v")[0];
+      let val;
+      if(t==="inlineStr") val = Array.from(c.getElementsByTagName("t")).map(x=> x.textContent).join("");
+      else if(!v) return;
+      else if(t==="s") val = ss[+v.textContent] || "";
+      else val = v.textContent;
+      if(col) o[col] = String(val);
+    });
+    return o;
+  });
+}
+const reconColN = c=> c.split("").reduce((n,ch)=> n*26 + ch.charCodeAt(0) - 64, 0);
+const reconOrd = (y,m,d)=> Math.round(Date.UTC(y,m,d)/864e5);
+const reconClean = s=> String(s==null ? "" : s).replace(/_x000D_/g, " ").replace(/\s+/g, " ").trim();
+const reconNum = s=>{ const n = parseFloat(String(s==null ? "" : s).replace(/[\s,]/g, "")); return isFinite(n) ? n : 0; };
+/* Дата из выписки: «27/08/2026 19:16:14» или число Excel; время — Вьетнам */
+function reconWhen(v){
+  const s = String(v==null ? "" : v).trim();
+  const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
+  if(m) return parseBidvDateTime(`${m[3]}-${m[2]}-${m[1]} ${m[4]||0}:${m[5]||"00"}:${m[6]||"00"}`);
+  const n = Number(s);
+  if(s && isFinite(n) && n > 20000 && n < 80000){
+    const loc = Math.round((n - 25569) * 864e5), dt = new Date(loc);
+    return {year:dt.getUTCFullYear(), month:dt.getUTCMonth(), day:dt.getUTCDate(), opTs: loc - 7*3600e3};
+  }
+  return null;
+}
+/* Значение справа от подписи: «Từ ngày/ From Date:» → следующая непустая ячейка строки */
+function reconLabel(rows, re){
+  for(const r of rows){
+    const cols = Object.keys(r).sort((a,b)=> reconColN(a) - reconColN(b));
+    const i = cols.findIndex(c=> re.test(r[c]));
+    if(i < 0) continue;
+    for(let j=i+1; j<cols.length; j++) if(String(r[cols[j]]).trim()) return String(r[cols[j]]).trim();
+  }
+  return "";
+}
+
+function reconParse(rows){
+  // столбцы — по английской строке заголовка, на случай если банк их переставит
+  const COLS = {date:/\(Trans\.?\s*Date\)/i, code:/\(Trans\.?\s*Code\)/i, deb:/\(Debit/i, cred:/\(Credit/i,
+    bal:/\(Balance\)/i, desc:/Txn\.?\s*Description/i, name:/Correspondent Name/i, ref:/Reference number/i};
+  const col = {date:"C", code:"E", deb:"F", cred:"G", bal:"H", desc:"L", name:"N", ref:"P"};
+  let hdr = -1;
+  rows.forEach((r,i)=>{
+    if(hdr >= 0) return;
+    const vals = Object.keys(r);
+    if(vals.some(c=> COLS.date.test(r[c]))){
+      hdr = i;
+      Object.keys(COLS).forEach(k=>{ const c = vals.find(c=> COLS[k].test(r[c])); if(c) col[k] = c; });
+    }
+  });
+  const lines = [];
+  rows.forEach((r,i)=>{
+    if(i <= hdr) return;
+    const post = reconWhen(r[col.date]);
+    if(!post) return;
+    const deb = reconNum(r[col.deb]), cred = reconNum(r[col.cred]);
+    if(!(deb > 0) && !(cred > 0)) return;
+    const desc = reconClean(r[col.desc]);
+    let name = reconClean(r[col.name]), when = post, appr = "";
+    // оплата картой: «Retail-карта-[RRN-]код-ГГГГ-ММ-ДД ЧЧ:ММ:СС-мерчант»; время в описании — UTC
+    const rt = desc.match(/^Retail-[^-]*-(?:\d{9,}-)?(\d{6})-(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})-(.*)$/);
+    if(rt){
+      appr = rt[1];
+      const ms = Date.UTC(+rt[2], +rt[3]-1, +rt[4], +rt[5], +rt[6], +rt[7]), v = new Date(ms + 7*3600e3);
+      when = {year:v.getUTCFullYear(), month:v.getUTCMonth(), day:v.getUTCDate(), opTs:ms};
+      if(!name) name = rt[8].replace(/-[A-Z0-9]{10,}\s*$/, "").trim();
+    }
+    if(!name) name = desc.length > 60 ? desc.slice(0,60)+"…" : desc;
+    lines.push({ref: reconClean(r[col.ref]), code: reconClean(r[col.code]), post, when, appr,
+      side: deb > 0 ? "out" : "in", amount: Math.round(deb > 0 ? deb : cred), bal: Math.round(reconNum(r[col.bal])),
+      name, desc, postOrd: reconOrd(post.year, post.month, post.day)});
+  });
+  if(!lines.length) throw new Error("В файле не нашлось операций — это точно выписка BIDV?");
+
+  // оплата в валюте приходит двумя строками (сумма и комиссия) с одним кодом — это одна операция
+  const ops = [], byAppr = new Map();
+  lines.forEach(l=>{
+    const g = l.appr ? byAppr.get(l.appr + "|" + l.when.opTs) : null;
+    if(g && g.side===l.side){ g.lines.push(l); g.amount += l.amount; if(l.ref) g.refs.push(l.ref); return; }
+    const o = {key: l.ref || ("t" + l.post.opTs + "-" + l.amount), refs: l.ref ? [l.ref] : [], appr: l.appr,
+      side: l.side, amount: l.amount, when: l.when, post: l.post, name: l.name, desc: l.desc, lines: [l],
+      ord: reconOrd(l.when.year, l.when.month, l.when.day)};
+    // что пишем в bref: у оплаты картой — код подтверждения, как в письме BIDV
+    o.link = l.appr || o.key;
+    ops.push(o);
+    if(l.appr) byAppr.set(l.appr + "|" + l.when.opTs, o);
+  });
+
+  const first = lines[0].post, last = lines[lines.length-1].post;
+  const from = reconWhen(reconLabel(rows, /From Date/i)) || first;
+  const to = reconWhen(reconLabel(rows, /To Date/i));
+  const prt = reconWhen(reconLabel(rows, /Prt Date|Ngày in/i));
+  // конец сверяемого периода: «по дату» выписки, но не позже момента печати
+  let cutTs = to ? to.opTs : last.opTs;
+  if(prt && prt.opTs < cutTs) cutTs = prt.opTs;
+  if(cutTs < last.opTs) cutTs = last.opTs;
+  const cv = new Date(cutTs + 7*3600e3);
+  const openRow = rows.find(r=> Object.keys(r).some(c=> /đầu kỳ|Opening balance/i.test(r[c])) && String(r[col.bal]||"").trim()!=="");
+  const closeRow = rows.find(r=> Object.keys(r).some(c=> /cuối kỳ|Closing balance/i.test(r[c])) && String(r[col.bal]||"").trim()!=="");
+  const fromOrd = Math.min(reconOrd(from.year, from.month, from.day), lines[0].postOrd);
+  return {lines, ops, acc: reconLabel(rows, /Account No/i).replace(/\s/g, ""),
+    from, fromOrd, cutTs, cutOrd: reconOrd(cv.getUTCFullYear(), cv.getUTCMonth(), cv.getUTCDate()),
+    cutDate: {year:cv.getUTCFullYear(), month:cv.getUTCMonth(), day:cv.getUTCDate()},
+    opening: openRow ? Math.round(reconNum(openRow[col.bal])) : (lines[0].bal - (lines[0].side==="in" ? lines[0].amount : -lines[0].amount)),
+    closing: closeRow ? Math.round(reconNum(closeRow[col.bal])) : lines[lines.length-1].bal};
+}
+
+/* Записи приложения вокруг периода выписки (±5 дней — для поиска «похожих»).
+   bidv — запись, которая должна быть в выписке: трата картой BIDV, внесение на
+   карту (в том числе обмен наличные → карта) и обмен карта → наличные. */
+function reconApp(st){
+  const all = [];
+  Object.keys(DB).forEach(k=>{
+    if(!MKEY_RE.test(k) || !isObj(DB[k])) return;
+    const y = +k.slice(0,4), mo = +k.slice(5)-1, m = fix(DB[k]);
+    ["vnd","topup"].forEach(list=>{
+      m[list].forEach(x=>{
+        if(x.del) return;
+        const ord = reconOrd(y, mo, x.day);
+        if(ord < st.fromOrd-5 || ord > st.cutOrd+5) return;
+        let side = "out", bidv = false, lab = x.cat || "Без категории";
+        if(list==="vnd") bidv = x.pay===BIDV_PAY;
+        else {
+          const xf = isXfer(x);
+          lab = xf ? xferLabel(x) : "Внесение";
+          if(topWallet(x)==="bidv"){ side = "in"; bidv = true; }
+          else if(xf){ side = "out"; bidv = true; }   // сняли с карты в наличные
+          else side = "in";
+        }
+        const after = ord > st.cutOrd || (ord===st.cutOrd && (!x.opTs || x.opTs > st.cutTs));
+        all.push({k, list, id:x.id, y, mo, day:x.day, ord, side, bidv, amount:x.amount, opTs:x.opTs,
+          bref: x.bref||"", lab, pay:x.pay, note:x.note, inRange: ord >= st.fromOrd && !after});
+      });
+    });
+  });
+  return all;
+}
+const reconTol = a=> Math.max(1000, Math.round(a*0.05));
+
+function reconMatch(st){
+  const app = reconApp(st);
+  const skip = new Set(reconSkipList(DB[META_KEY]).filter(x=> !x.del).map(x=> x.ref));
+  const byKey = new Map();
+  st.ops.forEach(o=>{ byKey.set(o.key, o); o.refs.forEach(r=> byKey.set(r, o)); if(o.appr && !byKey.has(o.appr)) byKey.set(o.appr, o); });
+  const res = {ok:[], diff:[], bank:[], app:[], kept:[], skipped:[], all:app};
+  const usedA = new Set(), usedB = new Set();
+
+  // 0. уже связанные записи (вручную или по коду из письма)
+  const linked = new Map();
+  app.forEach(a=>{
+    if(!a.bref) return;
+    if(a.bref===RECON_KEEP){ if(a.inRange){ res.kept.push(a); usedA.add(a); } return; }
+    const key = a.bref.replace(/!$/, ""), o = byKey.get(key);
+    if(!o || usedB.has(o) && !linked.has(o)) return;
+    if(key===o.appr && key!==o.key && Math.abs(a.ord - o.ord) > 5) return;   // код карты мог повториться
+    if(!linked.has(o)) linked.set(o, []);
+    linked.get(o).push(a); usedA.add(a);
+  });
+  linked.forEach((recs, o)=>{
+    usedB.add(o);
+    const s = recs.reduce((t,a)=> t + a.amount, 0);
+    const okd = s===o.amount || recs.some(a=> /!$/.test(a.bref));
+    (okd ? res.ok : res.diff).push({o, recs, linked:true});
+  });
+  st.ops.forEach(o=>{ if(!usedB.has(o) && (skip.has(o.key) || o.refs.some(r=> skip.has(r)))){ usedB.add(o); res.skipped.push(o); } });
+
+  const exp = app.filter(a=> a.bidv && a.inRange && !usedA.has(a));
+  const free = o=> exp.filter(a=> !usedA.has(a) && a.side===o.side);
+  const take = (o, recs, list)=>{ usedB.add(o); recs.forEach(a=> usedA.add(a)); list.push({o, recs}); };
+
+  // 1. точное: сумма и время операции (±3 мин)
+  st.ops.forEach(o=>{
+    if(usedB.has(o)) return;
+    let best = null, bd = 180001;
+    free(o).forEach(a=>{
+      if(a.amount!==o.amount || !a.opTs) return;
+      const d = Math.abs(a.opTs - o.when.opTs);
+      if(d < bd){ bd = d; best = a; }
+    });
+    if(best) take(o, [best], res.ok);
+  });
+  // 2. сумма и день (±1); сначала тот же день
+  [0, 1].forEach(maxD=>{
+    st.ops.forEach(o=>{
+      if(usedB.has(o)) return;
+      const c = free(o).filter(a=> a.amount===o.amount && Math.abs(a.ord - o.ord) <= maxD)
+        .sort((a,b)=> (!!a.opTs - !!b.opTs) || Math.abs(a.ord-o.ord) - Math.abs(b.ord-o.ord));
+      if(c.length) take(o, [c[0]], maxD ? res.diff : res.ok);
+    });
+  });
+  // 3. одна операция банка = 2–3 записи в тот же день (покупка «за себя» и «за Свету»)
+  st.ops.forEach(o=>{
+    if(usedB.has(o)) return;
+    const c = free(o).filter(a=> Math.abs(a.ord - o.ord) <= 1 && a.amount < o.amount).slice(0, 14);
+    let hit = null;
+    for(let i=0; i<c.length && !hit; i++) for(let j=i+1; j<c.length && !hit; j++){
+      if(c[i].amount + c[j].amount===o.amount){ hit = [c[i], c[j]]; break; }
+      for(let q=j+1; q<c.length; q++) if(c[i].amount + c[j].amount + c[q].amount===o.amount){ hit = [c[i], c[j], c[q]]; break; }
+    }
+    if(hit) take(o, hit, res.diff);
+  });
+  // 4. похожее: сумма в пределах 5% (не меньше 1000 ₫), день ±3
+  st.ops.forEach(o=>{
+    if(usedB.has(o)) return;
+    const c = free(o).filter(a=> Math.abs(a.ord - o.ord) <= 3 && Math.abs(a.amount - o.amount) <= reconTol(o.amount))
+      .sort((a,b)=> (Math.abs(a.amount-o.amount)/o.amount + Math.abs(a.ord-o.ord)*.01) - (Math.abs(b.amount-o.amount)/o.amount + Math.abs(b.ord-o.ord)*.01));
+    if(c.length) take(o, [c[0]], res.diff);
+  });
+  res.bank = st.ops.filter(o=> !usedB.has(o));
+  res.app = exp.filter(a=> !usedA.has(a));
+  res.usedA = usedA;
+  return res;
+}
+
+/* Остаток карты по дням: банк против приложения + остаток на начало месяца */
+function reconBalance(st){
+  const bankEnd = new Map();
+  st.lines.forEach(l=> bankEnd.set(l.postOrd, l.bal));
+  const days = [], starts = [];
+  let bank = st.opening, prev = null;
+  const d0 = new Date(Date.UTC(st.from.year, st.from.month, st.from.day));
+  for(let y = d0.getUTCFullYear(), mo = d0.getUTCMonth(); reconOrd(y, mo, 1) <= st.cutOrd; mo++){
+    if(mo > 11){ mo = 0; y++; }
+    if(reconOrd(y, mo, 1) > st.cutOrd) break;
+    const k = y + "-" + String(mo+1).padStart(2, "0");
+    const m = isObj(DB[k]) ? fix(DB[k]) : EMPTY(), n = new Date(y, mo+1, 0).getDate();
+    const rows = walletRows("bidv", {vnd:live(m.vnd), topup:live(m.topup), bidvStart:m.bidvStart, cashStart:m.cashStart}, n);
+    if(reconOrd(y, mo, 1) > st.fromOrd){
+      // остаток банка на конец предыдущего дня
+      let b = st.opening;
+      st.lines.forEach(l=>{ if(l.postOrd < reconOrd(y, mo, 1)) b = l.bal; });
+      starts.push({k, y, mo, app:m.bidvStart, bank:b});
+    }
+    rows.forEach(r=>{
+      const o = reconOrd(y, mo, r.day);
+      if(o < st.fromOrd || o > st.cutOrd) return;
+      if(bankEnd.has(o)) bank = bankEnd.get(o);
+      const diff = r.bal - bank;
+      if(diff !== (prev==null ? 0 : prev)) days.push({y, mo, day:r.day, bank, app:r.bal, diff, ch: diff - (prev==null ? 0 : prev)});
+      prev = diff;
+    });
+  }
+  return {days, starts, endDiff: prev || 0};
+}
+
+/* ---------- окно сверки ---------- */
+const reconD = n=> Math.round(n||0).toLocaleString("ru-RU");
+const reconDM = (y,m,d)=> String(d).padStart(2,"0") + "." + String(m+1).padStart(2,"0");
+const reconHM = ts=>{ if(!ts) return ""; const v = new Date(ts + 7*3600e3); return String(v.getUTCHours()).padStart(2,"0") + ":" + String(v.getUTCMinutes()).padStart(2,"0"); };
+
+async function reconLoadFile(file){
+  try{
+    const files = await reconUnzip(await file.arrayBuffer(), n=> n==="xl/sharedStrings.xml" || /^xl\/worksheets\/sheet\d+\.xml$/.test(n));
+    const st = reconParse(reconSheet(files));
+    RECON = {st, open: new Set(["bal","diff","bank","app"]), exp: null, file: file.name};
+    document.getElementById("recon-again").hidden = false;
+    reconOpen();
+  }catch(e){
+    toast(e && e.message ? e.message : "Не удалось прочитать выписку");
+  }
+}
+
+function reconOpen(){
+  if(!RECON) return;
+  document.querySelectorAll(".recon-ov").forEach(x=> x.remove());
+  const st = RECON.st;
+  const ov = aiEl("div", "bidv-overlay recon-ov"), dlg = aiEl("div", "bidv-dialog recon");
+  dlg.setAttribute("role", "dialog"); dlg.setAttribute("aria-modal", "true");
+  const head = aiEl("div", "bidv-header rc-head"), tt = aiEl("div", "rc-title");
+  tt.append(aiEl("b", "", "Сверка с выпиской BIDV"),
+    aiEl("small", "", (st.acc ? "Счёт …" + st.acc.slice(-4) + " · " : "") + reconDM(st.from.year, st.from.month, st.from.day) + "." + st.from.year
+      + " – " + reconDM(st.cutDate.year, st.cutDate.month, st.cutDate.day) + "." + st.cutDate.year + " · строк: " + st.lines.length));
+  const x = aiEl("button", "rc-x", "×"); x.setAttribute("aria-label", "Закрыть");
+  head.append(tt, x);
+  const body = aiEl("div", "bidv-body");
+  dlg.append(head, body); ov.appendChild(dlg);
+  const close = ()=>{ document.removeEventListener("keydown", esc, true); ov.remove(); };
+  // Esc закрывает сверку, но не перебивает открытое поверх окно подтверждения
+  const esc = e=>{ if(e.key==="Escape" && !document.querySelector(".ask-overlay") && document.body.contains(ov)){ e.preventDefault(); close(); } };
+  x.onclick = close;
+  document.addEventListener("keydown", esc, true);
+  document.body.appendChild(ov);
+  RECON.body = body;
+  reconDraw();
+}
+
+/* Правка записи из окна сверки — всегда по свежему DB[k], с новой меткой ts */
+function reconEdit(a, fn, msg){
+  const r = isObj(DB[a.k]) ? fix(DB[a.k])[a.list].find(x=> x.id===a.id && !x.del) : null;
+  if(!r){ toast("Запись уже удалена"); reconDraw(); return; }
+  fn(r);
+  if(!r.bref) delete r.bref;
+  r.ts = nowTs();
+  save(); render(); reconDraw();
+  if(msg) toast(msg);
+}
+function reconSkipSet(key, back){
+  const meta = metaNorm(DB[META_KEY]);
+  meta.reconSkip = reconSkipList({reconSkip: meta.reconSkip.concat([{ref:key, ts:nowTs(), del: back ? 1 : 0}])});
+  DB[META_KEY] = meta;
+  save(); reconDraw();
+  toast(back ? "Операция снова в сверке" : "Операция не учитывается");
+}
+function reconAdd(o, cat, note){
+  const w = o.when, k = w.year + "-" + String(w.month+1).padStart(2, "0");
+  if(!isObj(DB[k])) DB[k] = EMPTY();
+  const m = fix(DB[k]), base = {id:uid(), day:w.day, amount:o.amount, note, ts:nowTs(), opTs:w.opTs, del:0, bref:o.link};
+  if(o.side==="in") m.topup.push(Object.assign(base, {cat:"", pay:BIDV_PAY}));
+  else if(cat==="__xfer__") m.topup.push(Object.assign(base, {cat:FROM_BIDV, pay:"Наличные"}));
+  else m.vnd.push(Object.assign(base, {cat, pay:BIDV_PAY}));
+  RECON.exp = null;
+  save(); render(); reconDraw();
+  toast("Добавлено: " + fV(o.amount) + ", " + reconDM(w.year, w.month, w.day));
+}
+
+function reconDraw(){
+  if(!RECON || !RECON.body || !document.body.contains(RECON.body)) return;
+  const st = RECON.st, res = reconMatch(st), bal = reconBalance(st), body = RECON.body;
+  RECON.res = res;
+  const keepScroll = body.scrollTop;
+  body.replaceChildren();
+  const E = aiEl;
+  const btn = (t, fn, cls)=>{ const b = E("button", "btn " + (cls || "ghost"), t); b.type = "button"; b.onclick = fn; return b; };
+  const sign = o=> o.side==="in" ? "+" : "−";
+  const bankLine = o=>{
+    const l = E("div", "rc-line"); l.title = o.lines.map(x=> x.desc).join("\n");
+    const post = o.post.day!==o.when.day || o.post.month!==o.when.month ? " (списано " + reconDM(o.post.year, o.post.month, o.post.day) + ")" : "";
+    l.append(E("span", "rc-tag", "Банк"), E("span", "rc-w", reconDM(o.when.year, o.when.month, o.when.day) + " " + reconHM(o.when.opTs) + post),
+      E("span", "rc-nm", o.name + (o.lines.length > 1 ? " · " + o.lines.length + " строки" : "")),
+      E("span", "rc-a" + (o.side==="in" ? " in" : ""), sign(o) + reconD(o.amount)));
+    return l;
+  };
+  const appLine = a=>{
+    const l = E("div", "rc-line");
+    const nm = [a.lab, a.note].filter(Boolean).join(" · ") + (a.list==="vnd" && a.pay!==BIDV_PAY ? " · оплата: " + (a.pay || "не указана") : "")
+      + (a.list==="topup" && !a.bidv ? " · наличные" : "");
+    l.append(E("span", "rc-tag", "Запись"), E("span", "rc-w", reconDM(a.y, a.mo, a.day) + (a.opTs ? " " + reconHM(a.opTs) : "")),
+      E("span", "rc-nm", nm), E("span", "rc-a" + (a.side==="in" ? " in" : ""), (a.side==="in" ? "+" : "−") + reconD(a.amount)));
+    return l;
+  };
+  const near = (o, a)=> a.side===o.side && Math.abs(a.ord - o.ord) <= 3 && Math.abs(a.amount - o.amount) <= reconTol(o.amount);
+  const sec = (id, title, items, row, hint, hot, cnt)=>{
+    const d = document.createElement("details");
+    d.className = "rc-sec" + (hot && items.length ? " hot" : "");
+    d.open = RECON.open.has(id);
+    d.ontoggle = ()=>{ if(d.open) RECON.open.add(id); else RECON.open.delete(id); };
+    const s = E("summary"); s.append(E("span", "", title), E("span", "rc-n", cnt!=null ? cnt : String(items.length)));
+    d.appendChild(s);
+    if(hint) d.appendChild(E("div", "rc-hint", hint));
+    items.forEach(it=> d.appendChild(row(it)));
+    body.appendChild(d);
+  };
+
+  // сводка
+  const sum = E("div", "rc-sum");
+  const pill = (t, cls)=> sum.appendChild(E("span", "rc-pill " + (cls||""), t));
+  pill("✓ Совпало: " + res.ok.length, "good");
+  pill("≈ Отличается: " + res.diff.length, res.diff.length ? "bad" : "");
+  pill("Только в банке: " + res.bank.length, res.bank.length ? "bad" : "");
+  pill("Только в приложении: " + res.app.length, res.app.length ? "bad" : "");
+  pill(bal.endDiff ? "Остаток расходится на " + reconD(bal.endDiff) : "Остаток сходится", bal.endDiff ? "bad" : "good");
+  body.appendChild(sum);
+  body.appendChild(E("div", "bidv-note", "Сверяются траты с оплатой «Карта BIDV», внесения на карту и обмены карта ↔ наличные. "
+    + "Сама сверка ничего не меняет — записи правятся только кнопками ниже. Записи позже конца выписки не сверяются."));
+
+  // остаток по дням
+  sec("bal", "Остаток на карте по дням", bal.days.length || bal.starts.some(s=> s.app!==s.bank) ? [1] : [], ()=>{
+    const w = E("div");
+    bal.starts.forEach(s=>{
+      const r = E("div", "rc-start");
+      const same = s.app===s.bank;
+      r.appendChild(E("div", "", "Начало: " + MONTHS[s.mo].toLowerCase() + " " + s.y + " — в приложении " + reconD(s.app) + ", по выписке " + reconD(s.bank) + (same ? " ✓" : "")));
+      if(!same){
+        const act = E("div", "rc-act");
+        act.appendChild(btn("Поставить " + reconD(s.bank), ()=>{
+          askConfirm({title:"Изменить остаток на начало месяца?", lines:["Карта BIDV, " + MONTHS[s.mo].toLowerCase() + " " + s.y + ": " + reconD(s.app) + " → " + reconD(s.bank) + " ₫", "Значение «Было на начало месяца» на «Кошельках»."], ok:"Поставить"})
+            .then(y=>{
+              if(!y) return;
+              if(!isObj(DB[s.k])) DB[s.k] = EMPTY();
+              const m = fix(DB[s.k]); m.bidvStart = s.bank; m.bidvStartTs = nowTs();
+              save(); render(); reconDraw(); toast("Остаток на начало месяца обновлён");
+            });
+        }));
+        r.appendChild(act);
+      }
+      w.appendChild(r);
+    });
+    if(bal.days.length){
+      const t = E("table", "rc-bal");
+      const hr = E("tr"); ["День", "Банк", "Приложение", "Разница", "Изменилась"].forEach(h=> hr.appendChild(E("th", "", h)));
+      t.appendChild(hr);
+      bal.days.slice(0, 80).forEach(d=>{
+        const tr = E("tr");
+        tr.append(E("td", "", reconDM(d.y, d.mo, d.day)), E("td", "", reconD(d.bank)), E("td", "", reconD(d.app)),
+          E("td", d.diff ? "neg" : "pos", d.diff ? (d.diff > 0 ? "+" : "") + reconD(d.diff) : "0"),
+          E("td", "", (d.ch > 0 ? "+" : "") + reconD(d.ch)));
+        t.appendChild(tr);
+      });
+      const wrap = E("div"); wrap.style.cssText = "overflow-x:auto;padding:0 4px 6px";
+      wrap.appendChild(t);
+      w.appendChild(E("div", "rc-hint", "Дни, когда разница остатков менялась: в этот день и стоит искать ошибку. «+» — в приложении денег больше, чем в банке."));
+      w.appendChild(wrap);
+    }
+    return w;
+  }, bal.days.length || bal.starts.some(s=> s.app!==s.bank) ? "" : "Остаток в приложении совпадает с банком на каждый день.", true,
+     bal.endDiff ? "разница " + reconD(bal.endDiff) : (bal.days.length ? "дней с разницей: " + bal.days.length : "✓"));
+
+  // отличается
+  sec("diff", "≈ Похоже, но отличается", res.diff, it=>{
+    const r = E("div", "rc-row"), o = it.o, recs = it.recs;
+    r.appendChild(bankLine(o));
+    recs.forEach(a=> r.appendChild(appLine(a)));
+    const s = recs.reduce((t,a)=> t + a.amount, 0), a0 = recs[0];
+    const why = [];
+    if(it.linked) why.push("Связаны вручную.");
+    if(s!==o.amount) why.push("Сумма: в банке " + reconD(o.amount) + ", в " + (recs.length > 1 ? "записях " : "записи ") + reconD(s) + " (разница " + (o.amount - s > 0 ? "+" : "") + reconD(o.amount - s) + ").");
+    if(recs.length > 1) why.push("Одна операция банка = " + recs.length + " записи.");
+    else if(a0.ord!==o.ord) why.push("День: в банке " + reconDM(o.when.year, o.when.month, o.when.day) + ", в записи " + reconDM(a0.y, a0.mo, a0.day) + ".");
+    r.appendChild(E("div", "rc-why", why.join(" ")));
+    const act = E("div", "rc-act");
+    if(recs.length===1 && s!==o.amount)
+      act.appendChild(btn("Исправить сумму на " + reconD(o.amount), ()=> reconEdit(a0, x=>{ x.amount = o.amount; x.bref = o.link; }, "Сумма исправлена"), "vnd"));
+    if(recs.length===1 && a0.ord!==o.ord && a0.y===o.when.year && a0.mo===o.when.month)
+      act.appendChild(btn("Перенести на " + reconDM(o.when.year, o.when.month, o.when.day), ()=> reconEdit(a0, x=>{ x.day = o.when.day; if(s===o.amount) x.bref = o.link; }, "День исправлен")));
+    if(!it.linked) act.appendChild(btn(s===o.amount ? "Связать, всё верно" : "Связать, разница верна", ()=>{
+      recs.forEach((a,i)=> reconEdit(a, x=>{ x.bref = o.link + (s!==o.amount ? "!" : ""); }, i===recs.length-1 ? "Связано" : ""));
+    }));
+    else {
+      if(s!==o.amount) act.appendChild(btn("Разница верна", ()=> recs.forEach((a,i)=> reconEdit(a, x=>{ x.bref = o.link + "!"; }, i===recs.length-1 ? "Принято" : ""))));
+      act.appendChild(btn("Отвязать", ()=> recs.forEach((a,i)=> reconEdit(a, x=>{ x.bref = ""; }, i===recs.length-1 ? "Связь снята" : ""))));
+    }
+    if(!it.linked && recs.length===1) act.appendChild(btn("Это разные операции", ()=> reconEdit(a0, x=>{ x.bref = RECON_KEEP; }, "Запись отмечена: в банке её нет")));
+    r.appendChild(act);
+    return r;
+  }, "Пара найдена по сумме и дате, но что-то не сходится. Проверьте и выберите действие — или оставьте как есть.", true);
+
+  // только в банке
+  sec("bank", "Есть в банке, нет в приложении", res.bank, o=>{
+    const r = E("div", "rc-row");
+    r.appendChild(bankLine(o));
+    const ex = RECON.exp && RECON.exp.key===o.key ? RECON.exp.mode : "";
+    const act = E("div", "rc-act");
+    const toggle = mode=> ()=>{ RECON.exp = ex===mode ? null : {key:o.key, mode}; reconDraw(); };
+    act.append(btn(o.side==="in" ? "Добавить поступление" : "Добавить расход", toggle("add"), ex==="add" ? "vnd" : "ghost"),
+      btn("Уже записано…", toggle("find"), ex==="find" ? "vnd" : "ghost"),
+      btn("Не учитывать", ()=> reconSkipSet(o.key, false)));
+    r.appendChild(act);
+    if(ex==="add"){
+      const f = E("div", "rc-form");
+      let sel = null;
+      if(o.side==="out"){
+        sel = E("select");
+        sel.appendChild(new Option("Категория…", ""));
+        CATS.vnd.forEach(c=> sel.appendChild(new Option(c, c)));
+        sel.appendChild(new Option("Снял наличные (обмен карта → наличные)", "__xfer__"));
+      }
+      const ni = E("input"); ni.type = "text"; ni.value = o.name; ni.placeholder = "Комментарий";
+      const go = btn("Добавить", ()=>{
+        if(sel && !sel.value){ sel.focus(); toast("Выберите категорию"); return; }
+        reconAdd(o, sel ? sel.value : "", ni.value.trim());
+      }, "vnd");
+      if(sel) f.appendChild(sel);
+      f.append(ni, go);
+      r.appendChild(f);
+      r.appendChild(E("div", "rc-hint", o.side==="in" ? "Запишется внесением на карту BIDV, " + reconDM(o.when.year, o.when.month, o.when.day) + "." : "Запишется тратой с оплатой «Карта BIDV», " + reconDM(o.when.year, o.when.month, o.when.day) + "."));
+    }
+    if(ex==="find"){
+      const c = res.all.filter(a=> !res.usedA.has(a) && near(o, a))
+        .sort((a,b)=> Math.abs(a.amount-o.amount) - Math.abs(b.amount-o.amount) || Math.abs(a.ord-o.ord) - Math.abs(b.ord-o.ord));
+      if(!c.length) r.appendChild(E("div", "rc-hint", "Похожих записей (сумма ±5%, день ±3) нет. Найдите запись в списке месяца и поправьте карандашом — или добавьте операцию."));
+      c.slice(0, 6).forEach(a=>{
+        const cd = E("div", "rc-cand");
+        cd.appendChild(appLine(a));
+        const needPay = !a.bidv;
+        const a2 = E("div", "rc-act");
+        a2.appendChild(btn(needPay ? "Это она — связать, оплата «Карта BIDV»" : "Это она — связать", ()=>{
+          RECON.exp = null;
+          reconEdit(a, x=>{ x.bref = o.link; if(needPay) x.pay = BIDV_PAY; }, "Связано");
+        }));
+        cd.appendChild(a2);
+        r.appendChild(cd);
+      });
+    }
+    return r;
+  }, "Операции банка без пары в приложении: не записали, записали другим способом оплаты или с другой суммой. Без пары — проценты банка и прочее, что учитывать не нужно.", true);
+
+  // только в приложении
+  sec("app", "Есть в приложении, нет в банке", res.app, a=>{
+    const r = E("div", "rc-row");
+    r.appendChild(appLine(a));
+    const key = "a:" + a.id, ex = RECON.exp && RECON.exp.key===key ? RECON.exp.mode : "";
+    const toggle = mode=> ()=>{ RECON.exp = ex===mode ? null : {key, mode}; reconDraw(); };
+    const act = E("div", "rc-act");
+    act.appendChild(btn("Есть в банке…", toggle("find"), ex==="find" ? "vnd" : "ghost"));
+    if(a.list==="vnd") act.appendChild(btn("Сменить оплату", toggle("pay"), ex==="pay" ? "vnd" : "ghost"));
+    else if(a.side==="in") act.appendChild(btn("Это наличные", ()=> reconEdit(a, x=>{ x.pay = "Наличные"; }, "Внесение перенесено в наличные")));
+    act.append(btn("Верно, в банке нет", ()=> reconEdit(a, x=>{ x.bref = RECON_KEEP; }, "Отмечено")),
+      btn("Удалить", ()=>{
+        askConfirm({title:"Удалить запись?", lines:[a.lab + " · " + reconD(a.amount) + " ₫ · " + reconDM(a.y, a.mo, a.day), a.note ? "«" + a.note + "»" : ""], ok:"Удалить"})
+          .then(y=>{ if(y) reconEdit(a, x=>{ x.del = nowTs(); }, "Запись удалена"); });
+      }));
+    r.appendChild(act);
+    if(ex==="pay"){
+      const f = E("div", "chips"); f.style.marginTop = "8px";
+      CATS.pay.filter(p=> p!==BIDV_PAY).forEach(p=>{
+        const c = E("button", "chip", p); c.type = "button";
+        c.onclick = ()=>{ RECON.exp = null; reconEdit(a, x=>{ x.pay = p; }, "Оплата: " + p); };
+        f.appendChild(c);
+      });
+      r.appendChild(f);
+    }
+    if(ex==="find"){
+      const c = res.bank.filter(o=> near(o, a))
+        .sort((x,y)=> Math.abs(x.amount-a.amount) - Math.abs(y.amount-a.amount) || Math.abs(x.ord-a.ord) - Math.abs(y.ord-a.ord));
+      if(!c.length) r.appendChild(E("div", "rc-hint", "Среди операций банка без пары похожих нет (сумма ±5%, день ±3)."));
+      c.slice(0, 6).forEach(o=>{
+        const cd = E("div", "rc-cand");
+        cd.appendChild(bankLine(o));
+        const a2 = E("div", "rc-act");
+        a2.appendChild(btn("Связать", ()=>{ RECON.exp = null; reconEdit(a, x=>{ x.bref = o.link; }, "Связано"); }));
+        cd.appendChild(a2);
+        r.appendChild(cd);
+      });
+    }
+    return r;
+  }, "Записи с оплатой «Карта BIDV» (и внесения на карту), которым не нашлось операции в выписке: возможно, оплачено другой картой или наличными, задвоено или сумма сильно отличается.", true);
+
+  sec("ok", "✓ Совпало", res.ok, it=>{
+    const r = E("div", "rc-row");
+    r.appendChild(bankLine(it.o));
+    it.recs.forEach(a=> r.appendChild(appLine(a)));
+    if(it.linked){
+      const act = E("div", "rc-act");
+      act.appendChild(btn("Отвязать", ()=> it.recs.forEach((a,i)=> reconEdit(a, x=>{ x.bref = ""; }, i===it.recs.length-1 ? "Связь снята" : ""))));
+      r.appendChild(act);
+    }
+    return r;
+  });
+  if(res.kept.length) sec("kept", "Отмечено «в банке нет»", res.kept, a=>{
+    const r = E("div", "rc-row"); r.appendChild(appLine(a));
+    const act = E("div", "rc-act"); act.appendChild(btn("Вернуть в сверку", ()=> reconEdit(a, x=>{ x.bref = ""; }, "Запись снова в сверке")));
+    r.appendChild(act); return r;
+  });
+  if(res.skipped.length) sec("skip", "Не учитываются", res.skipped, o=>{
+    const r = E("div", "rc-row"); r.appendChild(bankLine(o));
+    const act = E("div", "rc-act"); act.appendChild(btn("Вернуть в сверку", ()=> reconSkipSet(o.key, true)));
+    r.appendChild(act); return r;
+  });
+  body.scrollTop = keepScroll;
 }
 
 function p2pButtons(){ return Array.from(document.querySelectorAll("[data-bybit-import]")); }
@@ -3333,7 +4027,7 @@ function aiStoreMerge(a, b){
 /* _meta целиком: метки импорта BIDV + разборы ИИ + капитал */
 /* v1 — modifiedTime старого файла на Диске (донги в тысячах), уже перенесённого:
    хранится в базе, а не в браузере, чтобы новое устройство не тянуло его заново. */
-function metaNorm(v){ return {bidvImported: bidvImportedList(v), ai: aiStoreNorm(isObj(v) ? v.ai : null), cap: capNorm(isObj(v) ? v.cap : null), chats: chatsNorm(isObj(v) ? v.chats : null),
+function metaNorm(v){ return {bidvImported: bidvImportedList(v), reconSkip: reconSkipList(v), ai: aiStoreNorm(isObj(v) ? v.ai : null), cap: capNorm(isObj(v) ? v.cap : null), chats: chatsNorm(isObj(v) ? v.chats : null),
   v1: isObj(v) && typeof v.v1==="string" ? v.v1.slice(0,40) : ""}; }
 function aiSaved(key){
   const meta = isObj(DB[META_KEY]) ? DB[META_KEY] : null;
@@ -5313,6 +6007,11 @@ function capAiMigrate(){
 
   // BIDV import
   document.getElementById("bidv-import").onclick = bidvImport;
+  // сверка с выпиской BIDV (xlsx)
+  const rcFile = document.getElementById("recon-file");
+  document.getElementById("recon-load").onclick = ()=> rcFile.click();
+  rcFile.onchange = ()=>{ const f = rcFile.files && rcFile.files[0]; rcFile.value = ""; if(f) reconLoadFile(f); };
+  document.getElementById("recon-again").onclick = reconOpen;
   p2pButtons().forEach(b=> b.onclick = p2pImport);
 
   /* Подхватываем чужие правки сразу при запуске. Токен в памяти вкладки не
