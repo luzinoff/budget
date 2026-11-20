@@ -2,14 +2,18 @@
    Меняйте CACHE при выкладке новой версии — старый кэш будет удалён. */
 "use strict";
 
-const CACHE = "budget-v48";
+const CACHE = "budget-v49";
 const ASSETS = [
   "./",
   "./index.html",
   "./settings.html",
   "./manifest.webmanifest",
   "./icon.svg",
-  "./icon-maskable.svg"
+  "./icon-maskable.svg",
+  "./icon-192.png",
+  "./icon-512.png",
+  "./icon-maskable-512.png",
+  "./apple-touch-icon.png"
 ];
 
 self.addEventListener("install", e=>{

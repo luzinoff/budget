@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-title" content="Бюджет">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="icon.svg">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>Бюджет</title>
 <style>
 :root{
@@ -983,6 +983,7 @@ textarea.chat-in{min-height:76px;resize:vertical;margin:8px 0 10px;font:inherit;
       <button class="btn sm ghost" id="im-json">Объединить с копией</button>
       <button class="btn sm ghost" id="im-rep">Заменить из копии</button>
       <button class="btn sm ghost" id="ex-csv">Выгрузить в Excel</button>
+      <button class="btn sm ghost" id="bk-drive">Копии на Диске</button>
       <input type="file" id="file" accept=".json,application/json" hidden>
     </div>
   </div>
@@ -2432,6 +2433,81 @@ async function luzSettingsSync(tok){
   await Promise.all(files.slice(1).map(f=>fetch('https://www.googleapis.com/drive/v3/files/'+f.id,{method:'DELETE',headers:H}).catch(()=>{})));
   return false;
 }
+/* ===== История копий на Google Диске (общий блок: одинаковый в Бюджете, Дневнике и Медкарте) =====
+   Раз в день, после удачного обмена, в ту же скрытую папку приложения (appDataFolder)
+   кладётся снимок данных «bk-<app>-ГГГГ-ММ-ДД.json»; хранятся последние LUZ_BK_KEEP дней.
+   Это защита от неудачного слияния или ошибочной «Замены»: основной файл синхронизации
+   перезаписывается, а снимки — нет. Восстановление — без автоматики: снимок скачивается
+   файлом и загружается обычным импортом приложения. Дата — по местному времени устройства;
+   отметка «сегодня уже сделано» — в localStorage, чтобы не ходить на Диск при каждом обмене.
+   Если два устройства в один день создали одинаковый снимок, лишний удаляется при чистке. */
+const LUZ_BK_KEEP=30;
+const luzBkDay=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+async function luzBackupList(tok,app){
+  const pre='bk-'+app+'-',q=encodeURIComponent("name contains '"+pre+"' and trashed=false");
+  const r=await fetch('https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&pageSize=1000&fields=files(id,name,size,createdTime)&q='+q,{headers:{Authorization:'Bearer '+tok}});
+  if(!r.ok)throw new Error(r.status===401||r.status===403?'Диск отказал в доступе — войдите заново':'Диск не ответил ('+r.status+')');
+  const re=new RegExp('^'+pre.replace(/[-]/g,'\\-')+'(\\d{4}-\\d{2}-\\d{2})\\.json$');
+  return ((await r.json()).files||[]).map(f=>{const m=re.exec(f.name);return m?{id:f.id,day:m[1],size:+f.size||0,at:f.createdTime||''}:null})
+    .filter(Boolean).sort((a,b)=>b.day.localeCompare(a.day)||a.at.localeCompare(b.at))}
+async function luzBackupDaily(tok,app,getBody){
+  const day=luzBkDay(),lk='luz.bk.'+app;
+  try{if(localStorage.getItem(lk)===day)return false}catch(e){}
+  const H={Authorization:'Bearer '+tok},files=await luzBackupList(tok,app);
+  let made=false;
+  if(!files.some(f=>f.day===day)){
+    const body=getBody();if(!body)return false;
+    const b='luzbk'+Date.now(),meta={name:'bk-'+app+'-'+day+'.json',mimeType:'application/json',parents:['appDataFolder']};
+    const r=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',{method:'POST',
+      headers:{...H,'Content-Type':'multipart/related; boundary='+b},
+      body:'--'+b+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+JSON.stringify(meta)+'\r\n--'+b+'\r\nContent-Type: application/json\r\n\r\n'+body+'\r\n--'+b+'--'});
+    if(!r.ok)throw new Error('Снимок на Диск не записан ('+r.status+')');
+    made=true}
+  /* чистка: один снимок на день (самый ранний), не больше LUZ_BK_KEEP дней */
+  const seen=new Set(),old=[];
+  for(const f of files){if(seen.has(f.day)||seen.size>=LUZ_BK_KEEP-(made?1:0))old.push(f);else seen.add(f.day)}
+  await Promise.all(old.map(f=>fetch('https://www.googleapis.com/drive/v3/files/'+f.id,{method:'DELETE',headers:H}).catch(()=>{})));
+  try{localStorage.setItem(lk,day)}catch(e){}
+  return made}
+/* Окно со списком снимков. getTok — функция приложения, возвращающая токен (по нажатию
+   можно и с окном входа Google); fname — начало имени скачиваемого файла. */
+function luzBackupSheet(getTok,app,fname,hint){
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center;color-scheme:light dark';
+  const bx=document.createElement('div');
+  bx.style.cssText='background:Canvas;color:CanvasText;width:100%;max-width:520px;max-height:82vh;overflow:auto;border-radius:16px 16px 0 0;padding:18px 18px 22px;box-shadow:0 -6px 30px rgba(0,0,0,.25);font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif';
+  if(matchMedia('(min-width:640px)').matches){ov.style.alignItems='center';bx.style.borderRadius='16px'}
+  const close=()=>{ov.remove();document.removeEventListener('keydown',esc)},esc=e=>{if(e.key==='Escape')close()};
+  ov.onclick=e=>{if(e.target===ov)close()};document.addEventListener('keydown',esc);
+  const h=document.createElement('div');h.style.cssText='display:flex;align-items:center;gap:8px;margin-bottom:6px';
+  const t=document.createElement('b');t.textContent='Копии на Google Диске';t.style.cssText='flex:1;font-size:17px';
+  const x=document.createElement('button');x.type='button';x.textContent='✕';x.title='Закрыть';x.style.cssText='border:0;background:none;color:inherit;font-size:18px;cursor:pointer;padding:4px 8px';x.onclick=close;
+  h.append(t,x);
+  const p=document.createElement('div');p.style.cssText='font-size:13px;opacity:.72;margin-bottom:12px';
+  p.textContent='Снимок делается сам раз в день после синхронизации, хранятся последние '+LUZ_BK_KEEP+' дней. Скачайте нужный и загрузите его '+(hint||'импортом')+'.';
+  const list=document.createElement('div');list.textContent='Загружаю список…';list.style.cssText='display:flex;flex-direction:column;gap:6px';
+  bx.append(h,p,list);ov.append(bx);document.body.append(ov);
+  const kb=n=>n>=1048576?(n/1048576).toFixed(1).replace('.',',')+' МБ':Math.max(1,Math.round(n/1024))+' КБ';
+  const fmt=d=>new Date(d+'T12:00').toLocaleDateString('ru-RU',{weekday:'short',day:'numeric',month:'long',year:'numeric'});
+  (async()=>{
+    let tok;try{tok=await getTok()}catch(e){list.textContent='Не удалось войти в Google: '+(e&&e.message||e);return}
+    let fs;try{fs=await luzBackupList(tok,app)}catch(e){list.textContent=e.message;return}
+    list.textContent='';
+    if(!fs.length){list.textContent='Снимков пока нет — первый появится после ближайшей синхронизации.';return}
+    const dd=new Set();
+    for(const f of fs){if(dd.has(f.day))continue;dd.add(f.day);
+      const row=document.createElement('div');row.style.cssText='display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid color-mix(in srgb,CanvasText 14%,transparent);border-radius:10px';
+      const l=document.createElement('div');l.style.cssText='flex:1;min-width:0';l.textContent=fmt(f.day);
+      const s=document.createElement('span');s.style.cssText='font-size:12.5px;opacity:.65;margin-left:6px';s.textContent=kb(f.size);l.append(s);
+      const b=document.createElement('button');b.type='button';b.textContent='Скачать';b.style.cssText='flex:none;border:1px solid color-mix(in srgb,CanvasText 25%,transparent);background:none;color:inherit;border-radius:8px;padding:5px 12px;cursor:pointer;font:inherit;font-size:14px';
+      b.onclick=async()=>{b.disabled=true;b.textContent='…';
+        try{const r=await fetch('https://www.googleapis.com/drive/v3/files/'+f.id+'?alt=media',{headers:{Authorization:'Bearer '+tok}});
+          if(!r.ok)throw new Error(r.status);const blob=await r.blob();
+          const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname+f.day+'.json';document.body.append(a);a.click();a.remove();
+          setTimeout(()=>URL.revokeObjectURL(a.href),4000);b.textContent='Скачано'}
+        catch(e){b.disabled=false;b.textContent='Ошибка — ещё раз'}};
+      row.append(l,b);list.append(row)}})()}
+
 /* Бюджет хранит эти настройки отдельными ключами; переводим туда-обратно.
    Литералы, а не CID_KEY/AI_KEY_LS: часть констант объявлена ниже. */
 function luzBudgetOwn(){
@@ -2710,6 +2786,8 @@ function syncNow(interactive){
       if(stale()){ SYNC.busy = false; SYNC.pending = false; syncUI(); return; }
       /* общие ключи и выбор ИИ — отдельным файлом на том же Диске; сбой тут обмен не срывает */
       luzSettingsSync(tok).then(c=>{ if(c) luzBudgetOnShared(); }).catch(()=>{});
+      /* снимок дня для истории копий — тоже без влияния на сам обмен */
+      luzBackupDaily(tok, "budget", ()=> JSON.stringify(Object.assign({_v:2}, DB))).catch(()=>{});
       try{ localStorage.setItem(SEEN_KEY, String(nowTs())); }catch(e){}
       SYNC.busy = false; SYNC.fails = 0;
       /* Перерисовываем только если данные и правда изменились: render()
@@ -5942,6 +6020,11 @@ function capAiMigrate(){
     // _v:2 — донги полностью; копии без пометки — старые, в тысячах
     dl("Бюджет-копия-"+new Date().toISOString().slice(0,10)+".json", JSON.stringify(Object.assign({_v:2}, DB),null,1), "application/json");
     toast("Копия сохранена");
+  };
+  document.getElementById("bk-drive").onclick = ()=>{
+    if(!httpsOk){ toast("Копии на Диске доступны только на сайте (https)"); return; }
+    if(!SYNC.cid){ toast("Сначала укажите Client ID в общих настройках"); return; }
+    luzBackupSheet(()=> getToken(true), "budget", "Бюджет-копия-", "кнопкой «Объединить с копией» или «Заменить из копии»");
   };
   let impMode = "merge";
   document.getElementById("im-json").onclick = ()=>{ impMode="merge"; document.getElementById("file").click(); };
