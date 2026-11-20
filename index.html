@@ -2147,14 +2147,23 @@ function vNorm(s){
 }
 /* «45 тысяч 365» -> 45365; «сто пятьдесят» -> 150; «полтора миллиона» -> 1500000 */
 function vAmount(t){
-  const w = t.split(/[\s,]+/).filter(Boolean);
-  let total = 0, cur = 0, seen = false;
+  /* Делим только по пробелам: раньше делили и по запятой, и «1,5 миллиона»
+     распадалось на 1 и 5 — выходило 6 миллионов (20.11.2026). */
+  const w = t.split(/\s+/).filter(Boolean);
+  let total = 0, cur = 0, seen = false, digits = false;
   for(let i=0;i<w.length;i++){
-    const x = w[i].replace(/\.$/,"");   // «500.» — точка от диктовки, не дробь
+    const x = w[i].replace(/[.,]+$/,"");   // «500.» / «500,» — знак от диктовки, не дробь
+    /* «45.000» и «1.500.000» — точки между разрядами, а не дробь */
+    if(/^\d{1,3}(\.\d{3})+$/.test(x)){ cur += Number(x.replace(/\./g,"")); seen = true; digits = true; continue; }
     if(/^\d+([.,]\d+)?$/.test(x)){
       const n = parseFloat(x.replace(",","."));
-      cur += n; seen = true; continue;
+      /* «30 000» — распознавание делит разряды пробелом: три цифры сразу
+         после числа — продолжение того же числа, а не прибавка */
+      if(digits && /^\d{3}$/.test(x) && cur === Math.floor(cur)) cur = cur*1000 + n;
+      else cur += n;
+      seen = true; digits = true; continue;
     }
+    digits = false;
     const stem = Object.keys(NUM_MULT).find(k=> x.indexOf(k)===0);
     if(stem){ if(!seen && !cur) cur = 1; total += (cur||0)*NUM_MULT[stem]; cur = 0; seen = true; continue; }
     if(NUM_WORD[x] !== undefined){ cur += NUM_WORD[x]; seen = true; continue; }
@@ -2185,7 +2194,7 @@ function vDay(t){
 }
 /* Служебные слова, которые в комментарии не нужны. Проверяются по слову
    целиком, а не подстрокой: иначе «за» вырезалось бы из «завтрак». */
-const V_STOP = /^(донг[а-я]*|руб|рубл[а-я]*|тысяч[а-я]*|тыщ[а-я]*|тыс|миллион[а-я]*|млн|лям[а-я]*|за|на|и|в|с|со|по|оплат[а-я]*|заплатил[а-я]*|расплатил[а-я]*|оплатил[а-я]*|купил[а-я]*|потратил[а-я]*|отдал[а-я]*|пришел|пришла|пришло|получил[а-я]*|коммент[а-я]*|примечани[а-я]*|это|мне|я|числа|число|го)$/;
+const V_STOP = /^(донг[а-я]*|руб|рубл[а-я]*|тысяч[а-я]*|тыщ[а-я]*|тыс|миллион[а-я]*|млн|лям[а-я]*|за|на|и|в|с|со|по|оплат[а-я]*|заплатил[а-я]*|расплатил[а-я]*|оплатил[а-я]*|купил[а-я]*|потратил[а-я]*|отдал[а-я]*|пришел|пришла|пришло|получил[а-я]*|коммент[а-я]*|примечани[а-я]*|это|мне|я|числа|число|го|снял[а-я]*|сняти[а-я]*|банкомат[а-я]*|положил[а-я]*|внес[а-я]*|закинул[а-я]*|пополнил[а-я]*)$/;
 /* убираем из фразы всё распознанное — остаток идёт в комментарий.
    ВНИМАНИЕ: \b в JavaScript не знает кириллицы (\w — это только латиница),
    поэтому границы слов здесь ищутся руками, разбиением на токены. */
@@ -2219,7 +2228,8 @@ function vParse(text, key){
   const tAmt = d ? t.replace(/\s\d{1,2}\s?(?:го|числа|число)\s/," ") : t;
   out.amount = vAmount(tAmt);
   // «45 тысяч», «1,5 млн» — сказано полностью; для донгов поле ввода в тысячах
-  out.amountFull = /тыс|тыщ|миллион|млн|лям/.test(tAmt);   // \b в JS кириллицу не знает — ищем основу
+  out.amountFull = /тыс|тыщ|миллион|млн|лям/.test(tAmt)
+    || /\d[. ]\d{3}(?![\d.,])/.test(tAmt);   // «45 000», «45.000» — тоже полная сумма, а поле донгов в тысячах   // \b в JS кириллицу не знает — ищем основу
   if(key !== "cash"){
     const table = V_CAT[key];
     out.cat = vMatch(t, table);
@@ -2234,6 +2244,8 @@ function vParse(text, key){
     else if(/(внес|положил|закинул|пополнил)[а-я]* [а-я ]*налич|налич[а-я]* на карт/.test(t)){ out.wallet = "bidv"; out.src = FROM_CASH; }
     else if(/карт|bidv|бидв/.test(t)) out.wallet = "bidv";
     else if(/налич|налик|кэш|кеш/.test(t)) out.wallet = "cash";
+    // слова, по которым выбран кошелёк, в комментарий не идут
+    ["налич","налик","кэш","кеш","карт","bidv","бидв"].forEach(k=>{ if(t.indexOf(k)>-1) used.push(k); });
   }
   if(d){ out.day = d; V_DAY.forEach(([w])=>{ if(t.indexOf(w)>-1) used.push(w); }); }
 
@@ -2787,17 +2799,36 @@ function bidvSaveImported(list){
   save(); // сохраняем в DB и запускаем синхронизацию
 }
 
+/* Список файлов папки репозитория luzinoff/BIDV. Через дерево (git/trees), а не
+   contents: contents отдаёт не больше 1000 файлов из папки и молча обрезает
+   остальное, а писем BIDV к ноябрю 2026 уже 372 — через несколько месяцев
+   новые операции перестали бы попадать в окно импорта (20.11.2026). */
+const GH_REPO = "luzinoff/BIDV";
+function ghDir(dir){
+  return fetch("https://api.github.com/repos/"+GH_REPO+"/git/trees/main?recursive=1")
+    .then(r=>{
+      if(!r.ok) throw new Error(r.status===403 ? "GitHub временно ограничил запросы — попробуйте через час" : "GitHub не ответил или репозиторий недоступен");
+      return r.json();
+    })
+    .then(j=>{
+      if(!j || !Array.isArray(j.tree)) throw new Error("GitHub вернул непонятный ответ");
+      const pre = dir + "/";
+      return j.tree
+        .filter(x=> x && x.type==="blob" && typeof x.path==="string" && x.path.startsWith(pre) && x.path.indexOf("/", pre.length) < 0)
+        .map(x=>({
+          name: x.path.slice(pre.length),
+          download_url: "https://raw.githubusercontent.com/"+GH_REPO+"/main/"+x.path.split("/").map(encodeURIComponent).join("/")
+        }));
+    });
+}
+
 function bidvImport(){
   const btn = document.getElementById("bidv-import");
   btn.disabled = true;
   btn.textContent = "Загрузка...";
 
   // Загружаем список файлов из GitHub
-  fetch("https://api.github.com/repos/luzinoff/BIDV/contents/transactions")
-    .then(r=>{
-      if(!r.ok) throw new Error("GitHub не ответил или репозиторий недоступен");
-      return r.json();
-    })
+  ghDir("transactions")
     .then(files=>{
       if(!Array.isArray(files) || files.length === 0){
         throw new Error("Папка transactions пуста или недоступна");
@@ -3783,14 +3814,9 @@ function p2pLooksAdded(o){
 
 function p2pImport(){
   p2pBusy(true);
-  fetch("https://api.github.com/repos/luzinoff/BIDV/contents/bybit")
-    .then(r=>{
-      if(r.status === 404) throw new Error("Ордеров Bybit в репозитории пока нет");
-      if(!r.ok) throw new Error("GitHub не ответил или репозиторий недоступен");
-      return r.json();
-    })
+  ghDir("bybit")
     .then(files=>{
-      if(!Array.isArray(files)) throw new Error("Папка bybit недоступна");
+      if(!files.length) throw new Error("Ордеров Bybit в репозитории пока нет");
       const done = new Set(bidvLoadImported().map(x=> x.ref));
       const fresh = files.filter(f=> f.name && f.name.endsWith(".json") && f.download_url && !done.has(f.name));
       if(!fresh.length){ toast("Нет новых ордеров Bybit"); return null; }
@@ -4742,7 +4768,7 @@ function capTips(ctx, T){
   const mp = mort ? mort.pay : ctx.mortPay;
   if(mp && ctx.inc && mp/ctx.inc > 0.3)
     t.push("Ипотечный платёж — "+Math.round(mp/ctx.inc*100)+"% дохода: это высокая нагрузка, подушку стоит держать ближе к 6 месяцам.");
-  if(ctx.n && !ctx.savAvg && ctx.inc > ctx.spend)
+  if(ctx.n && !ctx.savAvg && !ctx.savNow && ctx.inc > ctx.spend)   // в текущем месяце уже отложили — совет «ничего не записано» был бы неправдой
     t.push("За последние месяцы в «В накопления» ничего не записано, а свободно остаётся ≈ "+fR0(ctx.inc-ctx.spend)+" в месяц. Отмечайте отложенное этой категорией — темп и цели посчитаются сами.");
   return t;
 }
