@@ -492,6 +492,7 @@ input.lit{animation:lit 1.8s ease-out}
   display:flex;gap:10px;justify-content:flex-end;
 }
 .bidv-fx{font-size:11px;color:var(--ink-3);margin-top:3px;white-space:nowrap}
+.bidv-dup{font-size:11px;font-weight:600;color:var(--danger);margin-top:2px;white-space:nowrap}
 .bidv-amt{width:84px;text-align:right}
 .bidv-note{
   font-size:12px;color:var(--ink-3);margin-bottom:12px;line-height:1.4;
@@ -3046,6 +3047,11 @@ function bidvShowDialog(transactions){
       if(x && !x.del && x.bref && x.bref!==RECON_KEEP) known.add(String(x.bref).replace(/!$/, ""));
     }));
   });
+  /* Запись той же суммы по карте BIDV с тем же временем операции (±2 мин) — уже
+     импортирована, просто без кода: так было до 19.11, или импорт сделали на двух
+     устройствах до синхронизации меток. В ноябре 2026 так задвоились 4 операции. */
+  const sameOp = tr=> !tr.foreign && Object.keys(DB).some(k=> MKEY_RE.test(k) && isObj(DB[k]) && Array.isArray(DB[k].vnd) &&
+    DB[k].vnd.some(x=> x && !x.del && x.pay===BIDV_PAY && x.amount===tr.amount && x.opTs && Math.abs(x.opTs - tr.opTs) <= 120000));
   transactions.forEach((tr,i)=>{
     const row = document.createElement("tr");
     const monthName = MONTHS[tr.month];
@@ -3074,10 +3080,13 @@ function bidvShowDialog(transactions){
     // Устанавливаем значение через JavaScript, чтобы избежать проблем с экранированием
     row.querySelector(".bidv-merch").value = tr.recipient;
     // уже добавлена из выписки при сверке — по умолчанию не отмечаем, чтобы не задвоить
-    if(known.has(tr.ref)){
+    const dupWhy = known.has(tr.ref) ? "Эта операция уже есть в бюджете — добавлена при сверке с выпиской или прежним импортом"
+      : sameOp(tr) ? "Уже есть запись по карте BIDV с той же суммой и тем же временем — похоже, операцию уже импортировали" : "";
+    if(dupWhy){
       row.querySelector(".bidv-row-check").checked = false;
       row.style.opacity = ".55";
-      row.title = "Эта операция уже есть в бюджете — добавлена при сверке с выпиской";
+      row.title = dupWhy;
+      row.querySelector("td:nth-child(2)").insertAdjacentHTML("beforeend", '<div class="bidv-dup">уже есть</div>');
     }
     if(tr.foreign){
       row.classList.add("fx");
